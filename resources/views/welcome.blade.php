@@ -1,532 +1,370 @@
 <x-layouts::guest>
-    <header
-        class="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md shadow-sm border-b border-on-secondary-fixed-variant/10">
-        <div class="flex justify-between items-center px-margin-mobile md:px-gutter max-w-container-max mx-auto h-20">
-            <!-- Brand -->
-            <div class="flex items-center gap-2">
-                <a class="font-headline-md text-headline-md text-primary tracking-tight font-bold"
-                    href="#">MARVAS</a>
-                <span
-                    class="hidden lg:block text-on-surface-variant font-label-md text-label-md border-l border-outline-variant pl-2 ml-2">Instituto
-                    de Medicina Biológica Integral</span>
+    <div class="container max-w-7xl mx-auto">
+        <!-- ============================================ -->
+        <!-- 1. HEADER / NAVBAR -->
+        <!-- ============================================ -->
+        <header class="header">
+            <div class="header__brand">
+                <img 
+                    src="{{ asset('img/logo.png') }}" 
+                    alt="Logo MARVAS" 
+                    class=" h-32 w-auto"
+                >
             </div>
-            <!-- Desktop Nav -->
-            <nav class="hidden md:flex gap-6 items-center">
-                <a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300"
-                    href="#filosofia">Filosofía</a>
-                <a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300"
-                    href="#modelo">Modelo 6+</a>
-                <a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300"
-                    href="#ruta">Ruta de Recuperación</a>
-                <a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors duration-300"
-                    href="#programas">Programas</a>
-            </nav>
-            <!-- Actions -->
-            <div class="flex items-center gap-4">
-                <a class="hidden md:inline-flex btn-primary text-on-primary px-6 py-3 rounded-full font-label-md text-label-md"
-                    href="#contacto">
-                    Agenda tu Evaluación
-                </a>
-                <button
-                    class="md:hidden text-primary dark:text-primary-fixed-dim hover:text-primary transition-colors duration-300"
-                    id="mobile-menu-btn">
-                    <span class="material-symbols-outlined text-3xl">menu</span>
-                </button>
-            </div>
-        </div>
-    </header>
-    <!-- NavigationDrawer (Mobile) -->
-    <div class="fixed inset-y-0 left-0 z-[60] bg-surface dark:bg-surface-dim rounded-r-xl h-full w-80 shadow-xl transition-all duration-300 ease-in-out -translate-x-full border-r border-surface-container-low flex flex-col p-6 gap-4"
-        id="mobile-menu">
-        <div class="flex justify-between items-center mb-8">
-            <span class="font-headline-sm text-headline-sm text-primary">MARVAS Medical</span>
-            <button class="text-on-surface-variant hover:bg-surface-variant rounded-full p-2" id="close-menu-btn">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-        </div>
-        <nav class="flex flex-col gap-2 font-body-lg text-body-lg">
-            <a class="mobile-link flex items-center gap-4 p-3 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                href="#filosofia">
-                <span class="material-symbols-outlined">biotech</span>
-                Filosofía
-            </a>
-            <a class="mobile-link flex items-center gap-4 p-3 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                href="#modelo">
-                <span class="material-symbols-outlined">grid_view</span>
-                Modelo 6+
-            </a>
-            <a class="mobile-link flex items-center gap-4 p-3 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                href="#ruta">
-                <span class="material-symbols-outlined">timeline</span>
-                Ruta de Recuperación
-            </a>
-            <a class="mobile-link flex items-center gap-4 p-3 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                href="#programas">
-                <span class="material-symbols-outlined">payments</span>
-                Programas
-            </a>
-        </nav>
-    </div>
-    <!-- Overlay for mobile menu -->
-    <div class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300"
-        id="menu-overlay"></div>
-    <main class="pt-20">
-        <!-- Hero Section -->
-        <section class="relative min-h-[795px] flex items-center pt-16 pb-section-padding-lg overflow-hidden">
-            <div class="absolute inset-0 bg-surface-container-lowest z-0">
-                <div class="bg-cover bg-center w-full h-full opacity-30 mix-blend-multiply"
-                    data-alt="A macro shot of organic, flowing cellular structures and abstract DNA-like helices rendered in soft biological teals and warm gold tones. The lighting is sophisticated and medical, with a luminous, high-key cream background. The aesthetic is clean, modern, and high-end, representing biological integrity and advanced natural medicine. The composition is asymmetrical, leaving ample negative space for typography."
-                    style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDeLezzm1Ly_h2iB9nvW649H6CoMJjAoynM7tSwSY9sFGhzftnYb4zGnd_WmEWrxXoiGXZsJhrHA88lHeyNscQm6E2aJvI70NpaW8c4r5e1iZWzSMoevF1pU8pyLywk8lar7flnvksR1SnhnOZ4oaBYd_YFmyzPTaL9pEM0nc1WEK2G7jjfZ6leX3M-GV4MY1v4usei-66PrAJnceHsGkWkUyZT8hlIJly08YIJ7dt4MdwuLheetwpsy7KLFUxvxwDvdtilplfgYb0')">
-                </div>
-            </div>
-            <div
-                class="max-w-container-max mx-auto px-margin-mobile md:px-gutter relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
-                <div class="lg:col-span-8 flex flex-col items-start gap-6">
-                    <div
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-container/30 backdrop-blur-sm text-on-secondary-container rounded-full font-label-md text-label-md">
-                        <flux:icon name="badge-check" />
-                        MODELO 6+
-                    </div>
-                    <h1
-                        class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface max-w-3xl leading-tight">
-                        Recupera tu energía. <br />
-                        <span class="text-gradient font-bold">Vive tu mejor versión.</span>
-                    </h1>
-                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
-                        En MARVAS integramos medicina biológica y alternativa para abordar la raíz de tus padecimientos,
-                        no solo los síntomas. Un enfoque holístico diseñado para devolverle el equilibrio natural a tu
-                        cuerpo.
-                    </p>
-                    <div class="mt-4">
-                        <a class="btn-primary text-on-primary px-8 py-4 rounded-full font-label-md text-label-md inline-flex items-center gap-2"
-                            href="#contacto">
-                            Agenda tu Evaluación Integral
-                            <flux:icon name="arrow-right" />
+    
+            <nav class="nav" 
+                id="nav">
+                <ul class="nav__list">
+                    <li class="nav__item">
+                        <a href="#inicio" 
+                            class="nav__link nav__link--active">
+                            Inicio
                         </a>
-                    </div>
+                    </li>
+                    <li class="nav__item">
+                        <a href="#nosotros" 
+                            class="nav__link">
+                            Nosotros
+                        </a>
+                    </li>
+                    <li class="nav__item">
+                        <a href="#servicios" 
+                            class="nav__link">
+                            Servicios
+                        </a>
+                    </li>
+                    <li class="nav__item">
+                        <a href="#programas" 
+                            class="nav__link">
+                            Programas
+                        </a>
+                    </li>
+                    <li class="nav__item">
+                        <a href="#ciencia" 
+                            class="nav__link">
+                            Ciencia
+                        </a>
+                    </li>
+                    <li class="nav__item">
+                        <a href="#blog" 
+                            class="nav__link">
+                            Blog
+                        </a>
+                    </li>
+                    <li class="nav__item">
+                        <a href="#contacto" 
+                            class="nav__link">
+                            Contacto
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+    
+            <flux:button 
+                icon="calendar" 
+                iconTrailing="chevron-right"
+                
+                class="btn--primary header__cta"
+                href="#cita">
+                AGENDA TU CITA
+            </flux:button>
+    
+            <button 
+                type="button" 
+                class="header__toggle" 
+                id="navToggle" 
+                aria-label="Abrir menú" 
+                aria-expanded="false"
+                aria-controls="nav">
+                <flux:icon 
+                    name="menu" 
+                    class="header__toggle-icon"
+                />
+            </button>
+        </header>
+    
+        <!-- ============================================ -->
+        <!-- 2. HERO SECTION -->
+        <!-- ============================================ -->
+        <section 
+            id="inicio" 
+            class="hero relative">
+            <div class="hero__content z-10">
+                <span class="hero__eyebrow">
+                    Ciencia que transforma vidas
+                </span>
+                <h1 class="hero__title">
+                    Recupera tu 
+                    <br>
+                    <em class="hero__title-highlight">
+                        Energía
+                    </em>
+                </h1>
+                <h2 class="hero__subtitle">
+                    <span>Vive tu mejor versión</span>
+                    <span class="hero__subtitle-line"></span>
+                    <span class="hero__subtitle-dot"></span>
+                </h2>
+                <p class="hero__text">Medicina biológica integral, avanzada y personalizada para ayudarte a alcanzar tu
+                    máximo potencial de salud, bienestar y longevidad.</p>
+    
+                <div class="hero__actions">
+                    <flux:button
+                        iconTrailing="chevron-right"
+                        class="btn--primary"
+                        href="#servicios">
+                        Conoce nuestros servicios
+                    </flux:button>
+                    <flux:button
+                        iconTrailing="chevron-right"
+                        variant="ghost"
+                        class="btn--gold"
+                        href="#servicios">
+                        Agenda tu cita
+                    </flux:button>
                 </div>
             </div>
+    
+            <img 
+                src="{{ asset('img/adn.png') }}" 
+                alt="Doble hélice de ADN" 
+                class="hero__image"
+            >    
         </section>
-        <!-- Nuestra Filosofía -->
-        <section class="py-section-padding-lg bg-surface relative" id="filosofia">
-            <div
-                class="max-w-container-max mx-auto px-margin-mobile md:px-gutter grid grid-cols-1 lg:grid-cols-2 gap-gutter items-center">
-                <div
-                    class="order-2 lg:order-1 relative rounded-3xl overflow-hidden aspect-square md:aspect-[4/3] card-shadow">
-                    <img class="w-full h-full object-cover"
-                        data-alt="A serene, high-end medical consultation room bathed in warm, natural sunlight. The decor features light woods, cream walls, and subtle biological teal accents. A sophisticated doctor in modern, minimalist attire is gently speaking with a relaxed patient. The atmosphere is nurturing, premium, and trustworthy, avoiding cold sterile hospital aesthetics. Soft focus background."
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuATrnp525l_bXbk9s9S413EHt3YNW05400u7C6PeVaSXcHq8jmiDEfV0vRbypyfdIP6VSdOB0P5IbSpQpBlOcCAjqozPEZKR7H2dJKy6zVdP4lGlWkLx2IVDnLXDNHEV2oCqx2Nnud38bzfu7ELQ4Vxtxjv3yi_X4X0ergFx3z37pq0IjAmWT0vcy9NzubFztwE-KfgkHKOpcN-eFq3YKHm8QmQMzfC_88WfuUdDOyQALT6lKGCYVXDvkMwiDmCcVMzwX7_BXPxd90" />
-                </div>
-                <div class="order-1 lg:order-2 flex flex-col gap-6 lg:pl-12">
-                    <h2 class="font-headline-md text-headline-md text-primary">Nuestra Filosofía</h2>
-                    <p class="font-body-lg text-body-lg text-on-surface-variant">
-                        La salud no es simplemente la ausencia de enfermedad; es un estado de vitalidad biológica
-                        integral. En MARVAS, creemos firmemente que el cuerpo tiene una capacidad innata para sanar
-                        cuando se le proporcionan las herramientas y el entorno adecuados.
-                    </p>
-                    <p class="font-body-md text-body-md text-on-surface-variant">
-                        A través de nuestro exclusivo <strong>Modelo 6+</strong>, nos dedicamos a identificar y tratar
-                        las causas subyacentes de los desequilibrios orgánicos, superando el enfoque tradicional de
-                        suprimir síntomas. Integramos ciencia médica avanzada con sabiduría natural para restaurar tu
-                        bienestar fundamental.
-                    </p>
-                </div>
+    
+        <!-- ============================================ -->
+        <!-- 3. MODELO + SERVICIOS -->
+        <!-- ============================================ -->
+        <section id="servicios" class="services">
+            <div class="services__model">
+                <span class="services__model-label">
+                    Modelo
+                </span>
+                <h2 class="services__model-number">
+                    6
+                    <sup class="services__model-plus">
+                        +
+                    </sup>
+                </h2>
+                <p class="services__model-caption">
+                    Terapias integrativas
+                </p>
+                <span class="services__model-line"></span>
             </div>
-        </section>
-        <!-- Modelo 6+ / Especialidades -->
-        <section class="py-section-padding-lg bg-surface-container-lowest relative" id="modelo">
-            <div class="max-w-container-max mx-auto px-margin-mobile md:px-gutter relative z-10">
-                <div class="text-center max-w-3xl mx-auto mb-16">
-                    <h2 class="font-headline-md text-headline-md text-primary mb-6">Modelo 6+ / Especialidades</h2>
-                    <p class="font-body-lg text-body-lg text-on-surface-variant">Nuestro modelo integra siete
-                        disciplinas fundamentales para abordar tu salud de manera integral, complementando la medicina
-                        biológica con terapias efectivas.</p>
+    
+            <div>
+                <div class="services__heading">
+                    <span class="services__eyebrow">
+                        <span class="services__eyebrow-line"></span>
+                        Nuestros servicios
+                        <span class="services__eyebrow-line"></span>
+                    </span>
+                    <h2 class="services__title">
+                        Ciencia, naturaleza y bienestar en equilibrio para ti
+                    </h2>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div
-                        class="bg-surface p-8 rounded-2xl border border-surface-container-highest hover-card flex flex-col gap-4">
-                        <div
-                            class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary mb-2">
-                            <flux:icon name="droplets" />
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Homeopatía</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Estimula las defensas naturales del
-                            cuerpo para recuperar el equilibrio interno.</p>
-                    </div>
-                    <div
-                        class="bg-surface p-8 rounded-2xl border border-surface-container-highest hover-card flex flex-col gap-4">
-                        <div
-                            class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary mb-2">
-                            <flux:icon name="leaf" />
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Naturopatía</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Tratamientos basados en elementos
-                            naturales para fomentar la autocuración.</p>
-                    </div>
-                    <div
-                        class="bg-surface p-8 rounded-2xl border border-surface-container-highest hover-card flex flex-col gap-4">
-                        <div
-                            class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary mb-2">
-                            <span class="material-symbols-outlined">accessibility_new</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Quiropraxia</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Alineación del sistema
-                            neuromusculoesquelético para optimizar la función corporal.</p>
-                    </div>
-                    <div
-                        class="bg-surface p-8 rounded-2xl border border-surface-container-highest hover-card flex flex-col gap-4">
-                        <div
-                            class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary mb-2">
-                            <span class="material-symbols-outlined">sports_gymnastics</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Masaje Muscular</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Alivio de tensiones profundas y
-                            mejora de la circulación para recuperación de tejidos.</p>
-                    </div>
-                    <div
-                        class="bg-surface p-8 rounded-2xl border border-surface-container-highest hover-card flex flex-col gap-4">
-                        <div
-                            class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary mb-2">
-                            <span class="material-symbols-outlined">healing</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Acupuntura</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Regulación del flujo energético
-                            para tratar dolor crónico y desequilibrios sistémicos.</p>
-                    </div>
-                    <div
-                        class="bg-surface p-8 rounded-2xl border border-surface-container-highest hover-card flex flex-col gap-4">
-                        <div
-                            class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary mb-2">
-                            <span class="material-symbols-outlined">visibility</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Iridiología</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Análisis del iris para identificar
-                            predisposiciones y el estado general de los órganos.</p>
-                    </div>
-                    <div
-                        class="bg-surface p-8 rounded-2xl border border-surface-container-highest hover-card flex flex-col gap-4 md:col-span-2 lg:col-span-3 lg:w-1/3 lg:mx-auto">
-                        <div
-                            class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary mb-2">
-                            <span class="material-symbols-outlined">vaccines</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Sueroterapia Biológica</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Nutrición celular directa
-                            intravenosa para desintoxicación y revitalización rápida.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- ¿Por qué MARVAS? -->
-        <section class="py-section-padding-lg bg-surface relative">
-            <div class="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
-                <h2 class="font-headline-md text-headline-md text-primary text-center mb-12">¿Por qué MARVAS?</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <div class="flex flex-col items-center text-center gap-4">
-                        <div
-                            class="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                            <span class="material-symbols-outlined text-3xl">person</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Atención<br />Personalizada</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Cada paciente recibe un plan
-                            adaptado a sus necesidades biológicas únicas.</p>
-                    </div>
-                    <div class="flex flex-col items-center text-center gap-4">
-                        <div
-                            class="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                            <span class="material-symbols-outlined text-3xl">hub</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Modelo<br />6+</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Combinación sinérgica de terapias
-                            para resultados superiores y duraderos.</p>
-                    </div>
-                    <div class="flex flex-col items-center text-center gap-4">
-                        <div
-                            class="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                            <span class="material-symbols-outlined text-3xl">all_inclusive</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Enfoque<br />Integral</h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Tratamos la raíz del problema, no
-                            solo aliviamos los síntomas superficiales.</p>
-                    </div>
-                    <div class="flex flex-col items-center text-center gap-4">
-                        <div
-                            class="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                            <span class="material-symbols-outlined text-3xl">medical_services</span>
-                        </div>
-                        <h3 class="font-headline-sm text-headline-sm text-on-surface">Acompañamiento<br />Profesional
-                        </h3>
-                        <p class="font-body-md text-body-md text-on-surface-variant">Guía constante por especialistas
-                            altamente calificados en medicina biológica.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Tu Ruta de Recuperación -->
-        <section class="py-section-padding-lg bg-surface-container-lowest relative" id="ruta">
-            <div class="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
-                <div class="text-center max-w-3xl mx-auto mb-16">
-                    <h2 class="font-headline-md text-headline-md text-primary mb-6">Tu Ruta de Recuperación</h2>
-                    <p class="font-body-lg text-body-lg text-on-surface-variant mb-4">Un proceso estructurado para
-                        devolverte tu vitalidad, adaptado a una de nuestras tres rutas: <strong>Prevención, Atención, y
-                            Optimización</strong>.</p>
-                </div>
-                <div class="relative max-w-4xl mx-auto">
-                    <!-- Timeline Line -->
-                    <div
-                        class="hidden md:block absolute left-1/2 top-0 bottom-0 w-1 bg-surface-container-highest -translate-x-1/2 rounded-full">
-                    </div>
-                    <div class="flex flex-col gap-12">
-                        <!-- Step 1 -->
-                        <div class="relative flex flex-col md:flex-row items-center gap-8">
-                            <div class="md:w-1/2 flex justify-end">
-                                <div
-                                    class="bg-surface p-6 rounded-2xl border border-surface-container-highest shadow-sm md:text-right w-full md:w-5/6">
-                                    <span
-                                        class="text-secondary font-bold text-sm uppercase tracking-wider mb-2 block">Paso
-                                        1</span>
-                                    <h3 class="font-headline-sm text-headline-sm text-primary mb-3">Evaluación Integral
-                                    </h3>
-                                    <p class="font-body-md text-body-md text-on-surface-variant">Análisis profundo de
-                                        tu estado actual mediante iridiología, historial médico y diagnóstico biológico
-                                        para trazar tu ruta ideal.</p>
-                                </div>
-                            </div>
-                            <div
-                                class="hidden md:flex absolute left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-primary border-4 border-surface-container-lowest items-center justify-center z-10">
-                                <div class="w-2 h-2 bg-white rounded-full"></div>
-                            </div>
-                            <div class="md:w-1/2"></div>
-                        </div>
-                        <!-- Step 2 -->
-                        <div class="relative flex flex-col md:flex-row items-center gap-8">
-                            <div class="md:w-1/2"></div>
-                            <div
-                                class="hidden md:flex absolute left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-primary border-4 border-surface-container-lowest items-center justify-center z-10">
-                                <div class="w-2 h-2 bg-white rounded-full"></div>
-                            </div>
-                            <div class="md:w-1/2 flex justify-start">
-                                <div
-                                    class="bg-surface p-6 rounded-2xl border border-surface-container-highest shadow-sm w-full md:w-5/6">
-                                    <span
-                                        class="text-secondary font-bold text-sm uppercase tracking-wider mb-2 block">Paso
-                                        2</span>
-                                    <h3 class="font-headline-sm text-headline-sm text-primary mb-3">Desinflamación</h3>
-                                    <p class="font-body-md text-body-md text-on-surface-variant">Fase inicial crítica
-                                        para reducir la inflamación sistémica, limpiar el organismo y preparar el
-                                        terreno para la recuperación celular.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Step 3 -->
-                        <div class="relative flex flex-col md:flex-row items-center gap-8">
-                            <div class="md:w-1/2 flex justify-end">
-                                <div
-                                    class="bg-surface p-6 rounded-2xl border border-surface-container-highest shadow-sm md:text-right w-full md:w-5/6">
-                                    <span
-                                        class="text-secondary font-bold text-sm uppercase tracking-wider mb-2 block">Paso
-                                        3</span>
-                                    <h3 class="font-headline-sm text-headline-sm text-primary mb-3">Programa
-                                        Especializado</h3>
-                                    <p class="font-body-md text-body-md text-on-surface-variant">Aplicación del Modelo
-                                        6+ y tratamientos específicos enfocados en restaurar la función de tus sistemas
-                                        y órganos afectados.</p>
-                                </div>
-                            </div>
-                            <div
-                                class="hidden md:flex absolute left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-primary border-4 border-surface-container-lowest items-center justify-center z-10">
-                                <div class="w-2 h-2 bg-white rounded-full"></div>
-                            </div>
-                            <div class="md:w-1/2"></div>
-                        </div>
-                        <!-- Step 4 -->
-                        <div class="relative flex flex-col md:flex-row items-center gap-8">
-                            <div class="md:w-1/2"></div>
-                            <div
-                                class="hidden md:flex absolute left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-primary border-4 border-surface-container-lowest items-center justify-center z-10">
-                                <div class="w-2 h-2 bg-white rounded-full"></div>
-                            </div>
-                            <div class="md:w-1/2 flex justify-start">
-                                <div
-                                    class="bg-surface p-6 rounded-2xl border border-surface-container-highest shadow-sm w-full md:w-5/6">
-                                    <span
-                                        class="text-secondary font-bold text-sm uppercase tracking-wider mb-2 block">Paso
-                                        4</span>
-                                    <h3 class="font-headline-sm text-headline-sm text-primary mb-3">Mantenimiento</h3>
-                                    <p class="font-body-md text-body-md text-on-surface-variant">Consolidación de
-                                        resultados y pautas de estilo de vida para asegurar que tu vitalidad se mantenga
-                                        óptima a largo plazo.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Programas y Precios -->
-        <section class="py-section-padding-lg bg-surface relative" id="programas">
-            <div class="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
-                <div class="text-center max-w-3xl mx-auto mb-16">
-                    <h2 class="font-headline-md text-headline-md text-primary mb-6">Programas y Precios</h2>
-                    <p class="font-body-lg text-body-lg text-on-surface-variant">Inversiones transparentes en tu salud
-                        integral, diseñadas para brindarte el máximo valor y resultados duraderos.</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-                    <!-- Evaluación Integral -->
-                    <div
-                        class="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 flex flex-col justify-between hover-card">
+    
+                <div class="services__grid">
+                    <article class="service-card">
+                        <span class="service-card__icon">
+                            <flux:icon name="flask-conical" class="size-9"/>
+                        </span>
                         <div>
-                            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Evaluación Integral</h3>
-                            <p class="text-on-surface-variant mb-6 text-sm">Punto de partida esencial</p>
-                            <div class="text-4xl font-headline-md text-primary mb-6">Q.350</div>
-                            <ul class="flex flex-col gap-3 text-on-surface-variant mb-8">
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary text-sm mt-1">check_circle</span>
-                                    Diagnóstico por Iridiología</li>
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary text-sm mt-1">check_circle</span>
-                                    Revisión de Historial Médico</li>
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary text-sm mt-1">check_circle</span>
-                                    Plan de Ruta Personalizado</li>
-                            </ul>
-                        </div>
-                        <a class="btn-primary text-center text-on-primary px-6 py-3 rounded-full font-label-md w-full"
-                            href="#contacto">Agendar Ahora</a>
-                    </div>
-                    <!-- Desinflamación -->
-                    <div
-                        class="bg-primary-container text-on-primary-container rounded-3xl p-8 border-2 border-primary relative flex flex-col justify-between hover-card transform md:-translate-y-4">
-                        <div
-                            class="absolute -top-4 left-1/2 -translate-x-1/2 bg-secondary text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                            Más Solicitado</div>
-                        <div>
-                            <h3 class="font-headline-sm text-headline-sm text-on-primary-container mb-2">Programa
-                                Desinflamación</h3>
-                            <p class="text-on-primary-container/80 mb-6 text-sm">Reseteo sistémico profundo</p>
-                            <div class="text-4xl font-headline-md text-on-primary-container mb-6">Q.1,950</div>
-                            <ul class="flex flex-col gap-3 text-on-primary-container/90 mb-8">
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary-container text-sm mt-1">check_circle</span>
-                                    Sueroterapia Biológica</li>
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary-container text-sm mt-1">check_circle</span>
-                                    Desintoxicación Celular</li>
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary-container text-sm mt-1">check_circle</span>
-                                    Terapias Integrativas</li>
-                            </ul>
-                        </div>
-                        <a class="bg-on-primary-container text-primary-container text-center px-6 py-3 rounded-full font-label-md w-full hover:bg-white transition-colors"
-                            href="#contacto">Iniciar Programa</a>
-                    </div>
-                    <!-- Sueroterapia -->
-                    <div
-                        class="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 flex flex-col justify-between hover-card">
-                        <div>
-                            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Sueroterapia Biológica
+                            <h3 class="service-card__title">
+                                Homeopatía
                             </h3>
-                            <p class="text-on-surface-variant mb-6 text-sm">Revitalización intravenosa</p>
-                            <div class="text-4xl font-headline-md text-primary mb-6">Q.450 <span
-                                    class="text-lg text-on-surface-variant font-body-md">/sesión</span></div>
-                            <ul class="flex flex-col gap-3 text-on-surface-variant mb-8">
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary text-sm mt-1">check_circle</span>
-                                    Fórmulas Personalizadas</li>
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary text-sm mt-1">check_circle</span>
-                                    Absorción al 100%</li>
-                                <li class="flex items-start gap-2"><span
-                                        class="material-symbols-outlined text-secondary text-sm mt-1">check_circle</span>
-                                    Resultados Inmediatos</li>
-                            </ul>
+                            <p class="service-card__text">
+                                Estimula tu capacidad de sanación natural de forma segura y efectiva.
+                            </p>
                         </div>
-                        <a class="btn-primary text-center text-on-primary px-6 py-3 rounded-full font-label-md w-full"
-                            href="#contacto">Reservar Sesión</a>
-                    </div>
+                    </article>
+    
+                    <article class="service-card">
+                        <span class="service-card__icon">
+                            <flux:icon name="leaf" class="size-9"/>
+                        </span>
+                        <div>
+                            <h3 class="service-card__title">
+                                Naturopatía</h3>
+                            <p class="service-card__text">
+                                Terapias naturales para restaurar el equilibrio, desintoxicar y
+                                revitalizar tu cuerpo.
+                            </p>
+                        </div>
+                    </article>
+    
+                    <article class="service-card">
+                        <span class="service-card__icon">
+                            <flux:icon name="bone" class="size-9"/>
+                        </span>
+                        <div>
+                            <h3 class="service-card__title">Quiropraxia</h3>
+                            <p class="service-card__text">
+                                Alineación de la columna para mejorar tu movilidad, aliviar el dolor y
+                                optimizar tu bienestar.
+                            </p>
+                        </div>
+                    </article>
+    
+                    <article class="service-card">
+                        <span class="service-card__icon">
+                            <flux:icon name="flower-2" class="size-9"/>
+                        </span>
+                        <div>
+                            <h3 class="service-card__title">Masaje muscular</h3>
+                            <p class="service-card__text">
+                                Relaja, descontractura y mejora tu circulación para un cuerpo más
+                                fuerte y ligero.
+                            </p>
+                        </div>
+                    </article>
+    
+                    <article class="service-card">
+                        <span class="service-card__icon">
+                            <flux:icon name="pin" class="size-9"/>
+                        </span>
+                        <div>
+                            <h3 class="service-card__title">Acupuntura</h3>
+                            <p class="service-card__text">
+                                Equilibra tu energía, alivia el dolor y mejora tu bienestar físico y
+                                emocional.
+                            </p>
+                        </div>
+                    </article>
+    
+                    <article class="service-card">
+                        <span class="service-card__icon">
+                            <flux:icon name="eye" class="size-9"/>
+                        </span>
+                        <div>
+                            <h3 class="service-card__title">Iridología</h3>
+                            <p class="service-card__text">
+                                Análisis del iris para detectar desequilibrios y prevenir
+                                enfermedades desde su origen.
+                            </p>
+                        </div>
+                    </article>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                    <div class="bg-surface-container-low p-6 rounded-2xl flex flex-col justify-center">
-                        <h4 class="font-headline-sm text-primary mb-2">Línea Neurofuncional</h4>
-                        <p class="text-on-surface-variant mb-4 text-sm">Tratamientos especializados para equilibrio
-                            nervioso y mental. Precios varían según el protocolo recomendado tras evaluación.</p>
-                        <a class="text-secondary font-label-md flex items-center gap-1 hover:underline"
-                            href="#contacto">Consultar información <span
-                                class="material-symbols-outlined text-sm">chevron_right</span></a>
-                    </div>
-                    <div class="bg-surface-container-low p-6 rounded-2xl flex flex-col justify-center">
-                        <h4 class="font-headline-sm text-primary mb-2">Recuperación Musculoesquelética</h4>
-                        <p class="text-on-surface-variant mb-4 text-sm">Programas intensivos combinando quiropraxia,
-                            masaje y acupuntura. Diseñados a medida para dolor crónico y rehabilitación.</p>
-                        <a class="text-secondary font-label-md flex items-center gap-1 hover:underline"
-                            href="#contacto">Consultar información <span
-                                class="material-symbols-outlined text-sm">chevron_right</span></a>
-                    </div>
-                </div>
-                <p class="text-xs text-on-surface-variant text-center max-w-2xl mx-auto">
-                    *Aviso Legal: Los precios están sujetos a cambios sin previo aviso. Los resultados pueden variar de
-                    un paciente a otro dependiendo del estado de salud individual y la adherencia a las recomendaciones
-                    del Instituto MARVAS.
-                </p>
             </div>
         </section>
-        <!-- CTA Final -->
-        <section class="py-section-padding-lg bg-primary relative overflow-hidden text-center" id="contacto">
-            <div class="absolute inset-0 z-0">
-                <div class="bg-cover bg-center w-full h-full opacity-10 mix-blend-overlay"
-                    style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDeLezzm1Ly_h2iB9nvW649H6CoMJjAoynM7tSwSY9sFGhzftnYb4zGnd_WmEWrxXoiGXZsJhrHA88lHeyNscQm6E2aJvI70NpaW8c4r5e1iZWzSMoevF1pU8pyLywk8lar7flnvksR1SnhnOZ4oaBYd_YFmyzPTaL9pEM0nc1WEK2G7jjfZ6leX3M-GV4MY1v4usei-66PrAJnceHsGkWkUyZT8hlIJly08YIJ7dt4MdwuLheetwpsy7KLFUxvxwDvdtilplfgYb0')">
+    
+        <!-- ============================================ -->
+        <!-- 4. FRANJA DE VALORES / DIFERENCIADORES -->
+        <!-- ============================================ -->
+        <section id="nosotros" class="values">
+            <div class="value-card">
+                <flux:icon name="dna" class="value-card__icon"/>
+                <div class="value-card__text">
+                    <h3 class="value-card__title">Enfoque integral</h3>
+                    <p class="value-card__desc">Abordamos tu salud desde cuerpo, mente y emoción.</p>
                 </div>
             </div>
-            <div
-                class="max-w-container-max mx-auto px-margin-mobile md:px-gutter relative z-10 flex flex-col items-center gap-8">
-                <h2 class="font-display-lg text-4xl md:text-5xl text-on-primary max-w-2xl">¿Listo para Iniciar?</h2>
-                <p class="font-body-lg text-on-primary/90 max-w-xl">
-                    Da el primer paso hacia una salud plena y consciente. Contáctanos por WhatsApp para agendar tu
-                    Evaluación Integral y resolver cualquier duda.
-                </p>
-                <div class="flex flex-col sm:flex-row items-center gap-6 mt-4">
-                    <a class="bg-[#25D366] text-white px-8 py-4 rounded-full font-label-md text-lg inline-flex items-center gap-3 hover:bg-[#1EBE5A] transition-colors shadow-lg shadow-[#25D366]/20"
-                        href="https://wa.me/50258623352">
-                        <span class="material-symbols-outlined text-2xl">forum</span>
-                        Escríbenos por WhatsApp
-                    </a>
-                    <div class="flex items-center gap-2 text-on-primary font-body-lg">
-                        <span class="material-symbols-outlined">call</span>
-                        <span class="font-bold tracking-wide">502-5862-3352</span>
-                    </div>
+    
+            <div class="value-card">
+                <flux:icon name="microscope" class="value-card__icon"/>
+                <div class="value-card__text">
+                    <h3 class="value-card__title">Ciencia e innovación</h3>
+                    <p class="value-card__desc">Utilizamos tecnología avanzada y medicina biológica de vanguardia.</p>
+                </div>
+            </div>
+    
+            <div class="value-card">
+                <flux:icon name="user-round" class="value-card__icon"/>
+                <div class="value-card__text">
+                    <h3 class="value-card__title">Atención personalizada</h3>
+                    <p class="value-card__desc">Planes diseñados especialmente para ti y tus necesidades únicas.</p>
+                </div>
+            </div>
+    
+            <div class="value-card">
+                <flux:icon name="shield-check" class="value-card__icon"/>
+                <div class="value-card__text">
+                    <h3 class="value-card__title">Resultados reales</h3>
+                    <p class="value-card__desc">Mejoramos tu calidad de vida de manera sostenible.</p>
                 </div>
             </div>
         </section>
-    </main>
-    <!-- Footer -->
-    <footer
-        class="bg-surface-container-highest dark:bg-inverse-surface w-full border-t border-outline-variant mt-section-padding-lg">
-        <div
-            class="grid grid-cols-1 md:grid-cols-4 gap-gutter px-margin-mobile md:px-gutter py-section-padding-sm max-w-container-max mx-auto">
-            <div class="col-span-1 md:col-span-2 flex flex-col gap-4">
-                <span class="font-headline-sm text-headline-sm text-primary font-bold tracking-tight">MARVAS</span>
-                <p class="font-body-md text-body-md text-on-surface-variant max-w-sm">Instituto de Medicina Biológica
-                    Integral. Tu camino hacia una salud plena y consciente.</p>
+    
+        <!-- ============================================ -->
+        <!-- 5. CTA FINAL -->
+        <!-- ============================================ -->
+        <section id="cita" class="cta">
+            <div class="cta__heading">
+                <p class="cta__eyebrow">
+                    Tu transformación
+                </p>
+                <h2 class="cta__title">
+                    Comienza hoy
+                </h2>
             </div>
-            <div class="flex flex-col gap-3 font-label-md text-label-md">
-                <span class="text-on-surface font-bold mb-2">Enlaces</span>
-                <a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Privacy
-                    Policy</a>
-                <a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Terms of
-                    Service</a>
-                <a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Medical
-                    Disclaimer</a>
+    
+            <div class="cta__info">
+                <flux:icon name="calendar-days" class="cta__info-icon"/>
+                <p class="cta__info-text">
+                    Agenda tu evaluación personalizada y descubre tu mejor versión.
+                </p>
             </div>
-            <div class="flex flex-col gap-3 font-label-md text-label-md">
-                <span class="text-on-surface font-bold mb-2">Contacto</span>
-                <a class="text-on-surface-variant hover:text-secondary transition-colors inline-flex items-center gap-2"
-                    href="https://wa.me/50258623352">
-                    <span class="material-symbols-outlined text-sm">chat</span>
-                    502-5862-3352
+    
+            <flux:button 
+                href="#cita" 
+                class="btn--gold"
+                iconTrailing="chevron-right">
+                AGENDA TU CITA AHORA
+            </flux:button>
+        </section>
+    
+        <!-- ============================================ -->
+        <!-- 6. FOOTER -->
+        <!-- ============================================ -->
+        <footer class="footer">
+            <div class="footer__brand">
+                <img 
+                    src="{{ asset('img/logo.png') }}" 
+                    alt="Logo MARVAS" 
+                    class="h-32 w-auto"
+                >
+            </div>
+    
+            <div class="footer__social">
+                <a 
+                    href="#" 
+                    aria-label="Instagram" 
+                    class="footer__social-link">
+                    
+  
+                    <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        viewBox="0 0 448 512"
+                        class="footer__social-icon">
+                        <path d="M224.3 141a115 115 0 1 0 -.6 230 115 115 0 1 0 .6-230zm-.6 40.4a74.6 74.6 0 1 1 .6 149.2 74.6 74.6 0 1 1 -.6-149.2zm93.4-45.1a26.8 26.8 0 1 1 53.6 0 26.8 26.8 0 1 1 -53.6 0zm129.7 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM399 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/>
+
+                    </svg>
+                </a>
+                <a 
+                    href="#" 
+                    aria-label="Facebook" 
+                    class="footer__social-link">
+                    <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        viewBox="0 0 320 512"
+                        class="footer__social-icon">
+                        <path d="M80 299.3l0 212.7 116 0 0-212.7 86.5 0 18-97.8-104.5 0 0-34.6c0-51.7 20.3-71.5 72.7-71.5 16.3 0 29.4 .4 37 1.2l0-88.7C291.4 4 256.4 0 236.2 0 129.3 0 80 50.5 80 159.4l0 42.1-66 0 0 97.8 66 0z"/>
+                    </svg>
+                </a>
+                <a 
+                    href="#" 
+                    aria-label="WhatsApp" 
+                    class="footer__social-link">
+                    <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        viewBox="0 0 448 512"
+                        class="footer__social-icon">
+                        <path d="M380.9 97.1c-41.9-42-97.7-65.1-157-65.1-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480 117.7 449.1c32.4 17.7 68.9 27 106.1 27l.1 0c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3 18.6-68.1-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1s56.2 81.2 56.1 130.5c0 101.8-84.9 184.6-186.6 184.6zM325.1 300.5c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8s-14.3 18-17.6 21.8c-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7 .9-6.9-.5-9.7s-12.5-30.1-17.1-41.2c-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2s-9.7 1.4-14.8 6.9c-5.1 5.6-19.4 19-19.4 46.3s19.9 53.7 22.6 57.4c2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4s4.6-24.1 3.2-26.4c-1.3-2.5-5-3.9-10.5-6.6z"/>
+                    </svg>
                 </a>
             </div>
-        </div>
-        <div class="text-center pb-6 font-label-md text-label-md text-on-surface-variant">
-            © 2024 MARVAS Biological Integrity Clinic. All rights reserved.
-        </div>
-    </footer>
+        </footer>
+    </div>
+
+
 </x-layouts::guest>

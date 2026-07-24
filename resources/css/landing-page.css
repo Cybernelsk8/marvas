@@ -1,0 +1,310 @@
+/* =========================================================
+   1. HEADER / NAVBAR
+========================================================= */
+.header {
+  @apply relative flex items-center justify-between gap-4 px-5 py-2 bg-[#F7F1E8] md:gap-8 md:px-10 lg:px-4;
+}
+
+.header__brand {
+  @apply flex items-center gap-3;
+}
+
+.header__logo {
+  @apply w-10 h-10 object-contain md:w-12 md:h-12;
+}
+
+.header__brand-text {
+  @apply flex flex-col leading-tight;
+}
+
+.header__brand-name {
+  @apply font-[family-name:var(--font-serif)] text-xl tracking-wide text-[#C08A2E] font-medium md:text-2xl;
+}
+
+.header__brand-tagline {
+  @apply hidden text-[11px] text-[#0F2A3F]/70 leading-tight sm:block;
+}
+
+.nav {
+  @apply hidden absolute left-0 top-full w-full flex-col gap-2 bg-[#F7F1E8] px-5 py-4 shadow-lg lg:static lg:flex lg:w-auto lg:flex-row lg:shadow-none lg:p-0;
+}
+
+.nav--open {
+  @apply flex;
+}
+
+.nav__list {
+  @apply flex flex-col uppercase gap-3 lg:flex-row lg:items-center lg:gap-5;
+}
+
+.nav__link {
+  @apply relative text-sm font-semibold tracking-wide text-[#0F2A3F] pb-2 transition-colors hover:text-[#C08A2E];
+}
+
+.nav__link--active {
+  @apply text-[#0F2A3F];
+}
+
+.nav__link--active::after {
+  content: "";
+  @apply absolute left-0 -bottom-0.5 w-full h-0.5 bg-[#C08A2E];
+}
+
+.btn {
+  @apply inline-flex items-center gap-2 text-sm font-semibold tracking-wide rounded-full transition-colors;
+}
+
+.btn--primary {
+  @apply bg-[#0F2A3F]  px-4 py-2.5 hover:bg-[#0a1e2e] md:px-6 md:py-3;
+}
+
+.btn__icon {
+  @apply w-4 h-4 text-[#C08A2E];
+}
+
+.header__cta {
+  @apply hidden shrink-0 sm:inline-flex;
+}
+
+.header__toggle {
+  @apply inline-flex items-center justify-center w-10 h-10 rounded-full text-[#0F2A3F] lg:hidden;
+}
+
+.header__toggle-icon {
+  @apply w-6 h-6;
+}
+
+
+/* =========================================================
+   2. HERO SECTION
+========================================================= */
+.hero {
+  @apply flex flex-col gap-10 px-5 py-12 bg-[#F3ECE1] sm:px-10 md:grid md:grid-cols-2 md:items-center md:px-16 md:py-20;
+}
+
+.hero__content {
+  @apply flex flex-col items-start;
+}
+
+.hero__eyebrow {
+  @apply text-xs font-medium tracking-[0.15em] uppercase text-[#C08A2E] md:text-sm;
+}
+
+.hero__title {
+  @apply font-[family-name:var(--font-serif)] uppercase text-4xl leading-[1.1] text-[#0F2A3F] font-bold sm:text-5xl md:text-6xl;
+}
+
+.hero__title-highlight {
+  @apply not-italic text-5xl text-[#C08A2E] sm:text-6xl md:text-7xl;
+}
+
+.hero__subtitle {
+  @apply flex items-center gap-3 w-full uppercase font-[family-name:var(--font-serif)] text-lg tracking-wide text-[#C08A2E] md:text-2xl;
+}
+
+.hero__subtitle-line {
+  @apply flex-1 h-px bg-[#C08A2E]/50;
+}
+
+.hero__subtitle-dot {
+  @apply w-1.5 h-1.5 rounded-full bg-[#C08A2E] shrink-0;
+}
+
+.hero__text {
+  @apply max-w-md text-sm text-[#0F2A3F] leading-relaxed md:text-base;
+}
+
+.hero__actions {
+  @apply flex flex-col w-full gap-3 mt-2 sm:w-auto sm:flex-row;
+}
+
+.btn--outline {
+  @apply justify-center border border-[#C08A2E] text-[#0F2A3F] px-4 py-2.5 hover:bg-[#C08A2E] hover:text-white md:px-6 md:py-3;
+}
+
+/* .hero__media {
+  @apply relative flex items-center justify-center order-first md:order-last;
+}
+
+.hero__image {
+  @apply w-full max-w-md sm:max-w-lg md:max-w-full aspect-video object-cover;
+  -webkit-mask-image: radial-gradient(ellipse 70% 75% at center, black 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 75% at center, black 55%, transparent 100%);
+} */
+.hero__image {
+  @apply absolute hidden md:block  top-0 right-0 h-full max-w-md sm:max-w-lg md:max-w-full;
+  -webkit-mask-image: radial-gradient(ellipse 50% 75% at center, #0F2A3F 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 75% at center, #0F2A3F 55%, transparent 100%);
+}
+
+
+/* =========================================================
+   3. MODELO + SERVICIOS
+========================================================= */
+.services {
+  @apply flex flex-col gap-12 px-5 py-7 bg-[#F7F1E8] sm:px-10 md:px-16 md:py-10 lg:grid lg:grid-cols-[1fr_3fr] lg:gap-16;
+}
+
+.services__model {
+  @apply flex flex-col items-center justify-center gap-1 lg:border-r lg:border-[#0F2A3F]/10 lg:pr-10;
+}
+
+.services__model-label {
+  @apply text-sm font-bold tracking-[0.15em] uppercase text-[#C08A2E];
+}
+
+.services__model-number {
+  @apply flex items-end font-[family-name:var(--font-serif)] text-6xl text-[#0F2A3F] font-bold leading-none sm:text-7xl lg:text-[10rem];
+}
+
+.services__model-plus {
+  @apply text-4xl text-[#C08A2E] align-top sm:text-7xl;
+}
+
+.services__model-caption {
+  @apply text-base text-[#0F2A3F] mt-3 sm:text-lg;
+}
+
+.services__model-line {
+  @apply block w-18 h-0.5 bg-[#C08A2E] ;
+}
+
+.services__heading {
+  @apply flex flex-col items-center text-center gap-3 mb-8 ;
+}
+
+.services__eyebrow {
+  @apply flex items-center gap-3 text-xs font-bold tracking-[0.15em] uppercase text-[#C08A2E] sm:gap-4 sm:text-sm;
+}
+
+.services__eyebrow-line {
+  @apply w-6 h-px bg-[#C08A2E]/60 sm:w-10;
+}
+
+.services__title {
+  @apply font-[family-name:var(--font-serif)] text-2xl text-[#0F2A3F] font-semibold max-w-2xl;
+}
+
+.services__grid {
+  @apply grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-y-5;
+}
+
+.service-card {
+  @apply flex  items-center gap-2;
+}
+
+.service-card__icon {
+  @apply flex items-center justify-center size-14 rounded-full bg-[#0F2A3F] text-[#C08A2E] shrink-0;
+}
+
+.service-card__title {
+  @apply font-semibold uppercase text-[#0F2A3F] text-lg;
+}
+
+.service-card__text {
+  @apply text-[#5B6670] leading-relaxed text-xs;
+}
+
+
+/* =========================================================
+   4. FRANJA DE VALORES / DIFERENCIADORES
+========================================================= */
+.values {
+  @apply grid grid-cols-1 divide-x divide-white/10 py-5 bg-[#0F2A3F] sm:grid-cols-2 sm:p-5 lg:grid-cols-4 ;
+}
+
+.value-card {
+  @apply flex items-center gap-4   lg:px-3 lg:first:pl-0;
+}
+
+.value-card__icon {
+  @apply size-14 shrink-0 text-[#C08A2E];
+}
+
+.value-card__title {
+  @apply font-medium uppercase text-[#C08A2E] text-base mb-1;
+}
+
+.value-card__desc {
+  @apply text-xs text-white/80 leading-relaxed;
+}
+
+
+/* =========================================================
+   5. CTA FINAL
+========================================================= */
+.cta {
+  @apply flex flex-col items-start gap-6 p-5 bg-[#0A1E2E] sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-16;
+}
+
+.cta__heading {
+  @apply flex flex-col;
+}
+
+.cta__eyebrow {
+  @apply text-lg text-white font-[family-name:var(--font-serif)];
+}
+
+.cta__title {
+  @apply font-[family-name:var(--font-serif)] uppercase text-3xl text-[#C08A2E] font-bold sm:text-4xl;
+}
+
+.cta__info {
+  @apply flex items-center gap-3 lg:max-w-xs;
+}
+
+.cta__info-icon {
+  @apply w-8 h-8 shrink-0 text-[#C08A2E];
+}
+
+.cta__info-text {
+  @apply text-sm text-white/85 leading-relaxed;
+}
+
+.btn--gold {
+  @apply bg-[#C08A2E] text-[#0F2A3F] px-6 py-3.5 hover:bg-[#d49b3a] shrink-0;
+}
+
+.cta__action {
+  @apply w-full justify-center lg:w-auto;
+}
+
+
+/* =========================================================
+   6. FOOTER
+========================================================= */
+.footer {
+  @apply flex flex-col items-center gap-6 p-1 bg-[#0F2A3F] border-t border-white/10 sm:flex-row sm:justify-between sm:px-10 lg:px-16;
+}
+
+.footer__brand {
+  @apply flex items-center gap-3;
+}
+
+.footer__logo {
+  @apply w-10 h-10 object-contain;
+}
+
+.footer__brand-text {
+  @apply flex flex-col leading-tight text-center sm:text-left;
+}
+
+.footer__brand-name {
+  @apply font-[family-name:var(--font-serif)] text-xl tracking-wide text-[#C08A2E] font-medium;
+}
+
+.footer__brand-tagline {
+  @apply text-[11px] text-white/60 leading-tight;
+}
+
+.footer__social {
+  @apply flex items-center gap-3;
+}
+
+.footer__social-link {
+  @apply flex items-center justify-center w-10 h-10  rounded-full  fill-[#C08A2E] transition-colors hover:bg-[#C08A2E] hover:fill-[#0F2A3F];
+}
+
+.footer__social-icon {
+  @apply size-5;
+}

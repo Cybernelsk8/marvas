@@ -5,8 +5,7 @@
     @include('partials.head')
 </head>
 
-<body
-    class="bg-surface text-on-surface font-body-md antialiased overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<body class="bg-[#F7F1E8]">
 
     {{ $slot }}
 
