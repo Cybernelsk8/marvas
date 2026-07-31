@@ -2,7 +2,10 @@
     <div class="p-4 flex items-center justify-between space-x-4">
 
         <div class="flex gap-2 items-center">
-            <flux:select wire:model.live="per_page" wire:key="per-page-select">
+            <flux:select
+                wire:model.live="per_page"
+                wire:key="per-page-select"
+            >
                 <flux:select.option>5</flux:select.option>
                 <flux:select.option>10</flux:select.option>
                 <flux:select.option>20</flux:select.option>
@@ -15,10 +18,17 @@
 
             @if ($massActions)
                 <flux:dropdown>
-                    <flux:button icon:trailing="chevron-down" :disabled="count($this->selectedRows) < 1">
+                    <flux:button
+                        icon:trailing="chevron-down"
+                        :disabled="count($this->selectedRows) < 1"
+                    >
                         Acciones
                         @if (count($this->selectedRows) > 0)
-                            <flux:badge size="sm" class="ml-2" color="blue">
+                            <flux:badge
+                                size="sm"
+                                class="ml-2"
+                                color="blue"
+                            >
                                 {{ count($this->selectedRows) }}
                             </flux:badge>
                         @endif
@@ -32,27 +42,49 @@
         </div>
 
         <div class="flex gap-1">
-            <flux:input wire:model.live.debounce.500ms="search" icon="magnifying-glass" placeholder="Buscar ..."
-                type="search" wire:key="search-input" />
+            <flux:input
+                wire:model.live.debounce.500ms="search"
+                icon="magnifying-glass"
+                placeholder="Buscar ..."
+                type="search"
+                wire:key="search-input"
+            />
 
             @if ($advanceFilter)
 
                 <flux:dropdown>
-                    <flux:button icon="funnel" icon-variant="outline" iconTrailing="chevron-down">
+                    <flux:button
+                        icon="funnel"
+                        icon-variant="outline"
+                        iconTrailing="chevron-down"
+                    >
                         @if ($this->getActiveFiltersCount() > 0)
-                            <flux:badge size="sm" color="blue">
+                            <flux:badge
+                                size="sm"
+                                color="blue"
+                            >
                                 {{ $this->getActiveFiltersCount() }}
                             </flux:badge>
                         @endif
                     </flux:button>
                     <flux:menu keep-open>
                         <div class="flex justify-center gap-4">
-                            <flux:button wire:click="addFilter()" variant="primary" icon="plus" size="sm"
-                                title="Agregar filtro">
-                            </flux:button>
-                            <flux:button wire:click="clearFilters()" variant="danger" icon="trash" size="sm"
-                                title="Limpiar filtros">
-                            </flux:button>
+                            <flux:button
+                                wire:click="addFilter()"
+                                variant="primary"
+                                icon="plus"
+                                size="sm"
+                                title="Agregar filtro"
+                            />
+
+                            <flux:button
+                                wire:click="clearFilters()"
+                                variant="danger"
+                                icon="trash"
+                                size="sm"
+                                title="Limpiar filtros"
+                            />
+
                         </div>
 
                         <flux:menu.separator />
@@ -61,9 +93,12 @@
                             <flux:menu.item>
                                 <div class="flex gap-2 items-center">
 
-                                    <flux:select wire:key="field-campo-{{ $index }}"
+                                    <flux:select
+                                        wire:key="field-campo-{{ $index }}"
                                         wire:model.live.debounce.500ms="filters.{{ $index }}.field"
-                                        placeholder="Campo" size="sm">
+                                        placeholder="Campo"
+                                        size="sm"
+                                    >
                                         @foreach ($this->getAvailableHeaders() as $header)
                                             <flux:select.option value="{{ $header['index'] }}">
                                                 {{ $header['label'] }}
@@ -77,12 +112,15 @@
                                     <flux:select
                                         wire:key="field-operator-{{ $index }}-{{ $filter['field'] ?? '' }}"
                                         wire:model.live.debounce.500ms="filters.{{ $index }}.operator"
-                                        placeholder="Operador" size="sm">
+                                        placeholder="Operador"
+                                        size="sm"
+                                    >
                                         @foreach ($this->getGroupedOperators($filter['field'] ?? '') as $group => $operators)
                                             <optgroup label="{{ $group }}">
                                                 @foreach ($operators as $operator)
                                                     <flux:select.option value="{{ $operator }}">
-                                                        {{ $operator }}</flux:select.option>
+                                                        {{ $operator }}
+                                                    </flux:select.option>
                                                 @endforeach
                                             </optgroup>
                                         @endforeach
@@ -121,13 +159,20 @@
                                         };
                                     @endphp
 
-                                    <flux:input x-on:keydown.stop="" wire:key="field-value-{{ $index }}"
-                                        type="{{ $inputType }}" :disabled="$isNullOperator"
+                                    <flux:input
+                                        x-on:keydown.stop=""
+                                        wire:key="field-value-{{ $index }}"
+                                        type="{{ $inputType }}"
+                                        :disabled="$isNullOperator"
                                         wire:model.live.debounce.500ms="filters.{{ $index }}.value"
-                                        placeholder="{{ $placeholder }}" size="sm" />
+                                        placeholder="{{ $placeholder }}"
+                                        size="sm"
+                                    />
 
-                                    <flux:icon.x-circle wire:click="deleteFilter({{ $index }})"
-                                        class="cursor-pointer text-red-500" />
+                                    <flux:icon.x-circle
+                                        wire:click="deleteFilter({{ $index }})"
+                                        class="cursor-pointer text-red-500"
+                                    />
                                 </div>
                             </flux:menu.item>
                         @endforeach
@@ -147,8 +192,11 @@
                     @if ($selectable)
                         <flux:table.rows>
                             <flux:table.cell align="start">
-                                <flux:checkbox wire:click="selectedAllCurrentPage({{ $rows->pluck('id')->toJson() }})"
-                                    :checked="count($this->selectedRows) > 0 && count($this->selectedRows) === $rows->count()" />
+                                <flux:checkbox
+                                    wire:click="selectedAllCurrentPage({{ $rows->pluck('id')->toJson() }})"
+                                    :checked="count($this->selectedRows) > 0 &&
+                                        count($this->selectedRows) === $rows->count()"
+                                />
                             </flux:table.cell>
                         </flux:table.rows>
                     @endif
@@ -164,7 +212,10 @@
                                     {{ $header['label'] . ($header['index'] !== 'actions' ? ' :' : '') }}
                                 </span>
                             </flux:table.cell>
-                            <flux:table.cell title="{{ data_get($rowData, $columnIndex, '') }}" align="end">
+                            <flux:table.cell
+                                title="{{ data_get($rowData, $columnIndex, '') }}"
+                                align="end"
+                            >
                                 <div class="pr-4">
                                     @if ($slot)
                                         @if (app()->isLocal())
@@ -195,7 +246,11 @@
             <div class="py-10 flex flex-col items-center gap-3 text-neutral-500 dark:text-neutral-400">
                 <span>No se encontraron resultados.</span>
                 @if ($this->getActiveFiltersCount() > 0 || $this->search !== '')
-                    <flux:button wire:click="resetAllFilters" variant="ghost" size="sm">
+                    <flux:button
+                        wire:click="resetAllFilters"
+                        variant="ghost"
+                        size="sm"
+                    >
                         Limpiar filtros
                     </flux:button>
                 @endif
@@ -205,9 +260,11 @@
         <flux:pagination :paginator="$rows" />
     </div>
 
-    <div wire:loading.delay
+    <div
+        wire:loading.delay
         wire:target="sort, search, updatingSearch, per_page, updatingPerPage, addFilter, deleteFilter, clearFilters, updatingFilters, gotoPage, nextPage, previousPage, selectedAllCurrentPage"
-        class="p-8 w-full">
+        class="p-8 w-full"
+    >
         <flux:skeleton.group animate="shimmer">
             <flux:table>
                 <flux:table.columns>
@@ -232,25 +289,38 @@
     </div>
 
     {{-- ========== VISTA DESKTOP ========== --}}
-    <div wire:loading.remove.delay
-        wire:target="sort, search, updatingSearch, per_page, updatingPerPage, addFilter, deleteFilter, clearFilters, updatingFilters, gotoPage, nextPage, previousPage, selectedAllCurrentPage">
+    <div
+        wire:loading.remove.delay
+        wire:target="sort, search, updatingSearch, per_page, updatingPerPage, addFilter, deleteFilter, clearFilters, updatingFilters, gotoPage, nextPage, previousPage, selectedAllCurrentPage"
+    >
         <div class="hidden lg:block">
             <flux:table :paginate="$rows">
                 <flux:table.columns class="bg-white dark:bg-zinc-900">
                     @if ($selectable)
-                        <flux:table.column align="center" width="50px" title="Seleccionar todos">
+                        <flux:table.column
+                            align="center"
+                            width="50px"
+                            title="Seleccionar todos"
+                        >
                             <label class="flex items-center">
-                                <flux:checkbox class="cursor-pointer"
+                                <flux:checkbox
+                                    class="cursor-pointer"
                                     wire:click="selectedAllCurrentPage({{ $rows->pluck('id')->toJson() }})"
-                                    :checked="count($this->selectedRows) > 0 && count($this->selectedRows) === $rows->count()" />
+                                    :checked="count($this->selectedRows) > 0 &&
+                                        count($this->selectedRows) === $rows->count()"
+                                />
                             </label>
                         </flux:table.column>
                     @endif
                     @foreach ($headers as $header)
-                        <flux:table.column :sortable="(($header['index'] != 'actions') && !(isset($header['exclude'])))"
-                            :sorted="$this->sortBy === $header['index']" :direction="$this->sortDirection"
+                        <flux:table.column
+                            :sortable="$header['index'] != 'actions' && !isset($header['exclude'])"
+                            :sorted="$this->sortBy === $header['index']"
+                            :direction="$this->sortDirection"
                             wire:click="sort('{{ $header['index'] != 'actions' && !isset($header['exclude']) ? $header['index'] : '' }}')"
-                            align="{{ $header['align'] ?? 'start' }}" width="{{ $header['width'] ?? null }}">
+                            align="{{ $header['align'] ?? 'start' }}"
+                            width="{{ $header['width'] ?? null }}"
+                        >
                             <span class="{{ $header['class'] ?? '' }} cursor-pointer">
                                 {{ $header['label'] }}
                             </span>
@@ -261,12 +331,20 @@
                 <flux:table.rows>
                     @forelse($rows as $index => $rowData)
                         @php $rowLoop = $loop; @endphp
-                        <flux:table.row wire:key="{{ $rowData->id }}"
-                            class="dark:hover:bg-neutral-700 hover:bg-neutral-100 text-neutral-600 dark:text-neutral-200 {{ in_array($rowData->id, $this->selectedRows) ? 'dark:bg-zinc-700 bg-zinc-100' : '' }}">
+                        <flux:table.row
+                            wire:key="{{ $rowData->id }}"
+                            class="dark:hover:bg-neutral-700 hover:bg-neutral-100 text-neutral-600 dark:text-neutral-200 {{ in_array($rowData->id, $this->selectedRows) ? 'dark:bg-zinc-700 bg-zinc-100' : '' }}"
+                        >
                             @if ($selectable)
-                                <flux:table.cell align="center" class="cursor-pointer">
+                                <flux:table.cell
+                                    align="center"
+                                    class="cursor-pointer"
+                                >
                                     <label class="flex items-center px-2">
-                                        <flux:checkbox wire:model.live="selectedRows" value="{{ $rowData->id }}" />
+                                        <flux:checkbox
+                                            wire:model.live="selectedRows"
+                                            value="{{ $rowData->id }}"
+                                        />
                                     </label>
                                 </flux:table.cell>
                             @endif
@@ -276,9 +354,12 @@
                                     $slotKey = 'column_' . str_replace('.', '_', $columnIndex);
                                     $slot = $capturedSlots[$slotKey] ?? null;
                                 @endphp
-                                <flux:table.cell title="{{ data_get($rowData, $columnIndex, '') }}"
+                                <flux:table.cell
+                                    title="{{ data_get($rowData, $columnIndex, '') }}"
                                     align="{{ $loop->last ? 'center' : $header['align'] ?? 'start' }}"
-                                    width="{{ $header['width'] ?? null }}" class="{{ $header['class'] ?? null }}">
+                                    width="{{ $header['width'] ?? null }}"
+                                    class="{{ $header['class'] ?? null }}"
+                                >
                                     <div class="px-2">
                                         @if ($slot)
                                             @if (app()->isLocal())
@@ -311,12 +392,19 @@
                         </flux:table.row>
                     @empty
                         <flux:table.row>
-                            <flux:table.cell align="center" colspan="{{ count($headers) }}">
+                            <flux:table.cell
+                                align="center"
+                                colspan="{{ count($headers) }}"
+                            >
                                 <div
                                     class="py-10 flex flex-col items-center gap-3 text-neutral-500 dark:text-neutral-400">
                                     <span>No se encontraron resultados.</span>
                                     @if ($this->getActiveFiltersCount() > 0 || $this->search !== '')
-                                        <flux:button wire:click="resetAllFilters" variant="ghost" size="sm">
+                                        <flux:button
+                                            wire:click="resetAllFilters"
+                                            variant="ghost"
+                                            size="sm"
+                                        >
                                             Limpiar filtros
                                         </flux:button>
                                     @endif

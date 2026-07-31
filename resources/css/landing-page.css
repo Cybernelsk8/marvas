@@ -190,7 +190,7 @@
 }
 
 .service-card {
-  @apply flex items-center gap-2;
+  @apply flex items-center gap-2 hover:scale-105 cursor-pointer transition-transform duration-300;
 }
 
 .service-card__icon {
