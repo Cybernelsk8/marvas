@@ -1,3 +1,83 @@
+<section
+    id="nosotros"
+    class="values"
+>
+    <div class="value-card">
+        <flux:icon
+            name="dna"
+            class="value-card__icon"
+        />
+        <div class="value-card__text">
+            <h3 class="value-card__title">Enfoque integral</h3>
+            <p class="value-card__desc">Abordamos tu salud desde cuerpo, mente y emoción.</p>
+        </div>
+    </div>
+
+    <div class="value-card">
+        <flux:icon
+            name="microscope"
+            class="value-card__icon"
+        />
+        <div class="value-card__text">
+            <h3 class="value-card__title">Ciencia e innovación</h3>
+            <p class="value-card__desc">Utilizamos tecnología avanzada y medicina biológica de vanguardia.</p>
+        </div>
+    </div>
+
+    <div class="value-card">
+        <flux:icon
+            name="user-round"
+            class="value-card__icon"
+        />
+        <div class="value-card__text">
+            <h3 class="value-card__title">Atención personalizada</h3>
+            <p class="value-card__desc">Planes diseñados especialmente para ti y tus necesidades únicas.</p>
+        </div>
+    </div>
+
+    <div class="value-card">
+        <flux:icon
+            name="shield-check"
+            class="value-card__icon"
+        />
+        <div class="value-card__text">
+            <h3 class="value-card__title">Resultados reales</h3>
+            <p class="value-card__desc">Mejoramos tu calidad de vida de manera sostenible.</p>
+        </div>
+    </div>
+</section>
+
+<section
+    id="cita"
+    class="cta"
+>
+    <div class="cta__heading">
+        <p class="cta__eyebrow">
+            Tu transformación
+        </p>
+        <h2 class="cta__title">
+            Comienza hoy
+        </h2>
+    </div>
+
+    <div class="cta__info">
+        <flux:icon
+            name="calendar-days"
+            class="cta__info-icon"
+        />
+        <p class="cta__info-text">
+            Agenda tu evaluación personalizada y descubre tu mejor versión.
+        </p>
+    </div>
+
+    <flux:button
+        href="#cita"
+        class="btn--gold"
+        iconTrailing="chevron-right"
+    >
+        AGENDA TU CITA AHORA
+    </flux:button>
+</section>
 <footer class="footer">
     <div class="footer__brand">
         <img

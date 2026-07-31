@@ -1,7 +1,7 @@
 <header class="header">
     <div class="header__brand">
         <img
-            src="{{ asset("img/logo.png") }}"
+            src="{{ asset('img/logo.png') }}"
             alt="Logo MARVAS"
             class=" h-32 w-auto"
         >
@@ -14,8 +14,8 @@
         <ul class="nav__list">
             <li class="nav__item">
                 <a
-                    href="{{ route("home") }}"
-                    class="{{ request()->routeIs("home") ? "nav__link nav__link--active" : "nav__link" }}"
+                    href="{{ route('home') }}"
+                    class="{{ request()->routeIs('home') ? 'nav__link nav__link--active' : 'nav__link' }}"
                 >
                     Inicio
                 </a>
@@ -31,7 +31,7 @@
             <li class="nav__item">
                 <a
                     href="#servicios"
-                    class="{{ request()->routeIs("servicios.*") ? "nav__link nav__link--active" : "nav__link" }}"
+                    class="{{ request()->routeIs('servicios.*') ? 'nav__link nav__link--active' : 'nav__link' }}"
                 >
                     Servicios
                 </a>
@@ -59,7 +59,7 @@
         <flux:button
             icon="arrow-right-end-on-rectangle"
             class="btn--primary header__cta"
-            href="{{ route("login") }}"
+            :href="route('login')"
             wire:navigate
         />
     </div>

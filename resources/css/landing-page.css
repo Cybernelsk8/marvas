@@ -210,7 +210,7 @@
    4. FRANJA DE VALORES / DIFERENCIADORES
 ========================================================= */
 .values {
-  @apply grid grid-cols-1 divide-x divide-white/10 py-5 bg-cyan-950 sm:grid-cols-2 sm:p-5 lg:grid-cols-4;
+  @apply grid grid-cols-1 divide-x divide-white/10 py-5 lg:py-10 bg-cyan-950 sm:grid-cols-2 sm:p-5 lg:grid-cols-4;
 }
 
 .value-card {
@@ -234,7 +234,7 @@
    5. CTA FINAL
 ========================================================= */
 .cta {
-  @apply flex flex-col items-start gap-6 p-5 bg-cyan-950 sm:px-10 border-t border-white/10 lg:flex-row lg:items-center lg:justify-evenly lg:gap-8 lg:px-16;
+  @apply flex flex-col items-start gap-6 p-5 lg:py-10 bg-cyan-950 sm:px-10 border-t border-white/10 lg:flex-row lg:items-center lg:justify-evenly lg:gap-8 lg:px-16;
 }
 
 .cta__heading {
