@@ -6,6 +6,7 @@ use App\Traits\DataTable;
 use Livewire\Attributes\Computed;
 use App\Models\User as UserModel;
 use Flux\Flux;
+use Illuminate\Support\Carbon;
 use Livewire\Component;
 
 class User extends Component
@@ -21,6 +22,9 @@ class User extends Component
 
     public ?array $selected = null;
     public ?array $options = null;
+    public Carbon $birthdate;
+    public ?array $range = ['start' => null, 'end' => null];
+    public ?array $holidays = [];
 
     #[Computed]
     public function rows()
