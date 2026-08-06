@@ -64,8 +64,18 @@
     $hasModel = (bool) $attributes->whereStartsWith('wire:model')->first();
 
     $monthNames = [
-        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre',
     ];
     $dayNamesShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     $orderedDayNames = collect(range(0, 6))->map(fn($i) => $dayNamesShort[($weekStartsOn + $i) % 7])->toArray();
@@ -73,10 +83,46 @@
     // Definición de los 4 tiers de tamaño: umbral de contenedor (px), ancho
     // mínimo de celda y tipografía/aspecto asociados a cada uno.
     $tierDefs = [
-        'sm' => ['min' => 0,   'cellMin' => 34,  'cellFont' => '11px', 'dowFont' => '9px',  'headerFont' => '12px', 'previewFont' => '9px',  'aspect' => '1 / 1', 'preview' => false],
-        'md' => ['min' => 300, 'cellMin' => 46,  'cellFont' => '12px', 'dowFont' => '10px', 'headerFont' => '14px', 'previewFont' => '9px',  'aspect' => '1 / 1', 'preview' => false],
-        'lg' => ['min' => 440, 'cellMin' => 76,  'cellFont' => '14px', 'dowFont' => '12px', 'headerFont' => '16px', 'previewFont' => '10px', 'aspect' => '4 / 5', 'preview' => true],
-        'xl' => ['min' => 640, 'cellMin' => 104, 'cellFont' => '16px', 'dowFont' => '14px', 'headerFont' => '18px', 'previewFont' => '12px', 'aspect' => '4 / 5', 'preview' => true],
+        'sm' => [
+            'min' => 0,
+            'cellMin' => 34,
+            'cellFont' => '11px',
+            'dowFont' => '9px',
+            'headerFont' => '12px',
+            'previewFont' => '9px',
+            'aspect' => '1 / 1',
+            'preview' => false,
+        ],
+        'md' => [
+            'min' => 300,
+            'cellMin' => 46,
+            'cellFont' => '12px',
+            'dowFont' => '10px',
+            'headerFont' => '14px',
+            'previewFont' => '9px',
+            'aspect' => '1 / 1',
+            'preview' => false,
+        ],
+        'lg' => [
+            'min' => 440,
+            'cellMin' => 76,
+            'cellFont' => '14px',
+            'dowFont' => '12px',
+            'headerFont' => '16px',
+            'previewFont' => '10px',
+            'aspect' => '4 / 5',
+            'preview' => true,
+        ],
+        'xl' => [
+            'min' => 640,
+            'cellMin' => 104,
+            'cellFont' => '16px',
+            'dowFont' => '14px',
+            'headerFont' => '18px',
+            'previewFont' => '12px',
+            'aspect' => '4 / 5',
+            'preview' => true,
+        ],
     ];
 
     $floorIdx = array_search($minSize, $tierOrder);
@@ -90,7 +136,7 @@
         $baseTier = $tierDefs[$size];
         $aboveTiers = [];
         $isContainer = false;
-        $fixedWidth = ($baseTier['cellMin'] * 7) + 48; // 7 celdas + 6 gaps(4px) + padding del box (p-3 = 12px * 2)
+        $fixedWidth = $baseTier['cellMin'] * 7 + 48; // 7 celdas + 6 gaps(4px) + padding del box (p-3 = 12px * 2)
         $boxWidthStyle = "max-width:{$fixedWidth}px;";
     }
 
@@ -104,27 +150,77 @@
     @endisset
 
     <style>
-        .{{ $scopeId }}-box { {{ $isContainer ? 'container-type: inline-size;' : '' }} }
-        .{{ $scopeId }}-grid { grid-template-columns: repeat(7, minmax({{ $baseTier['cellMin'] }}px, 1fr)); }
-        .{{ $scopeId }}-cell-text { font-size: {{ $baseTier['cellFont'] }}; }
-        .{{ $scopeId }}-dow-text { font-size: {{ $baseTier['dowFont'] }}; }
-        .{{ $scopeId }}-header-text { font-size: {{ $baseTier['headerFont'] }}; }
-        .{{ $scopeId }}-preview-text { font-size: {{ $baseTier['previewFont'] }}; }
-        .{{ $scopeId }}-cell { aspect-ratio: {{ $baseTier['aspect'] }}; }
-        .{{ $scopeId }}-preview { display: {{ $baseTier['preview'] ? 'flex' : 'none' }}; }
-        .{{ $scopeId }}-dot { display: {{ $baseTier['preview'] ? 'none' : 'block' }}; }
+        .{{ $scopeId }}-box {
+            {{ $isContainer ? 'container-type: inline-size;' : '' }}
+        }
 
-        @foreach($aboveTiers as $t)
-            @php($def = $tierDefs[$t])
-            @container (min-width: {{ $def['min'] }}px) {
-                .{{ $scopeId }}-grid { grid-template-columns: repeat(7, minmax({{ $def['cellMin'] }}px, 1fr)); }
-                .{{ $scopeId }}-cell-text { font-size: {{ $def['cellFont'] }}; }
-                .{{ $scopeId }}-dow-text { font-size: {{ $def['dowFont'] }}; }
-                .{{ $scopeId }}-header-text { font-size: {{ $def['headerFont'] }}; }
-                .{{ $scopeId }}-preview-text { font-size: {{ $def['previewFont'] }}; }
-                .{{ $scopeId }}-cell { aspect-ratio: {{ $def['aspect'] }}; }
-                .{{ $scopeId }}-preview { display: {{ $def['preview'] ? 'flex' : 'none' }}; }
-                .{{ $scopeId }}-dot { display: {{ $def['preview'] ? 'none' : 'block' }}; }
+        .{{ $scopeId }}-grid {
+            grid-template-columns: repeat(7, minmax({{ $baseTier['cellMin'] }}px, 1fr));
+        }
+
+        .{{ $scopeId }}-cell-text {
+            font-size: {{ $baseTier['cellFont'] }};
+        }
+
+        .{{ $scopeId }}-dow-text {
+            font-size: {{ $baseTier['dowFont'] }};
+        }
+
+        .{{ $scopeId }}-header-text {
+            font-size: {{ $baseTier['headerFont'] }};
+        }
+
+        .{{ $scopeId }}-preview-text {
+            font-size: {{ $baseTier['previewFont'] }};
+        }
+
+        .{{ $scopeId }}-cell {
+            aspect-ratio: {{ $baseTier['aspect'] }};
+        }
+
+        .{{ $scopeId }}-preview {
+            display: {{ $baseTier['preview'] ? 'flex' : 'none' }};
+        }
+
+        .{{ $scopeId }}-dot {
+            display: {{ $baseTier['preview'] ? 'none' : 'block' }};
+        }
+
+        @foreach ($aboveTiers as $t)
+            @php($def = $tierDefs[$t]) @container (min-width: {{ $def['min'] }}px)
+
+                {
+                .{{ $scopeId }}-grid {
+                    grid-template-columns: repeat(7, minmax({{ $def['cellMin'] }}px, 1fr));
+                }
+
+                .{{ $scopeId }}-cell-text {
+                    font-size: {{ $def['cellFont'] }};
+                }
+
+                .{{ $scopeId }}-dow-text {
+                    font-size: {{ $def['dowFont'] }};
+                }
+
+                .{{ $scopeId }}-header-text {
+                    font-size: {{ $def['headerFont'] }};
+                }
+
+                .{{ $scopeId }}-preview-text {
+                    font-size: {{ $def['previewFont'] }};
+                }
+
+                .{{ $scopeId }}-cell {
+                    aspect-ratio: {{ $def['aspect'] }};
+                }
+
+                .{{ $scopeId }}-preview {
+                    display: {{ $def['preview'] ? 'flex' : 'none' }};
+                }
+
+                .{{ $scopeId }}-dot {
+                    display: {{ $def['preview'] ? 'none' : 'block' }};
+                }
             }
         @endforeach
     </style>
@@ -145,21 +241,19 @@
                 monthNames: @js($monthNames),
                 dayNames: @js($orderedDayNames),
                 maxPreview: @js((int) $maxPreview),
-
-                @if($hasModel)
-                selected: @entangle($attributes->wire('model')),
+            
+                @if ($hasModel) selected: @entangle($attributes->wire('model')),
                 @else
-                selected: null,
-                @endif
-
+                selected: null, @endif
+            
                 viewYear: null,
                 viewMonth: '0',
                 yearInput: '',
-
+            
                 init() {
                     const initialMonth = @js($initialMonth);
                     let base = initialMonth ? this.parseISO(initialMonth + '-01') : this.today();
-                    
+            
                     if (this.isMonthOutOfBounds(base.y, base.m)) {
                         const today = this.today();
                         if (!this.isMonthOutOfBounds(today.y, today.m)) {
@@ -176,20 +270,20 @@
                             }
                         }
                     }
-                    
+            
                     // Asignar valores
                     this.viewYear = base.y;
                     this.viewMonth = base.m;
                     this.yearInput = String(base.y);
                 },
-
+            
                 pad(n) { return String(n).padStart(2, '0'); },
                 parseISO(iso) { const [y, m, d] = iso.split('-').map(Number); return { y, m, d }; },
                 toISO(cell) { return `${cell.y}-${this.pad(cell.m)}-${this.pad(cell.d)}`; },
                 today() { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; },
                 isToday(cell) { if (!cell) return false; const t = this.today(); return cell.y === t.y && cell.m === t.m && cell.d === t.d; },
                 daysInMonth(y, m) { return new Date(y, m, 0).getDate(); },
-
+            
                 get days() {
                     const total = this.daysInMonth(this.viewYear, this.viewMonth);
                     const firstDow = (new Date(this.viewYear, this.viewMonth - 1, 1).getDay() - this.weekStartsOn + 7) % 7;
@@ -199,7 +293,7 @@
                     while (cells.length % 7 !== 0) cells.push(null);
                     return cells;
                 },
-
+            
                 get yearBounds() {
                     const t = this.today();
                     const floor = this.minDate ? this.parseISO(this.minDate).y : t.y - 90;
@@ -217,13 +311,25 @@
                     if (this.maxDate) { const max = this.parseISO(this.maxDate); if (y > max.y || (y === max.y && m > max.m)) return true; }
                     return false;
                 },
-                get canGoPrev() { let m = this.viewMonth - 1, y = this.viewYear; if (m < 1) { m = 12; y -= 1; } return !this.isMonthOutOfBounds(y, m); },
-                get canGoNext() { let m = this.viewMonth + 1, y = this.viewYear; if (m > 12) { m = 1; y += 1; } return !this.isMonthOutOfBounds(y, m); },
+                get canGoPrev() { let m = this.viewMonth - 1,
+                        y = this.viewYear; if (m < 1) { m = 12;
+                        y -= 1; } return !this.isMonthOutOfBounds(y, m); },
+                get canGoNext() { let m = this.viewMonth + 1,
+                        y = this.viewYear; if (m > 12) { m = 1;
+                        y += 1; } return !this.isMonthOutOfBounds(y, m); },
                 get canGoToday() { const t = this.today(); return !this.isMonthOutOfBounds(t.y, t.m); },
-                prevMonth() { if (!this.canGoPrev) return; this.viewMonth -= 1; if (this.viewMonth < 1) { this.viewMonth = 12; this.viewYear -= 1; } this.yearInput = String(this.viewYear); },
-                nextMonth() { if (!this.canGoNext) return; this.viewMonth += 1; if (this.viewMonth > 12) { this.viewMonth = 1; this.viewYear += 1; } this.yearInput = String(this.viewYear); },
-                goToday() { if (!this.canGoToday) return; const t = this.today(); this.viewYear = t.y; this.viewMonth = t.m; this.yearInput = String(t.y); },
-                setMonth(m) { m = Number(m); if (this.isMonthOutOfBounds(this.viewYear, m)) return; this.viewMonth = m; },
+                prevMonth() { if (!this.canGoPrev) return;
+                    this.viewMonth -= 1; if (this.viewMonth < 1) { this.viewMonth = 12;
+                        this.viewYear -= 1; } this.yearInput = String(this.viewYear); },
+                nextMonth() { if (!this.canGoNext) return;
+                    this.viewMonth += 1; if (this.viewMonth > 12) { this.viewMonth = 1;
+                        this.viewYear += 1; } this.yearInput = String(this.viewYear); },
+                goToday() { if (!this.canGoToday) return; const t = this.today();
+                    this.viewYear = t.y;
+                    this.viewMonth = t.m;
+                    this.yearInput = String(t.y); },
+                setMonth(m) { m = Number(m); if (this.isMonthOutOfBounds(this.viewYear, m)) return;
+                    this.viewMonth = m; },
                 applyYear() {
                     let y = parseInt(this.yearInput, 10);
                     if (isNaN(y)) { this.yearInput = String(this.viewYear); return; }
@@ -236,7 +342,7 @@
                     this.viewYear = y;
                     this.yearInput = String(y);
                 },
-
+            
                 isDisabled(cell) {
                     if (!cell) return true;
                     const iso = this.toISO(cell);
@@ -248,10 +354,10 @@
                     for (const [start, end] of this.disabledRanges) { if (iso >= start && iso <= end) return true; }
                     return false;
                 },
-
+            
                 isSelectedDate(cell) { return cell && this.selected === this.toISO(cell); },
                 dayEvents(cell) { if (!cell) return []; return this.events[this.toISO(cell)] || []; },
-
+            
                 selectDay(cell) {
                     if (this.isDisabled(cell)) return;
                     const iso = this.toISO(cell);
@@ -265,7 +371,8 @@
                 <flux:button
                     x-bind:disabled="!canGoPrev"
                     @click="prevMonth()"
-                    x-bind:class="canGoPrev ? 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer' : 'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'"
+                    x-bind:class="canGoPrev ? 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer' :
+                        'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'"
                     class="p-1 rounded-md transition-colors shrink-0"
                     aria-label="Mes anterior"
                     icon="chevron-left"
@@ -279,8 +386,11 @@
                         @change="setMonth($event.target.value)"
                         class="bg-transparent border-none font-medium text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-0 cursor-pointer"
                     >
-                        <template x-for="(name, idx) in monthNames" :key="idx">
-                            <option 
+                        <template
+                            x-for="(name, idx) in monthNames"
+                            :key="idx"
+                        >
+                            <option
                                 :value="idx + 1"
                                 :selected="idx + 1 === viewMonth"
                                 :disabled="isMonthOutOfBounds(viewYear, idx + 1)"
@@ -300,25 +410,30 @@
                         class="w-16 bg-transparent border-none p-0 font-medium text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-0 text-center"
                     >
                     <datalist id="{{ $scopeId }}-year">
-                        <template x-for="y in yearOptions" :key="y">
+                        <template
+                            x-for="y in yearOptions"
+                            :key="y"
+                        >
                             <option :value="y"></option>
                         </template>
                     </datalist>
                 </div>
 
                 <div class="flex items-center gap-1 shrink-0">
-                    <flux:button 
-                        size="sm" 
-                        variant="ghost" 
-                        x-bind:disabled="!canGoToday" 
-                        @click="goToday()">
+                    <flux:button
+                        size="sm"
+                        variant="ghost"
+                        x-bind:disabled="!canGoToday"
+                        @click="goToday()"
+                    >
                         Hoy
                     </flux:button>
 
                     <flux:button
                         x-bind:disabled="!canGoNext"
                         @click="nextMonth()"
-                        x-bind:class="canGoNext ? 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer' : 'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'"
+                        x-bind:class="canGoNext ? 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer' :
+                            'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'"
                         class="p-1 rounded-md transition-colors shrink-0"
                         aria-label="Mes siguiente"
                         icon="chevron-right"
@@ -330,14 +445,23 @@
 
             {{-- Nombres de los días --}}
             <div class="{{ $scopeId }}-grid grid gap-x-1 gap-y-1 mb-1">
-                <template x-for="dn in dayNames" :key="dn">
-                    <div class="{{ $scopeId }}-dow-text text-center font-medium text-zinc-400 dark:text-zinc-500" x-text="dn"></div>
+                <template
+                    x-for="dn in dayNames"
+                    :key="dn"
+                >
+                    <div
+                        class="{{ $scopeId }}-dow-text text-center font-medium text-zinc-400 dark:text-zinc-500"
+                        x-text="dn"
+                    ></div>
                 </template>
             </div>
 
             {{-- Grid de días --}}
             <div class="{{ $scopeId }}-grid grid gap-x-1 gap-y-1">
-                <template x-for="(cell, cIndex) in days" :key="cIndex">
+                <template
+                    x-for="(cell, cIndex) in days"
+                    :key="cIndex"
+                >
                     <div>
                         <template x-if="cell === null">
                             <span></span>
@@ -350,21 +474,29 @@
                                 :disabled="isDisabled(cell)"
                                 :aria-selected="isSelectedDate(cell)"
                                 :class="[
-                                    isSelectedDate(cell)
-                                        ? 'bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 font-medium'
-                                        : isDisabled(cell)
-                                            ? 'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'
-                                            : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer',
-                                    isToday(cell) && !isSelectedDate(cell) && !isDisabled(cell) ? 'ring-1 ring-inset ring-zinc-300 dark:ring-white/20' : '',
+                                    isSelectedDate(cell) ?
+                                    'bg-accent text-white dark:bg-white dark:text-zinc-900 font-medium' :
+                                    isDisabled(cell) ?
+                                    'text-zinc-300 dark:text-zinc-600 cursor-not-allowed' :
+                                    'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer',
+                                    isToday(cell) && !isSelectedDate(cell) && !isDisabled(cell) ?
+                                    'ring-1 ring-inset ring-zinc-300 dark:ring-white/20' : '',
                                 ]"
                                 class="{{ $scopeId }}-cell relative w-full flex flex-col items-center justify-start pt-1 rounded-lg transition-colors select-none overflow-hidden"
                             >
-                                <span class="{{ $scopeId }}-cell-text font-medium" x-text="cell.d"></span>
+                                <span
+                                    class="{{ $scopeId }}-cell-text font-medium"
+                                    x-text="cell.d"
+                                ></span>
 
                                 {{-- Previsualización de eventos (visible solo en tiers lg/xl vía CSS) --}}
-                                <div class="{{ $scopeId }}-preview mt-0.5 w-full px-1 flex-col gap-0.5 overflow-hidden">
-                                    <template x-for="(event, idx) in dayEvents(cell).slice(0, maxPreview)" :key="idx">
-                                        @if($eventItem ?? false)
+                                <div
+                                    class="{{ $scopeId }}-preview mt-0.5 w-full px-1 flex-col gap-0.5 overflow-hidden">
+                                    <template
+                                        x-for="(event, idx) in dayEvents(cell).slice(0, maxPreview)"
+                                        :key="idx"
+                                    >
+                                        @if ($eventItem ?? false)
                                             {{ $eventItem }}
                                         @else
                                             <div
@@ -375,7 +507,10 @@
                                         @endif
                                     </template>
                                     <template x-if="dayEvents(cell).length > maxPreview">
-                                        <div class="{{ $scopeId }}-preview-text text-zinc-400 px-1 text-left" x-text="'+' + (dayEvents(cell).length - maxPreview) + ' más'"></div>
+                                        <div
+                                            class="{{ $scopeId }}-preview-text text-zinc-400 px-1 text-left"
+                                            x-text="'+' + (dayEvents(cell).length - maxPreview) + ' más'"
+                                        ></div>
                                     </template>
                                 </div>
 
@@ -383,7 +518,8 @@
                                 <template x-if="dayEvents(cell).length > 0">
                                     <span
                                         class="{{ $scopeId }}-dot absolute bottom-1 size-1 rounded-full"
-                                        :class="isSelectedDate(cell) ? 'bg-white dark:bg-zinc-900' : 'bg-zinc-500 dark:bg-zinc-300'"
+                                        :class="isSelectedDate(cell) ? 'bg-white dark:bg-zinc-900' :
+                                            'bg-zinc-500 dark:bg-zinc-300'"
                                     ></span>
                                 </template>
                             </button>

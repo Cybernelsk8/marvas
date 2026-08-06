@@ -10,3 +10,5 @@ Route::prefix('servicios')->group(function () {
     Route::view('masaje-muscular', 'landing-page.servicios.masaje-muscular')->name('servicios.masaje-muscular');
     Route::view('acupuntura', 'landing-page.servicios.acupuntura')->name('servicios.acupuntura');
 });
+
+Route::view('agendar-cita', 'landing-page.agendar-cita')->name('agendar-cita');

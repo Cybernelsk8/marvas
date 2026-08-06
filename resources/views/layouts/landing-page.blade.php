@@ -9,7 +9,7 @@
 </head>
 
 <body class="bg-[#F7F1E8]">
-    <div class="container max-w-7xl mx-auto">
+    <div class="container max-w-8xl mx-auto">
         @include('landing-page.partials.header')
         {{ $slot }}
         @include('landing-page.partials.foot')

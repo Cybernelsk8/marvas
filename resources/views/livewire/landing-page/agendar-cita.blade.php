@@ -1,3 +1,108 @@
 <div>
-    {{-- An unexamined life is not worth living. - Socrates --}}
+    <flux:card>
+        <div class="grid xl:grid-cols-3 gap-4 text-cyan-950">
+            <div>
+                <flux:radio.group
+                    label="Elige el tipo de cita *"
+                    variant="cards"
+                    class="flex-col"
+                    wire:model="cita.tipo"
+                >
+                    <flux:radio
+                        value="consulta"
+                        label="Consulta"
+                        class="hover:bg-slate-100 md:cursor-pointer"
+                        description="Primera cita para diagnostico y evaluación"
+                    />
+                    <flux:radio
+                        value="seguimiento"
+                        label="Seguimiento"
+                        class="hover:bg-slate-100 md:cursor-pointer"
+                        description="Cita para seguimiento de tratamiento"
+                    />
+                    <flux:radio
+                        value="masaje"
+                        label="Masaje"
+                        class="hover:bg-slate-100 md:cursor-pointer"
+                        description="Sesión de masaje relajante o terapéutico"
+                    />
+                </flux:radio.group>
+            </div>
+            <div class="space-y-4">
+                <x-calendar
+                    wire:key="cita-fecha"
+                    label="Selecciona la fecha de tu cita *"
+                    wire:model="cita.fecha"
+                    :min-date="now()->format('Y-m-d')"
+                    :max-date="now()->addMonths(3)->format('Y-m-d')"
+                    size="md"
+                />
+                <flux:radio.group
+                    label="Selecciona la hora de tu cita *"
+                    wire:model="cita.hora"
+                    variant="pills"
+                >
+                    <flux:radio
+                        label="09:00 am"
+                        value="09:00"
+                        class="cursor-pointer"
+                    />
+                    <flux:radio
+                        label="11:00 am"
+                        value="11:00"
+                        class="cursor-pointer"
+                    />
+                    <flux:radio
+                        label="03:00 pm"
+                        value="15:00"
+                        class="cursor-pointer"
+                    />
+                    <flux:radio
+                        label="05:00 pm"
+                        value="17:00"
+                        class="cursor-pointer"
+                    />
+
+                </flux:radio.group>
+            </div>
+            <div class="space-y-4">
+                <flux:input
+                    label="Nombre completo *"
+                    icon="user"
+                    wire:model="cita.nombre"
+                    placeholder="Nombre completo"
+                    required
+                />
+                <flux:input
+                    label="Correo electrónico "
+                    icon="envelope"
+                    wire:model="cita.email"
+                    placeholder="email@dominio.com"
+                />
+                <flux:input
+                    label="Teléfono *"
+                    icon="phone"
+                    wire:model="cita.telefono"
+                    type="tel"
+                    mask="9999-9999"
+                    maxlength="9"
+                    placeholder="0000-0000"
+                    required
+                />
+                <flux:textarea
+                    label="Motivo de consulta *"
+                    wire:model="cita.mensaje"
+                    placeholder="Mensaje (opcional)"
+                />
+                <flux:button
+                    icon="calendar"
+                    wire:click="agendarCita"
+                    class="btn--primary w-full"
+                >
+                    Agendar cita
+                </flux:button>
+            </div>
+        </div>
+
+    </flux:card>
 </div>

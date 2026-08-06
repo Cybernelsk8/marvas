@@ -71,7 +71,7 @@
     </div>
 
     <flux:button
-        href="#cita"
+        href="{{ route('agendar-cita') }}"
         class="btn--gold"
         iconTrailing="chevron-right"
     >

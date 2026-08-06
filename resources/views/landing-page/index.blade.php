@@ -4,7 +4,8 @@
     <!-- ============================================ -->
     <section
         id="inicio"
-        class="hero relative">
+        class="hero relative"
+    >
         <div class="hero__content z-10">
             <span class="hero__eyebrow">
                 Ciencia que transforma vidas
@@ -36,7 +37,7 @@
                     iconTrailing="chevron-right"
                     variant="ghost"
                     class="btn--gold"
-                    href="#servicios"
+                    href="{{ route('agendar-cita') }}"
                 >
                     Agenda tu cita
                 </flux:button>
@@ -50,14 +51,15 @@
         >
     </section>
 
-    
+
 
     <!-- ============================================ -->
     <!-- 3. MODELO + SERVICIOS -->
     <!-- ============================================ -->
     <section
         id="servicios"
-        class="services">
+        class="services"
+    >
         <div class="services__model">
             <span class="services__model-label">
                 Modelo
@@ -200,11 +202,14 @@
         </div>
     </section>
 
-     <!-- ============================================ -->
+    <!-- ============================================ -->
     <!-- 4. NOSOTROS -->
     <!-- ============================================ -->
 
-    <section id="nosotros" class="px-5 py-12 bg-[#F3ECE1] sm:px-10 md:px-16 md:py-20">
+    <section
+        id="nosotros"
+        class="px-5 py-12 bg-[#F3ECE1] sm:px-10 md:px-16 md:py-20"
+    >
         <div class="services__heading">
             <span class="services__eyebrow">
                 <span class="services__eyebrow-line"></span>
@@ -217,9 +222,9 @@
         </div>
 
         <p class="text-gray-500 leading-relaxed md:leading-relaxed italic font-medium">
-            Entendemos que la salud no consiste únicamente en disminuir síntomas, sino en identificar y abordar los 
-            factores que contribuyen al desequilibrio del organismo. Por ello desarrollamos el Modelo 6+, una 
-            metodología propia que integra distintas disciplinas de la medicina bilogica y alternativa  para 
+            Entendemos que la salud no consiste únicamente en disminuir síntomas, sino en identificar y abordar los
+            factores que contribuyen al desequilibrio del organismo. Por ello desarrollamos el Modelo 6+, una
+            metodología propia que integra distintas disciplinas de la medicina bilogica y alternativa para
             acompañar los procesos de regulación, recuperación y bienestar de cada persona.
         </p>
         <br>

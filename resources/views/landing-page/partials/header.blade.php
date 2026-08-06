@@ -20,10 +20,10 @@
                     Inicio
                 </a>
             </li>
-            
+
             <li class="nav__item">
                 <a
-                    href="#servicios"
+                    href="/#servicios"
                     class="{{ request()->routeIs('servicios.*') ? 'nav__link nav__link--active' : 'nav__link' }}"
                 >
                     Servicios
@@ -53,7 +53,7 @@
             icon="calendar"
             iconTrailing="chevron-right"
             class="btn--primary header__cta"
-            href="#cita"
+            href="{{ route('agendar-cita') }}"
         >
             AGENDA TU CITA
         </flux:button>
