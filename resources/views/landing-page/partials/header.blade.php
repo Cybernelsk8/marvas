@@ -20,20 +20,21 @@
                     Inicio
                 </a>
             </li>
-            <li class="nav__item">
-                <a
-                    href="#nosotros"
-                    class="nav__link"
-                >
-                    Nosotros
-                </a>
-            </li>
+            
             <li class="nav__item">
                 <a
                     href="#servicios"
                     class="{{ request()->routeIs('servicios.*') ? 'nav__link nav__link--active' : 'nav__link' }}"
                 >
                     Servicios
+                </a>
+            </li>
+            <li class="nav__item">
+                <a
+                    href="/#nosotros"
+                    class="nav__link"
+                >
+                    Nosotros
                 </a>
             </li>
             <li class="nav__item">

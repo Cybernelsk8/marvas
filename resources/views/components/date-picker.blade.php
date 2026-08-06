@@ -687,6 +687,7 @@
                                     >
                                         <option
                                             :value="idx + 1"
+                                            :selected="idx + 1 === panel.month"
                                             :disabled="isMonthOutOfBounds(panel.year, idx + 1)"
                                             x-text="name"
                                         ></option>

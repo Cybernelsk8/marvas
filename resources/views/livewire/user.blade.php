@@ -1,10 +1,13 @@
 <div class="p-8">
-    <x-calendar
-        wire:model="range"
-        mode="range"
-        :months="2"
-        :min-date="now()->format('Y-m-d')"
-    />
+    <x-calendar :events="$eventos" size="xl" wire:model="fecha" initial-month="{{ $this->fecha }}"/>
+
+    @dump($this->fecha)
+
+<flux:modal name="mi-modal-agenda">
+    <pre>
+        {{ var_dump($this->eventosDelDia) }}
+    </pre>
+</flux:modal>
 
     {{-- Fecha única --}}
     <x-date-picker

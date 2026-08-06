@@ -4,8 +4,7 @@
     <!-- ============================================ -->
     <section
         id="inicio"
-        class="hero relative"
-    >
+        class="hero relative">
         <div class="hero__content z-10">
             <span class="hero__eyebrow">
                 Ciencia que transforma vidas
@@ -51,13 +50,14 @@
         >
     </section>
 
+    
+
     <!-- ============================================ -->
     <!-- 3. MODELO + SERVICIOS -->
     <!-- ============================================ -->
     <section
         id="servicios"
-        class="services"
-    >
+        class="services">
         <div class="services__model">
             <span class="services__model-label">
                 Modelo
@@ -196,6 +196,93 @@
                         </div>
                     </article>
                 </a>
+            </div>
+        </div>
+    </section>
+
+     <!-- ============================================ -->
+    <!-- 4. NOSOTROS -->
+    <!-- ============================================ -->
+
+    <section id="nosotros" class="px-5 py-12 bg-[#F3ECE1] sm:px-10 md:px-16 md:py-20">
+        <div class="services__heading">
+            <span class="services__eyebrow">
+                <span class="services__eyebrow-line"></span>
+                nosotros
+                <span class="services__eyebrow-line"></span>
+            </span>
+            <h2 class="services__title">
+                En MARVAS
+            </h2>
+        </div>
+
+        <p class="text-gray-500 leading-relaxed md:leading-relaxed italic font-medium">
+            Entendemos que la salud no consiste únicamente en disminuir síntomas, sino en identificar y abordar los 
+            factores que contribuyen al desequilibrio del organismo. Por ello desarrollamos el Modelo 6+, una 
+            metodología propia que integra distintas disciplinas de la medicina bilogica y alternativa  para 
+            acompañar los procesos de regulación, recuperación y bienestar de cada persona.
+        </p>
+        <br>
+        <div>
+            <div class="services__heading">
+                <h2 class="services__title">
+                    ¿Por qué MARVAS ?
+                </h2>
+            </div>
+
+            <div class="services__grid">
+                <article class="service-card bg-white rounded-xl shadow-md p-6">
+                    <span class="service-card__icon">
+                        <flux:icon
+                            name="check-badge"
+                            class="size-9"
+                        />
+                    </span>
+                    <div>
+                        <h3 class="service-card__title">
+                            Atención personalizada
+                        </h3>
+                        <ol class="service-card__text text-xs text-gray-500">
+                            <li>Cada paciente recibe una evaluación individual.</li>
+                        </ol>
+                    </div>
+                </article>
+                <article class="service-card bg-white rounded-xl shadow-md p-6">
+                    <span class="service-card__icon">
+                        <flux:icon
+                            name="adjustments-vertical"
+                            class="size-9"
+                        />
+                    </span>
+                    <div>
+                        <h3 class="service-card__title">
+                            Modelo 6+
+                        </h3>
+                        <ol class=" service-card__text text-xs text-gray-500">
+                            <li>No tratamos únicamente síntomas.</li>
+                            <li>Diseñamos rutas terapéuticas personalizadas.</li>
+                        </ol>
+                    </div>
+                </article>
+                <article class="service-card bg-white rounded-xl shadow-md p-6">
+                    <span class="service-card__icon">
+                        <flux:icon
+                            name="hand-raised"
+                            class="size-9"
+                        />
+                    </span>
+                    <div>
+                        <h3 class="service-card__title">
+                            Enfoque integral
+                        </h3>
+                        <ol class=" service-card__text text-xs text-gray-500">
+                            <li>Salud física y funcional.</li>
+                            <li>Equilibrio de los diferentes sistemas del organismo.</li>
+                            <li>Hábitos y estilo de vida saludables.</li>
+                            <li>Bienestar integral.</li>
+                        </ol>
+                    </div>
+                </article>
             </div>
         </div>
     </section>

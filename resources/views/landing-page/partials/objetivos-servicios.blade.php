@@ -18,7 +18,7 @@
                 objetivo
                 <span class="services__eyebrow-line"></span>
             </span>
-            <p class="text-xl">
+            <p class="text-lg font-medium italic text-cyan-950 mt-2">
                 {{ $text }}
             </p>
         </div>
