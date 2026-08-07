@@ -3,7 +3,7 @@
 # =========================================================
 
 # ---------- Stage 1: Dependencias de Composer ----------
-FROM composer:2 AS composer_deps
+FROM composer:2-php8.3 AS composer_deps
 
 WORKDIR /app
 
@@ -35,7 +35,7 @@ RUN composer dump-autoload --optimize --no-dev
 
 
 # ---------- Stage 2: Build de assets con Node/pnpm ----------
-FROM node:20-alpine AS node_deps
+FROM node:22-alpine AS node_deps
 
 WORKDIR /app
 
