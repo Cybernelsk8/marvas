@@ -20,8 +20,8 @@ if [ ! -L "/var/www/public/storage" ]; then
 fi
 
 echo "==> Publicando assets de Livewire y Flux..."
-php artisan livewire:publish --assets
-php artisan flux:publish --assets
+php artisan vendor:publish --tag=livewire:assets --force
+php artisan vendor:publish --tag=flux:assets --force
 
 echo "==> Cacheando configuración, rutas y vistas..."
 php artisan config:cache
