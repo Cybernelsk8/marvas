@@ -63,4 +63,4 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
 
 EXPOSE 8080
 
-ENTRYPOINT ["entrypoint.sh"]
+# ENTRYPOINT ["entrypoint.sh"]
