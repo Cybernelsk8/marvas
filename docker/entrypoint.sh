@@ -20,8 +20,8 @@ if [ ! -L "/var/www/public/storage" ]; then
 fi
 
 echo "==> Publicando assets de Livewire y Flux..."
-php artisan livewire:publish --assets --force
-php artisan flux:publish --assets --force
+php artisan livewire:publish --assets
+php artisan flux:publish --assets
 
 echo "==> Cacheando configuración, rutas y vistas..."
 php artisan config:cache
@@ -38,6 +38,12 @@ echo "==> Ejecutando seeders..."
 php artisan db:seed --force
 
 # Por esto (aprovecha la variable de entorno PORT que asigna Railway dinámicamente):
-PORT="${PORT:-8080}"
-echo "==> Iniciando servidor en el puerto $PORT..."
-exec php -S 0.0.0.0:$PORT -t public public/index.php
+
+echo "==> Iniciando el servidor web en el puerto ${PORT:-8080}..."
+
+# Opción A: Si usas php artisan serve (Recomendado para contenedores ligeros)
+exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+
+# PORT="${PORT:-8080}"
+# echo "==> Iniciando servidor en el puerto $PORT..."
+# exec php -S 0.0.0.0:$PORT -t public public/index.php
