@@ -33,5 +33,7 @@ echo "==> Ejecutando seeders..."
 # datos duplicados en cada redeploy. Ver nota en el chat.
 php artisan db:seed --force
 
-echo "==> Iniciando servidor en el puerto ${PORT:-8080}..."
-exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+# Por esto (aprovecha la variable de entorno PORT que asigna Railway dinámicamente):
+PORT="${PORT:-8080}"
+echo "==> Iniciando servidor en el puerto $PORT..."
+exec php -S 0.0.0.0:$PORT -t public

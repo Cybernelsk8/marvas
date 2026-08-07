@@ -1,36 +1,26 @@
 # =========================================================
-# Dockerfile para Laravel 13 + Livewire + Flux UI en Railway
+# Dockerfile Optimizado para Laravel 13 + Livewire + Flux UI
 # =========================================================
 
 # ---------- Stage 1: Dependencias de Composer ----------
-# Usamos php:8.3-cli (misma versión que la imagen final) y copiamos
-# el binario de composer desde la imagen oficial. Las imágenes
-# oficiales de PHP sobre Debian ya incluyen las herramientas de
-# compilación necesarias, así que docker-php-ext-install funciona
-# directo, sin instalar gcc/autoconf a mano como en Alpine.
-FROM php:8.3-cli AS composer_deps
+FROM php:8.3-cli-alpine AS composer_deps
 
 WORKDIR /app
 
-# bcmath (y cualquier otra extensión que tu composer.lock requiera
-# para resolver dependencias, ej. dragon-code/support) debe estar
-# presente aquí, en el mismo entorno donde corre "composer install".
-RUN docker-php-ext-install bcmath
+# Instalador rápido de extensiones PHP precompiladas
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+RUN chmod +x /usr/local/bin/install-php-extensions && \
+    install-php-extensions bcmath pdo_mysql zip intl opcache
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY composer.json composer.lock ./
 
-# Si usas Flux UI PRO (paquete privado de Composer), pasa las
-# credenciales como build secret en vez de ARG/ENV (evita que
-# queden grabadas en las capas de la imagen). En Railway, define
-# la variable COMPOSER_AUTH en el servicio y monta el secreto así:
-#
-#   RUN --mount=type=secret,id=COMPOSER_AUTH \
-#       COMPOSER_AUTH="$(cat /run/secrets/COMPOSER_AUTH)" \
-#       composer install --no-dev --no-scripts --no-autoloader --prefer-dist
-#
-# Si NO usas Flux Pro, deja la línea simple de abajo tal cual.
+# Si usas Flux UI Pro con secreto de Composer:
+# RUN --mount=type=secret,id=COMPOSER_AUTH \
+#     COMPOSER_AUTH="$(cat /run/secrets/COMPOSER_AUTH)" \
+#     composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 COPY . .
@@ -38,42 +28,41 @@ COPY . .
 RUN composer dump-autoload --optimize --no-dev
 
 
-# ---------- Stage 2: Build de assets con Node/pnpm ----------
+# ---------- Stage 2: Build de assets con Node / pnpm ----------
 FROM node:22-alpine AS node_deps
 
 WORKDIR /app
 
-COPY package.json ./
-COPY pnpm-lock.yaml* package-lock.json* ./
-
+# Habilitar pnpm nativamente
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Instala dependencias y compila (siguiendo lo solicitado: npm install + pnpm build)
-RUN npm install
+COPY package.json pnpm-lock.yaml* ./
+
+# Instalación estricta usando PNPM (sin npm)
+RUN pnpm install --frozen-lockfile
+
 COPY . .
 RUN pnpm run build
 
 
 # ---------- Stage 3: Imagen final de ejecución ----------
-FROM php:8.3-fpm AS final
-
-RUN apt-get update && apt-get install -y \
-    git curl libpng-dev libonig-dev libxml2-dev libzip-dev zip unzip nano \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+FROM php:8.3-alpine AS final
 
 WORKDIR /var/www
 
-# Copia el código + vendor ya instalado desde el stage de composer
-COPY --from=composer_deps /app /var/www
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+RUN chmod +x /usr/local/bin/install-php-extensions && \
+    install-php-extensions pdo_mysql mbstring exif pcntl bcmath gd zip intl opcache
 
-# Copia los assets ya compilados (JS/CSS de Flux, Tailwind, etc.)
+# Copiar el código y librerías desde los stages previos
+COPY --from=composer_deps /app /var/www
 COPY --from=node_deps /app/public/build /var/www/public/build
 
-# Script de arranque (migraciones, seeders, cache, servidor)
+# Script de arranque
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# Permisos de almacenamiento
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
