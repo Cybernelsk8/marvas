@@ -7,16 +7,26 @@ FROM composer:2 AS composer_deps
 
 WORKDIR /app
 
+# La imagen composer:2 (Alpine) no trae bcmath ni otras extensiones
+# que tu composer.lock puede requerir para resolver dependencias
+# (ej. dragon-code/support). Las instalamos aquí, en el mismo stage
+# donde corre "composer install", para que la resolución no falle.
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && docker-php-ext-install bcmath \
+    && apk del .build-deps
+
 COPY composer.json composer.lock ./
 
-# Si usas Flux UI PRO (paquete privado de Composer), necesitas
-# credenciales. NO subas auth.json al repo con credenciales reales.
-# En su lugar, en Railway define las variables:
-#   COMPOSER_AUTH  = {"http-basic":{"composer.fluxui.dev":{"username":"tu-email","password":"tu-license-key"}}}
-# Railway las inyecta automáticamente como variables de entorno de build.
-ARG COMPOSER_AUTH
-ENV COMPOSER_AUTH=${COMPOSER_AUTH}
-
+# Si usas Flux UI PRO (paquete privado de Composer), pasa las
+# credenciales como build secret en vez de ARG/ENV (evita que
+# queden grabadas en las capas de la imagen). En Railway, define
+# la variable COMPOSER_AUTH en el servicio y monta el secreto así:
+#
+#   RUN --mount=type=secret,id=COMPOSER_AUTH \
+#       COMPOSER_AUTH="$(cat /run/secrets/COMPOSER_AUTH)" \
+#       composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+#
+# Si NO usas Flux Pro, deja la línea simple de abajo tal cual.
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 COPY . .
@@ -44,7 +54,7 @@ RUN pnpm run build
 FROM php:8.3-fpm AS final
 
 RUN apt-get update && apt-get install -y \
-        git curl libpng-dev libonig-dev libxml2-dev libzip-dev zip unzip nano \
+    git curl libpng-dev libonig-dev libxml2-dev libzip-dev zip unzip nano \
     && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
