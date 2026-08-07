@@ -3,17 +3,21 @@
 # =========================================================
 
 # ---------- Stage 1: Dependencias de Composer ----------
-FROM composer:2-php8.3 AS composer_deps
+# Usamos php:8.3-cli (misma versión que la imagen final) y copiamos
+# el binario de composer desde la imagen oficial. Las imágenes
+# oficiales de PHP sobre Debian ya incluyen las herramientas de
+# compilación necesarias, así que docker-php-ext-install funciona
+# directo, sin instalar gcc/autoconf a mano como en Alpine.
+FROM php:8.3-cli AS composer_deps
 
 WORKDIR /app
 
-# La imagen composer:2 (Alpine) no trae bcmath ni otras extensiones
-# que tu composer.lock puede requerir para resolver dependencias
-# (ej. dragon-code/support). Las instalamos aquí, en el mismo stage
-# donde corre "composer install", para que la resolución no falle.
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
-    && docker-php-ext-install bcmath \
-    && apk del .build-deps
+# bcmath (y cualquier otra extensión que tu composer.lock requiera
+# para resolver dependencias, ej. dragon-code/support) debe estar
+# presente aquí, en el mismo entorno donde corre "composer install".
+RUN docker-php-ext-install bcmath
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY composer.json composer.lock ./
 
