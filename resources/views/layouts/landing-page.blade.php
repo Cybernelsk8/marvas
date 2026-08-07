@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html
-    lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+    lang="{{ str_replace('_', '-', app()->getLocale()) }} "
     class="dark"
 >
 
@@ -8,7 +8,7 @@
     @include('partials.head')
 </head>
 
-<body class="bg-[#F7F1E8]">
+<body class="bg-[#F7F1E8] ">
     <div class="container max-w-8xl mx-auto">
         @include('landing-page.partials.header')
         {{ $slot }}

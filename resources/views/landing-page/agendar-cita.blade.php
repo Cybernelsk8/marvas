@@ -9,7 +9,7 @@
                 contacto contigo para confirmar la fecha y hora de tu cita.
             </p>
         </header>
-        <article class="w-full flex justify-center mt-8">
+        <article class="w-full flex justify-center mt-8 ">
             <livewire:landing-page.agendar-cita />
         </article>
     </section>

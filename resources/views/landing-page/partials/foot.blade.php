@@ -2,16 +2,6 @@
     id="nosotros"
     class="values"
 >
-    <div class="value-card">
-        <flux:icon
-            name="dna"
-            class="value-card__icon"
-        />
-        <div class="value-card__text">
-            <h3 class="value-card__title">Enfoque integral</h3>
-            <p class="value-card__desc">Abordamos tu salud desde cuerpo, mente y emoción.</p>
-        </div>
-    </div>
 
     <div class="value-card">
         <flux:icon

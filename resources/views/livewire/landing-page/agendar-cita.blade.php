@@ -1,4 +1,4 @@
-<div>
+<div class="dark:bg-zinc-800 rounded-xl">
     <flux:card>
         <div class="grid xl:grid-cols-3 gap-4 text-cyan-950">
             <div>
@@ -11,20 +11,14 @@
                     <flux:radio
                         value="consulta"
                         label="Consulta"
-                        class="hover:bg-slate-100 md:cursor-pointer"
                         description="Primera cita para diagnostico y evaluación"
+                        class="cursor-pointer"
                     />
                     <flux:radio
                         value="seguimiento"
                         label="Seguimiento"
-                        class="hover:bg-slate-100 md:cursor-pointer"
                         description="Cita para seguimiento de tratamiento"
-                    />
-                    <flux:radio
-                        value="masaje"
-                        label="Masaje"
-                        class="hover:bg-slate-100 md:cursor-pointer"
-                        description="Sesión de masaje relajante o terapéutico"
+                        class="cursor-pointer"
                     />
                 </flux:radio.group>
             </div>
@@ -33,7 +27,7 @@
                     wire:key="cita-fecha"
                     label="Selecciona la fecha de tu cita *"
                     wire:model="cita.fecha"
-                    :min-date="now()->format('Y-m-d')"
+                    :min-date="now()->format('Y-m')"
                     :max-date="now()->addMonths(3)->format('Y-m-d')"
                     size="md"
                 />
