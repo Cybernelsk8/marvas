@@ -9,8 +9,8 @@
                     wire:model="cita.tipo"
                 >
                     <flux:radio
-                        value="consulta"
-                        label="Consulta"
+                        value="primera_consulta"
+                        label="Primer consulta"
                         description="Primera cita para diagnostico y evaluación"
                         class="cursor-pointer"
                     />
@@ -31,33 +31,36 @@
                     :max-date="now()->addMonths(3)->format('Y-m-d')"
                     size="md"
                 />
-                <flux:radio.group
-                    label="Selecciona la hora de tu cita *"
-                    wire:model="cita.hora"
-                    variant="pills"
-                >
-                    <flux:radio
-                        label="09:00 am"
-                        value="09:00"
-                        class="cursor-pointer"
-                    />
-                    <flux:radio
-                        label="11:00 am"
-                        value="11:00"
-                        class="cursor-pointer"
-                    />
-                    <flux:radio
-                        label="03:00 pm"
-                        value="15:00"
-                        class="cursor-pointer"
-                    />
-                    <flux:radio
-                        label="05:00 pm"
-                        value="17:00"
-                        class="cursor-pointer"
-                    />
+                <div class="py-5">
+                    <flux:radio.group
+                        label="Selecciona la hora de tu cita *"
+                        wire:model="cita.hora"
+                        variant="pills"
+                        class=""
+                    >
+                        <flux:radio
+                            label="09:00 am"
+                            value="09:00"
+                            class="cursor-pointer"
+                        />
+                        <flux:radio
+                            label="11:00 am"
+                            value="11:00"
+                            class="cursor-pointer"
+                        />
+                        <flux:radio
+                            label="03:00 pm"
+                            value="15:00"
+                            class="cursor-pointer"
+                        />
+                        <flux:radio
+                            label="05:00 pm"
+                            value="17:00"
+                            class="cursor-pointer"
+                        />
 
-                </flux:radio.group>
+                    </flux:radio.group>
+                </div>
             </div>
             <div class="space-y-4">
                 <flux:input
@@ -68,12 +71,6 @@
                     required
                 />
                 <flux:input
-                    label="Correo electrónico "
-                    icon="envelope"
-                    wire:model="cita.email"
-                    placeholder="email@dominio.com"
-                />
-                <flux:input
                     label="Teléfono *"
                     icon="phone"
                     wire:model="cita.telefono"
@@ -82,6 +79,12 @@
                     maxlength="9"
                     placeholder="0000-0000"
                     required
+                />
+                <flux:input
+                    label="Correo electrónico "
+                    icon="envelope"
+                    wire:model="cita.email"
+                    placeholder="email@dominio.com"
                 />
                 <flux:textarea
                     label="Motivo de consulta *"
