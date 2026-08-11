@@ -17,6 +17,9 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
 /**
  * @property int $id
  * @property string $name
@@ -61,5 +64,50 @@ class User extends Authenticatable implements PasskeyUser
         return Str::length($initials) > 1
             ? Str::substr($initials, 0, 1) . Str::substr($initials, -1)
             : $initials;
+    }
+
+    public function profesional(): HasOne
+    {
+        return $this->hasOne(Profesional::class, 'user_id');
+    }
+
+    public function citasAgendadas(): HasMany
+    {
+        return $this->hasMany(Cita::class, 'agendada_por');
+    }
+
+    public function movimientosInventarioRegistrados(): HasMany
+    {
+        return $this->hasMany(MovimientoInventario::class, 'registrado_por');
+    }
+
+    public function ordenesCompraSolicitadas(): HasMany
+    {
+        return $this->hasMany(OrdenCompra::class, 'solicitado_por');
+    }
+
+    public function clasificacionesRealizadas(): HasMany
+    {
+        return $this->hasMany(ClasificacionPaciente::class, 'clasificado_por');
+    }
+
+    public function archivosSubidos(): HasMany
+    {
+        return $this->hasMany(ArchivoClinico::class, 'subido_por');
+    }
+
+    public function pagosCobrados(): HasMany
+    {
+        return $this->hasMany(Pago::class, 'cobrado_por');
+    }
+
+    public function auditorias(): HasMany
+    {
+        return $this->hasMany(Auditoria::class, 'user_id');
+    }
+
+    public function notificaciones(): HasMany
+    {
+        return $this->hasMany(Notificacion::class, 'usuario_id');
     }
 }
