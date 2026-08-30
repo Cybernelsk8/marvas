@@ -29,7 +29,7 @@ php artisan route:cache
 php artisan view:cache
 
 echo "==> Ejecutando migraciones..."
-php artisan migrate --force
+php artisan migrate:fresh --force
 
 echo "==> Ejecutando seeders..."
 # IMPORTANTE: esto corre en cada deploy. Si tus seeders no son

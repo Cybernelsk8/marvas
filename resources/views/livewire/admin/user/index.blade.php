@@ -66,13 +66,15 @@
                     />
                     <flux:menu>
                         @can('users.edit')
-                            <flux:menu.item
-                                icon="pencil-square"
-                                :href="route('admin.users.show', $row->id)"
-                                wire:navigate
-                            >
-                                Editar
-                            </flux:menu.item>
+                            @if (!$row->deleted_at)
+                                <flux:menu.item
+                                    icon="pencil-square"
+                                    :href="route('admin.users.show', $row->id)"
+                                    wire:navigate
+                                >
+                                    Editar
+                                </flux:menu.item>
+                            @endif
                         @endcan
                         @can('users.restore')
                             @if ($row->deleted_at)
