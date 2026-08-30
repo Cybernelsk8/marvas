@@ -29,13 +29,13 @@ php artisan route:cache
 php artisan view:cache
 
 echo "==> Ejecutando migraciones..."
-php artisan migrate --seed --force
+php artisan migrate:fresh --seed --force
 
 echo "==> Ejecutando seeders..."
 # IMPORTANTE: esto corre en cada deploy. Si tus seeders no son
 # idempotentes (usan firstOrCreate/updateOrCreate), generarás
 # datos duplicados en cada redeploy. Ver nota en el chat.
-php artisan db:seed --force
+# php artisan db:seed --force
 
 # Por esto (aprovecha la variable de entorno PORT que asigna Railway dinámicamente):
 
