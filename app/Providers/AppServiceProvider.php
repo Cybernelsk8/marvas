@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Gate;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,27 +28,21 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Blade::directive('interact', function (mixed $expression): string {
-            // Parsear la expresión como lo hace TallStackUI
             $directive = array_map('trim', preg_split('/,(?![^(]*[)])/', $expression));
-            $directive[1] ??= ''; // Prevenir error cuando no hay segundo parámetro
+            
+            $name      = array_shift($directive) ?? '';
+            $arguments = array_shift($directive) ?? '';
 
-            [$name, $arguments] = $directive;
+            $cleanName = 'column_' . str_replace('.', '_', trim($name, "'\""));
 
-            // Extraer parámetros adicionales
-            $parameters = collect(array_flip($directive))
-                ->except($name, $arguments)
-                ->flip()
-                ->push('$__env')
-                ->implode(',');
-
-            // Normalizar nombre (reemplazar puntos por guiones bajos)
-            $name = 'column_'.str_replace('.', '_', trim($name, "'\""));
-
-            // Devolver código PHP para registrar el slot
-            return "<?php \$__env->slot('{$name}', function({$arguments}) use ({$parameters}) { ?>";
+            return "<?php \$__env->slot('{$cleanName}', function({$arguments}, \$loop = null) use (\$__env, \$__blaze) { ?>";
         });
 
         Blade::directive('endinteract', fn (): string => '<?php }); ?>');
+
+        Gate::before(function ($user, $ability) {
+            return $user->hasRole('Sysadmin') ? true : null;
+        });
     }
 
     /**

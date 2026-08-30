@@ -1,6 +1,7 @@
 {{-- resources/views/components/select.blade.php --}}
 @props([
     'label' => null,
+    'icon' => '',
     'placeholder' => 'Selecciona...',
     'searchable' => false,
     'multiple' => false,
@@ -10,6 +11,7 @@
     'optionValue' => 'id',
     'optionLabel' => 'nombre',
     'optionLabelSeparator' => ' ',
+    'disabled' => false,
 ])
 
 @php
@@ -50,7 +52,7 @@
                 default => 'h-10 py-1.5 px-3 text-base sm:text-sm rounded-lg',
             },
         )
-        ->add('bg-white dark:bg-zinc-700 border shadow-xs')
+        ->add('bg-white dark:bg-white/10 border shadow-xs')
         ->add(
             $invalid
                 ? 'border-red-500 ring-1 ring-red-500/20'
@@ -74,8 +76,67 @@
             search: '',
             selected: @entangle($attributes->wire('model')),
             multiple: @js($multiple),
-            allOptions: @js($normalized),
+            disabled: @js($disabled),
+            allOptions: [],
             focusedIndex: -1,
+            _lastOptionsKey: null,
+        
+            init() {
+                this.rehydrate(true);
+        
+                // Observa cambios en el elemento json-source que Livewire re-renderiza
+                this._observer = new MutationObserver(() => this.rehydrate());
+                this._observer.observe(this.$refs.jsonSource, {
+                    childList: true,
+                    characterData: true,
+                    subtree: true,
+                });
+            },
+        
+            rehydrate(isFirstLoad = false) {
+                if (!this.$refs.jsonSource) return;
+        
+                let parsed = [];
+                try {
+                    parsed = JSON.parse(this.$refs.jsonSource.textContent);
+                } catch (e) {
+                    parsed = [];
+                }
+        
+                const newKey = JSON.stringify(parsed.map(o => o.value));
+                const changed = this._lastOptionsKey !== null && this._lastOptionsKey !== newKey;
+        
+                this.allOptions = parsed;
+                this._lastOptionsKey = newKey;
+        
+                // Si las opciones cambiaron (no es la carga inicial), limpiar seleccion
+                if (changed && !isFirstLoad) {
+                    // Diferimos la escritura para que Livewire termine su ciclo de morph/sync
+                    // antes de tocar la propiedad entangled. Evita el error
+                    // 'cannot be found on component' y que Alpine se rompa a mitad de init.
+        
+                    this.$nextTick(() => {
+                        setTimeout(() => {
+                            try {
+                                const isEmpty = this.multiple ?
+                                    (Array.isArray(this.selected) && this.selected.length === 0) :
+                                    (this.selected === null || this.selected === '' || this.selected === undefined);
+        
+                                if (!isEmpty) {
+                                    this.selected = this.multiple ? [] : null;
+                                }
+                            } catch (e) {
+                                // Si la propiedad entangled todavia no esta lista, lo ignoramos
+                                // silenciosamente; no queremos que Alpine se caiga por esto.
+                                console.warn('flux:select - no se pudo limpiar selected todavia', e);
+                            }
+                        }, 0);
+                    });
+        
+                    this.search = '';
+                    this.focusedIndex = -1;
+                }
+            },
         
             get filteredOptions() {
                 if (this.search === '') return this.allOptions;
@@ -103,6 +164,14 @@
                 if (count === 1) return this.allOptions.find(o => String(o.value) === String(this.selected[0]))?.label ?? '1 seleccionado';
                 return count + ' seleccionados';
             },
+        
+            get activeDescendantId() {
+                if (this.focusedIndex >= 0 && this.filteredOptions[this.focusedIndex]) {
+                    return this.$id('flux-select-option', this.focusedIndex);
+                }
+                return null;
+            },
+        
         
             toggle(value) {
                 if (this.multiple) {
@@ -183,19 +252,32 @@
         role="combobox"
         :aria-expanded="open"
         aria-haspopup="listbox"
-        :aria-activedescendant="focusedIndex >= 0 && filteredOptions[focusedIndex] ? $id('flux-select-option', focusedIndex) : null"
+        :aria-activedescendant="activeDescendantId"
         @if ($invalid)
         aria-invalid="true" data-invalid
         @endif
-        {{ $attributes->except(['wire:model'])->class($classes) }}
+        @if ($disabled)
+            disabled data-disabled
+        @endif
+        {{ $attributes->whereDoesntStartWith('wire:model')->class($classes) }}
         data-flux-control
         >
+        {{-- Script que sirve como puente de datos entre el renderizado de Livewire y Alpine --}}
+        <script type="application/json" x-ref="jsonSource">@json($normalized)</script>
+
+        @if ($icon)
+            <flux:icon
+                :name="$icon"
+                class="size-5 text-zinc-300 shrink-0 transition-transform duration-200"
+                :class="open ? 'rotate-180 text-zinc-600 dark:text-zinc-200' : ''"
+            />
+        @endif
+
         {{-- Trigger --}}
         <div
             @click="open = !open"
-            class="flex justify-between w-full items-center min-w-0 gap-2"
+            class="flex justify-between w-full items-center min-w-0 gap-2 ml-2"
         >
-
             {{-- Single --}}
             <template x-if="!multiple">
                 <span
@@ -213,7 +295,6 @@
             {{-- Multiple con selección --}}
             <template x-if="multiple && selectedItems.length > 0">
                 <div class="flex items-center gap-2 min-w-0 flex-1">
-
                     {{-- Móvil: solo contador compacto --}}
                     <span
                         class="sm:hidden inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/10 text-xs text-zinc-600 dark:text-zinc-200 border border-zinc-200 dark:border-white/5 font-medium"
@@ -251,7 +332,6 @@
                             </span>
                         </template>
                     </div>
-
                 </div>
             </template>
 
@@ -273,7 +353,6 @@
             x-transition:leave-end="opacity-0 translate-y-1"
             class="absolute left-0 top-full mt-1.5 w-full z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden p-1"
         >
-
             {{-- Resumen de seleccionados en móvil (dentro del dropdown) --}}
             <template x-if="multiple && selectedItems.length > 0">
                 <div class="sm:hidden px-1 pt-1 pb-1.5 border-b border-zinc-100 dark:border-white/5 mb-1">

@@ -11,7 +11,7 @@
 <body class="min-h-screen bg-white dark:bg-zinc-800">
     <flux:sidebar
         sticky
-        collapsible="mobile"
+        collapsible
         class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900"
     >
         <flux:sidebar.header class="self-center">
@@ -21,46 +21,71 @@
             >
                 <x-app-logo-icon class="h-24 w-auto" />
             </a>
-            <flux:sidebar.collapse class="lg:hidden" />
+            <flux:sidebar.collapse
+                class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2"
+            />
         </flux:sidebar.header>
 
+        @php
+            function isGroupActive($childrens): bool
+            {
+                // Convertir Collection a array si es necesario
+                if ($childrens instanceof \Illuminate\Support\Collection) {
+                    $childrens = $childrens->toArray();
+                }
+
+                foreach ($childrens as $child) {
+                    $child = is_object($child) ? (array) $child : $child;
+
+                    if (
+                        \Illuminate\Support\Facades\Route::has($child['route']) &&
+                        request()->routeIs($child['route'])
+                    ) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        @endphp
+
         <flux:sidebar.nav>
-            <flux:sidebar.group
-                :heading="__('Platform')"
-                class="grid"
-            >
-                <flux:sidebar.item
-                    icon="home"
-                    :href="route('dashboard')"
-                    :current="request()->routeIs('dashboard')"
-                    wire:navigate
-                >
-                    {{ __('Dashboard') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item
-                    icon="users"
-                    href="#"
-                    :current="false"
-                    wire:navigate
-                >
-                    {{ __('Gestión de Pacientes') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item
-                    icon="calendar"
-                    href="#"
-                    :current="false"
-                    wire:navigate
-                >
-                    {{ __('Agenda / Citas') }}
-                </flux:sidebar.item>
-            </flux:sidebar.group>
+            @foreach (Auth::user()->menu as $page)
+                @if (!empty($page['childrens']))
+                    <flux:sidebar.group
+                        expandable
+                        :heading="$page['label']"
+                        class="grid"
+                        :icon="$page['icon']"
+                        :expanded="isGroupActive($page['childrens'])"
+                    >
+
+                        @foreach ($page['childrens'] as $children)
+                            <flux:sidebar.item
+                                :icon="$children['icon']"
+                                href="{{ Route::has($children['route']) ? route($children['route']) : '#' }}"
+                                wire:navigate
+                            >
+                                {{ $children['label'] }}
+                            </flux:sidebar.item>
+                        @endforeach
+                    </flux:sidebar.group>
+                @else
+                    <flux:sidebar.item
+                        :icon="$page['icon']"
+                        href="{{ Route::has($page['route']) ? route($page['route']) : '#' }}"
+                        wire:navigate
+                    >
+                        {{ $page['label'] }}
+                    </flux:sidebar.item>
+                @endif
+            @endforeach
         </flux:sidebar.nav>
 
         <flux:spacer />
 
         <x-desktop-user-menu
             class="hidden lg:block"
-            :name="auth()->user()->name"
+            :name="auth()->user()->nombre_corto"
         />
     </flux:sidebar>
 
@@ -88,12 +113,12 @@
                     <div class="p-0 text-sm font-normal">
                         <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
                             <flux:avatar
-                                :name="auth()->user()->name"
+                                :name="auth()->user()->nombre_corto"
                                 :initials="auth()->user()->initials()"
                             />
 
                             <div class="grid flex-1 text-start text-sm leading-tight">
-                                <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
+                                <flux:heading class="truncate">{{ auth()->user()->nombre_corto }}</flux:heading>
                                 <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
                             </div>
                         </div>
@@ -138,7 +163,7 @@
 
     @persist('toast')
         <flux:toast.group>
-            <flux:toast />
+            <flux:toast position="bottom start" />
         </flux:toast.group>
     @endpersist
 

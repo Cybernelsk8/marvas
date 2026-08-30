@@ -333,7 +333,7 @@
                         @php $rowLoop = $loop; @endphp
                         <flux:table.row
                             wire:key="{{ $rowData->id }}"
-                            class="dark:hover:bg-neutral-700 hover:bg-neutral-100 text-neutral-600 dark:text-neutral-200 {{ in_array($rowData->id, $this->selectedRows) ? 'dark:bg-zinc-700 bg-zinc-100' : '' }}"
+                            class="dark:hover:bg-zinc-700 hover:bg-neutral-100 text-neutral-600 dark:text-neutral-200 {{ in_array($rowData->id, $this->selectedRows) ? 'dark:bg-zinc-700 bg-zinc-100' : '' }}"
                         >
                             @if ($selectable)
                                 <flux:table.cell

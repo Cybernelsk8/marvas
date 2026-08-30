@@ -1,7 +1,7 @@
 {{-- resources/views/components/date-picker.blade.php --}}
 @props([
     'label' => null,
-    'placeholder' => 'Selecciona una fecha...',
+    'placeholder' => 'dd/mm/aaaa',
     'mode' => 'single', // single | range | multiple
     'months' => 1, // 1 | 2 paneles visibles
     'format' => 'd/m/Y', // formato de salida visible (tokens: d j m n Y y)
@@ -60,7 +60,7 @@
                 default => 'h-10 py-1.5 px-3 text-base sm:text-sm rounded-lg',
             },
         )
-        ->add('bg-white dark:bg-zinc-700 border shadow-xs')
+        ->add('bg-white dark:bg-zinc-600 border shadow-xs dark:placeholder:text-zinc-100')
         ->add(
             $invalid
                 ? 'border-red-500 ring-1 ring-red-500/20'
@@ -186,26 +186,50 @@
             },
         
             handleTypedInput(value) {
-                this.typedText = value;
+                // 1. Extraer solo los números ingresados por el usuario
+                let raw = value.replace(/\D/g, '').slice(0, 8); // Máximo 8 dígitos (DDMMYYYY)
+                let formatted = '';
         
-                if (value.trim() === '') {
+                // 2. Construir la máscara dinámica DD/MM/YYYY
+                if (raw.length > 0) {
+                    formatted = raw.slice(0, 2); // Día
+                }
+                if (raw.length >= 3) {
+                    formatted += '/' + raw.slice(2, 4); // Mes
+                }
+                if (raw.length >= 5) {
+                    formatted += '/' + raw.slice(4, 8); // Año
+                }
+        
+                // 3. Asignar el texto enmascarado
+                this.typedText = formatted;
+        
+                // Si está vacío, resetear estado
+                if (formatted.trim() === '') {
                     this.typedInvalid = false;
                     this.selected = null;
                     return;
                 }
         
-                const cell = this.parseTyped(value);
-                if (!cell || this.isMonthOutOfBounds(cell.y, cell.m) || this.isDisabled(cell)) {
-                    this.typedInvalid = true;
-                    return;
-                }
+                // 4. Intentar parsear como fecha solo si la cadena está completa (DD/MM/YYYY)
+                if (formatted.length === 10) {
+                    const cell = this.parseTyped(formatted);
         
-                this.typedInvalid = false;
-                const iso = this.toISO(cell);
-                this.selected = iso;
-                this.focusedDate = iso;
-                this.viewYear = cell.y;
-                this.viewMonth = cell.m;
+                    if (!cell || this.isMonthOutOfBounds(cell.y, cell.m) || this.isDisabled(cell)) {
+                        this.typedInvalid = true;
+                        return;
+                    }
+        
+                    this.typedInvalid = false;
+                    const iso = this.toISO(cell);
+                    this.selected = iso;
+                    this.focusedDate = iso;
+                    this.viewYear = cell.y;
+                    this.viewMonth = cell.m;
+                } else {
+                    // Mientras esté escribiendo no marcamos la fecha como seleccionada ni como inválida
+                    this.typedInvalid = false;
+                }
             },
         
             daysInMonth(y, m) { return new Date(y, m, 0).getDate(); },
@@ -586,8 +610,10 @@
                         @keydown.enter.prevent="if (!typedInvalid && typedText.trim() !== '') open = false"
                         @keydown.escape="open = false; $event.target.blur()"
                         placeholder="{{ $placeholder }}"
+                        maxlength="10"
+                        inputmode="numeric"
                         autocomplete="off"
-                        class="w-full min-w-0 bg-transparent border-none p-0 text-base sm:text-sm focus:outline-none focus:ring-0 truncate placeholder-zinc-400 dark:placeholder-zinc-500"
+                        class="w-full min-w-0 bg-transparent border-none p-0 text-base sm:text-sm focus:outline-none focus:ring-0 truncate placeholder-zinc-400 dark:placeholder-zinc-400"
                         :class="typedInvalid ? 'text-red-500' : 'text-zinc-800 dark:text-zinc-100'"
                     >
                 @else
