@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('domicilios', function (Blueprint $table) {
             $table->id();
             $table->foreignId('municipio_id')->constrained();
-            $table->foreignId('zona_id')->nullable()->constrained();
+            $table->integer('zona_id')->nullable();
             $table->string('colonia')->nullable();
             $table->string('direccion');
             $table->foreignId('user_information_id')->constrained('user_information');
