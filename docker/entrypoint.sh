@@ -19,8 +19,11 @@ until php artisan db:monitor > /dev/null 2>&1 || php artisan migrate:status > /d
     sleep 3
 done
 
-echo "==> Recreando base de datos y ejecutando seeders..."
-php artisan migrate:fresh --seed --force
+echo "==> Eliminando todas las tablas..."
+php artisan db:wipe --force
+
+echo "==> Ejecutando migraciones y seeders..."
+php artisan migrate --seed --force
 
 echo "==> Generando enlace de storage (si no existe)..."
 if [ ! -L "/var/www/public/storage" ]; then
