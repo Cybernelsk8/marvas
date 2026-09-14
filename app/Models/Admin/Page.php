@@ -9,7 +9,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Page extends Model
 {
     use Searchable, SoftDeletes;
-    
+
+    const type = [
+        'parent' => 'Padre',
+        'child' => 'Hijo',
+    ];
+
     public $timestamps = false;
     protected $fillable = [
         'label',
@@ -22,12 +27,22 @@ class Page extends Model
     ];
 
 
-    public function parent() {
-        return $this->belongsTo(Page::class,'page_id');
+    public function parent()
+    {
+        return $this->belongsTo(Page::class, 'page_id');
     }
 
-    public function children() {
-        return $this->hasMany(Page::class,'page_id');
+    public function children()
+    {
+        return $this->hasMany(Page::class, 'page_id');
     }
 
+    public function getorderLabelAttribute()
+    {
+        if ($this->type == 'parent') {
+            return $this->order;
+        } else {
+            return $this->parent?->order . '.' . $this->order;
+        }
+    }
 }

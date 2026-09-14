@@ -27,6 +27,15 @@
                 @endif
             @endinteract
 
+            @interact('type', $row)
+                <flux:badge
+                    size="sm"
+                    rounded
+                >
+                    {{ $this->typePages()[$row->type] }}
+                </flux:badge>
+            @endinteract
+
             @interact('deleted_at', $row)
                 <flux:icon
                     :name="$row->deleted_at ? 'x-circle' : 'check-circle'"
@@ -127,21 +136,23 @@
                     wire:model.live="page.type"
                 >
                     <flux:select.option value="">-- Seleccione tipo --</flux:select.option>
-                    <flux:select.option value="header">Cabecera</flux:select.option>
-                    <flux:select.option value="parent">Padre</flux:select.option>
-                    <flux:select.option value="page">Página</flux:select.option>
+                    @foreach ($this->typePages() as $type => $label)
+                        <flux:select.option value="{{ $type }}">{{ $label }}</flux:select.option>
+                    @endforeach
                 </flux:select>
 
-                @if (isset($this->page['type']) && $this->page['type'] == 'page')
+                @if (isset($this->page['type']) && $this->page['type'] == 'child')
                     <flux:select
                         label="Padre"
                         wire:model="page.page_id"
                     >
                         <flux:select.option value="">-- Seleccione padre --</flux:select.option>
                         @forelse ($pages as $page)
-                            <flux:select.option value="{{ $page->id }}">
-                                {{ $page->id . ' - ' . $page->label }}
-                            </flux:select.option>
+                            @if ($page->type == 'parent')
+                                <flux:select.option value="{{ $page->id }}">
+                                    {{ $page->id . ' - ' . $page->label }}
+                                </flux:select.option>
+                            @endif
                         @empty
                             <flux:select.option>No hay datos</flux:select.option>
                         @endforelse
@@ -231,12 +242,14 @@
                     wire:model.live="page.type"
                 >
                     <flux:select.option value="">-- Seleccione tipo --</flux:select.option>
-                    <flux:select.option value="header">Cabecera</flux:select.option>
-                    <flux:select.option value="parent">Padre</flux:select.option>
-                    <flux:select.option value="page">Página</flux:select.option>
+                    @foreach ($this->typePages() as $type => $label)
+                        <flux:select.option value="{{ $type }}">
+                            {{ $label }}
+                        </flux:select.option>
+                    @endforeach
                 </flux:select>
 
-                @if (isset($this->page['type']) && $this->page['type'] == 'page')
+                @if (isset($this->page['type']) && $this->page['type'] == 'child')
                     <flux:select
                         label="Padre"
                         wire:model="page.page_id"

@@ -18,10 +18,10 @@ class Pages extends Component
         ['index' => 'label', 'label' => 'Página'],
         ['index' => 'icon', 'label' => 'Icono'],
         ['index' => 'route', 'label' => 'Ruta'],
-        ['index' => 'order', 'label' => 'Orden'],
+        ['index' => 'order_label', 'label' => 'Orden'],
         ['index' => 'deleted_at', 'label' => 'Estado'],
         ['index' => 'parent.label', 'label' => 'Padre'],
-        ['index' => 'type', 'label' => 'Tipo'],
+        ['index' => 'type', 'label' => 'Tipo', 'align' => 'center'],
         ['index' => 'permission_name', 'label' => 'Permiso'],
         ['index' => 'actions', 'label' => '', 'width' => '100px'],
     ];
@@ -53,11 +53,13 @@ class Pages extends Component
         return $query->paginate($this->per_page ?? 10);
     }
 
+    public function mount(): void {}
+
     public function render()
     {
         $pages = Page::query()
             ->orderBy('label')
-            ->get(['id', 'label']);
+            ->get(['id', 'label', 'type']);
 
         $permissions = Permission::where('name', 'like', '%page.view%')
             ->orderBy('name')
@@ -73,8 +75,8 @@ class Pages extends Component
             'page.icon' => 'nullable|string|max:255',
             'page.route' => 'nullable|string|max:255',
             'page.order' => 'nullable|integer',
-            'page.type' => 'required|in:header,parent,page',
-            'page.page_id' => 'required_if:page.type,page|nullable|exists:pages,id',
+            'page.type' => 'required|in:header,parent,child,page',
+            'page.page_id' => 'required_if:page.type,child|nullable|exists:pages,id',
             'page.permission_name' => 'nullable|string|exists:permissions,name',
         ]);
 
@@ -109,8 +111,8 @@ class Pages extends Component
             'page.icon' => 'nullable|string|max:255',
             'page.route' => 'nullable|string|max:255',
             'page.order' => 'nullable|integer',
-            'page.type' => 'required|in:header,parent,page',
-            'page.page_id' => 'required_if:page.type,page|nullable|exists:pages,id',
+            'page.type' => 'required|in:header,parent,child,page',
+            'page.page_id' => 'required_if:page.type,child|nullable|exists:pages,id',
             'page.permission_name' => 'nullable|string|exists:permissions,name',
         ]);
 
@@ -133,7 +135,10 @@ class Pages extends Component
 
             $this->resetData();
         } catch (\Throwable $th) {
-            Flux::toast(text: 'Error al actualizar la página.', variant: 'danger');
+            Flux::toast(
+                variant: 'danger',
+                text: 'Error al actualizar la página.' . $th->getMessage()
+            );
         }
     }
 
@@ -180,5 +185,10 @@ class Pages extends Component
         $this->reset('page');
         $this->resetValidation();
         Flux::modals()->close();
+    }
+
+    public function typePages(): array
+    {
+        return Page::type;
     }
 }

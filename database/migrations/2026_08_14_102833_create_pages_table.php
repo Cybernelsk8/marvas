@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('icon')->default('question-mark-circle');
             $table->string('route')->nullable();
             $table->integer('order')->nullable();
-            $table->enum('type',['header','parent','page'])->default('page');
+            $table->enum('type', ['header', 'parent', 'child', 'page',])->default('page');
             $table->string('permission_name')->nullable();
             $table->foreignId('page_id')->nullable()->constrained();
             $table->softDeletes();

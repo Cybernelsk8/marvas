@@ -50,7 +50,7 @@
 
         <flux:sidebar.nav>
             @foreach (Auth::user()->menu as $page)
-                @if (!empty($page['childrens']))
+                @if (count($page['childrens']))
                     <flux:sidebar.group
                         expandable
                         :heading="$page['label']"
