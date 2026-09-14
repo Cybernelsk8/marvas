@@ -40,21 +40,23 @@
       - Slot opcional `eventItem` para personalizar cómo se ve cada evento
         dentro de la celda (recibe la variable Alpine `event` en scope).
 --}}
+{{-- resources/views/components/calendar.blade.php --}}
+{{-- resources/views/components/calendar.blade.php --}}
 @props([
     'label' => null,
-    'size' => 'auto', // sm | md | lg | xl | auto
-    'minSize' => 'sm', // piso de tamaño cuando size = auto
-    'maxPreview' => 3, // eventos visibles dentro de la celda (solo lg/xl)
-    'events' => [], // ['2026-08-01' => [['title' => '...', 'time' => '...', 'color' => '#3b82f6']]]
-    'weekStartsOn' => 1, // 0 = domingo, 1 = lunes
-    'minDate' => null, // 'Y-m-d'
-    'maxDate' => null, // 'Y-m-d'
+    'size' => 'auto',
+    'minSize' => 'sm',
+    'maxPreview' => 3,
+    'events' => [],
+    'weekStartsOn' => 1,
+    'minDate' => null,
+    'maxDate' => null,
     'disabledDates' => [],
     'disabledRanges' => [],
     'disabledDaysOfWeek' => [],
-    'initialMonth' => null, // 'Y-m', si no se define arranca en el mes actual
-    'eventName' => 'calendar-day-selected', // evento Livewire despachado al hacer click en un día
-    'autoMaxWidth' => '42rem', // ancho máximo cuando size = auto
+    'initialMonth' => null,
+    'eventName' => 'calendar-day-selected',
+    'autoMaxWidth' => '42rem',
 ])
 
 @php
@@ -62,6 +64,7 @@
     $size = in_array($size, [...$tierOrder, 'auto']) ? $size : 'auto';
     $minSize = in_array($minSize, $tierOrder) ? $minSize : 'sm';
     $hasModel = (bool) $attributes->whereStartsWith('wire:model')->first();
+    $modelName = $hasModel ? $attributes->wire('model')->value() : null;
 
     $monthNames = [
         'Enero',
@@ -80,8 +83,6 @@
     $dayNamesShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     $orderedDayNames = collect(range(0, 6))->map(fn($i) => $dayNamesShort[($weekStartsOn + $i) % 7])->toArray();
 
-    // Definición de los 4 tiers de tamaño: umbral de contenedor (px), ancho
-    // mínimo de celda y tipografía/aspecto asociados a cada uno.
     $tierDefs = [
         'sm' => [
             'min' => 0,
@@ -129,19 +130,24 @@
 
     if ($size === 'auto') {
         $baseTier = $tierDefs[$minSize];
-        $aboveTiers = array_slice($tierOrder, $floorIdx + 1); // tiers que reciben su propio bloque @container
+        $aboveTiers = array_slice($tierOrder, $floorIdx + 1);
         $isContainer = true;
         $boxWidthStyle = "width:100%; max-width:{$autoMaxWidth};";
     } else {
         $baseTier = $tierDefs[$size];
         $aboveTiers = [];
         $isContainer = false;
-        $fixedWidth = $baseTier['cellMin'] * 7 + 48; // 7 celdas + 6 gaps(4px) + padding del box (p-3 = 12px * 2)
+        $fixedWidth = $baseTier['cellMin'] * 7 + 48;
         $boxWidthStyle = "max-width:{$fixedWidth}px;";
     }
 
-    // Sufijo único por instancia para no chocar si hay varios calendarios en la misma vista.
     $scopeId = 'fxcal' . substr(md5(uniqid((string) mt_rand(), true)), 0, 8);
+
+    // Determinar la fecha inicial base (servidor)
+    $defaultMonth = $initialMonth ?: date('Y-m');
+    [$defaultYearVal, $defaultMonthVal] = explode('-', $defaultMonth);
+    $defaultYearVal = (int) $defaultYearVal;
+    $defaultMonthVal = (int) $defaultMonthVal;
 @endphp
 
 <div class="grid gap-2.5">
@@ -225,10 +231,9 @@
         @endforeach
     </style>
 
-    {{-- Envoltorio: centra el calendario; el ancho real lo decide el propio CSS --}}
     <div class="w-full flex justify-center">
         <div
-            class="{{ $scopeId }}-box rounded-xl border border-zinc-200 dark:border-white/10 shadow-xs bg-white dark:bg-zinc-800 md:p-3 overflow-x-auto"
+            class="{{ $scopeId }}-box rounded-xl border border-zinc-200 dark:border-white/10 shadow-xs bg-white dark:bg-zinc-800 p-3 overflow-x-auto"
             style="{{ $boxWidthStyle }}"
             x-data="{
                 events: @js($events),
@@ -242,43 +247,41 @@
                 dayNames: @js($orderedDayNames),
                 maxPreview: @js((int) $maxPreview),
             
-                @if ($hasModel) selected: @entangle($attributes->wire('model')),
-                @else
-                selected: null, @endif
+                @if ($hasModel) selected: @entangle($attributes->wire('model')), @else selected: null, @endif
             
-                viewYear: null,
-                viewMonth: '0',
-                yearInput: '',
+                viewYear: {{ $defaultYearVal }},
+                viewMonth: {{ $defaultMonthVal }},
+                yearInput: '{{ $defaultYearVal }}',
             
                 init() {
-                    const initialMonth = @js($initialMonth);
-                    let base = initialMonth ? this.parseISO(initialMonth + '-01') : this.today();
-            
-                    if (this.isMonthOutOfBounds(base.y, base.m)) {
-                        const today = this.today();
-                        if (!this.isMonthOutOfBounds(today.y, today.m)) {
-                            base = today;
-                        } else {
-                            if (this.minDate) {
-                                const min = this.parseISO(this.minDate);
-                                base = { y: min.y, m: min.m, d: 1 };
-                            } else if (this.maxDate) {
-                                const max = this.parseISO(this.maxDate);
-                                base = { y: max.y, m: max.m, d: 1 };
-                            } else {
-                                base = today;
-                            }
+                    if (this.selected) {
+                        const parsed = this.parseISO(this.selected);
+                        if (parsed && parsed.y && parsed.m) {
+                            this.viewYear = parsed.y;
+                            this.viewMonth = parsed.m;
+                            this.yearInput = String(parsed.y);
                         }
                     }
             
-                    // Asignar valores
-                    this.viewYear = base.y;
-                    this.viewMonth = base.m;
-                    this.yearInput = String(base.y);
+                    this.$watch('selected', (newVal) => {
+                        if (newVal) {
+                            const parsed = this.parseISO(newVal);
+                            if (parsed && parsed.y && parsed.m) {
+                                this.viewYear = parsed.y;
+                                this.viewMonth = parsed.m;
+                                this.yearInput = String(parsed.y);
+                            }
+                        }
+                    });
                 },
             
                 pad(n) { return String(n).padStart(2, '0'); },
-                parseISO(iso) { const [y, m, d] = iso.split('-').map(Number); return { y, m, d }; },
+                parseISO(iso) {
+                    if (!iso || typeof iso !== 'string') return null;
+                    const parts = iso.split('-');
+                    if (parts.length < 3) return null;
+                    return { y: Number(parts[0]), m: Number(parts[1]), d: Number(parts[2]) };
+                },
                 toISO(cell) { return `${cell.y}-${this.pad(cell.m)}-${this.pad(cell.d)}`; },
                 today() { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; },
                 isToday(cell) { if (!cell) return false; const t = this.today(); return cell.y === t.y && cell.m === t.m && cell.d === t.d; },
@@ -307,29 +310,63 @@
                     return arr;
                 },
                 isMonthOutOfBounds(y, m) {
-                    if (this.minDate) { const min = this.parseISO(this.minDate); if (y < min.y || (y === min.y && m < min.m)) return true; }
-                    if (this.maxDate) { const max = this.parseISO(this.maxDate); if (y > max.y || (y === max.y && m > max.m)) return true; }
+                    if (this.minDate) { const min = this.parseISO(this.minDate); if (min && (y < min.y || (y === min.y && m < min.m))) return true; }
+                    if (this.maxDate) { const max = this.parseISO(this.maxDate); if (max && (y > max.y || (y === max.y && m > max.m))) return true; }
                     return false;
                 },
-                get canGoPrev() { let m = this.viewMonth - 1,
-                        y = this.viewYear; if (m < 1) { m = 12;
-                        y -= 1; } return !this.isMonthOutOfBounds(y, m); },
-                get canGoNext() { let m = this.viewMonth + 1,
-                        y = this.viewYear; if (m > 12) { m = 1;
-                        y += 1; } return !this.isMonthOutOfBounds(y, m); },
+                get canGoPrev() {
+                    let m = this.viewMonth - 1,
+                        y = this.viewYear;
+                    if (m < 1) {
+                        m = 12;
+                        y -= 1;
+                    }
+                    return !this.isMonthOutOfBounds(y, m);
+                },
+                get canGoNext() {
+                    let m = this.viewMonth + 1,
+                        y = this.viewYear;
+                    if (m > 12) {
+                        m = 1;
+                        y += 1;
+                    }
+                    return !this.isMonthOutOfBounds(y, m);
+                },
                 get canGoToday() { const t = this.today(); return !this.isMonthOutOfBounds(t.y, t.m); },
-                prevMonth() { if (!this.canGoPrev) return;
-                    this.viewMonth -= 1; if (this.viewMonth < 1) { this.viewMonth = 12;
-                        this.viewYear -= 1; } this.yearInput = String(this.viewYear); },
-                nextMonth() { if (!this.canGoNext) return;
-                    this.viewMonth += 1; if (this.viewMonth > 12) { this.viewMonth = 1;
-                        this.viewYear += 1; } this.yearInput = String(this.viewYear); },
-                goToday() { if (!this.canGoToday) return; const t = this.today();
+                prevMonth() {
+                    if (!this.canGoPrev) return;
+                    this.viewMonth -= 1;
+                    if (this.viewMonth < 1) {
+                        this.viewMonth = 12;
+                        this.viewYear -= 1;
+                    }
+                    this.yearInput = String(this.viewYear);
+                },
+                nextMonth() {
+                    if (!this.canGoNext) return;
+                    this.viewMonth += 1;
+                    if (this.viewMonth > 12) {
+                        this.viewMonth = 1;
+                        this.viewYear += 1;
+                    }
+                    this.yearInput = String(this.viewYear);
+                },
+                goToday() {
+                    if (!this.canGoToday) return;
+                    const t = this.today();
                     this.viewYear = t.y;
                     this.viewMonth = t.m;
-                    this.yearInput = String(t.y); },
-                setMonth(m) { m = Number(m); if (this.isMonthOutOfBounds(this.viewYear, m)) return;
-                    this.viewMonth = m; },
+                    this.yearInput = String(t.y);
+                },
+                setMonth(val) {
+                    this.viewMonth = parseInt(val, 10);
+                    if (!this.isMonthOutOfBounds(this.viewYear, this.viewMonth)) return;
+                    if (this.minDate && this.viewYear === this.parseISO(this.minDate).y) {
+                        this.viewMonth = this.parseISO(this.minDate).m;
+                    } else if (this.maxDate && this.viewYear === this.parseISO(this.maxDate).y) {
+                        this.viewMonth = this.parseISO(this.maxDate).m;
+                    }
+                },
                 applyYear() {
                     let y = parseInt(this.yearInput, 10);
                     if (isNaN(y)) { this.yearInput = String(this.viewYear); return; }
@@ -366,63 +403,49 @@
                 },
             }"
         >
-            {{-- Header: navegación + mes + año + Hoy --}}
-            <div class="flex items-center justify-center gap-2 mb-3">
-                <flux:button
-                    x-bind:disabled="!canGoPrev"
-                    @click="prevMonth()"
-                    x-bind:class="canGoPrev ? 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer' :
-                        'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'"
-                    class="p-1 rounded-md transition-colors shrink-0"
-                    aria-label="Mes anterior"
-                    icon="chevron-left"
-                    variant="ghost"
-                    size="sm"
-                />
+            {{-- Header: navegación + mes (Flux) + año (Flux) + Hoy --}}
+            <div class="flex items-center justify-between gap-1 mb-3">
+                <div class="flex items-center gap-1">
+                    <flux:button
+                        x-bind:disabled="!canGoPrev"
+                        @click="prevMonth()"
+                        aria-label="Mes anterior"
+                        icon="chevron-left"
+                        variant="subtle"
+                        size="sm"
+                        square
+                    />
 
-                <div class="{{ $scopeId }}-header-text flex items-center gap-1">
-                    <select
+                    <flux:select
+                        size="xs"
                         x-model="viewMonth"
                         @change="setMonth($event.target.value)"
-                        class="bg-transparent border-none font-medium text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-0 cursor-pointer"
+                        class="w-32"
                     >
-                        <template
-                            x-for="(name, idx) in monthNames"
-                            :key="idx"
-                        >
-                            <option
-                                :value="idx + 1"
-                                :selected="idx + 1 === viewMonth"
-                                :disabled="isMonthOutOfBounds(viewYear, idx + 1)"
-                                x-text="name"
-                            />
-                        </template>
-                    </select>
+                        @foreach ($monthNames as $idx => $name)
+                            <flux:select.option
+                                value="{{ $idx + 1 }}"
+                                x-bind:disabled="isMonthOutOfBounds(viewYear, {{ $idx + 1 }})"
+                            >
+                                {{ $name }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
 
-                    <input
-                        type="text"
-                        inputmode="numeric"
-                        autocomplete="off"
-                        :list="$id('{{ $scopeId }}-year')"
+                <div class="flex items-center gap-1">
+                    <flux:input
+                        size="xs"
+                        type="number"
                         x-model="yearInput"
                         @change="applyYear()"
                         @keydown.enter.prevent="applyYear()"
-                        class="w-16 bg-transparent border-none p-0 font-medium text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-0 text-center"
-                    >
-                    <datalist id="{{ $scopeId }}-year">
-                        <template
-                            x-for="y in yearOptions"
-                            :key="y"
-                        >
-                            <option :value="y"></option>
-                        </template>
-                    </datalist>
-                </div>
+                        class="w-20 text-center"
+                    />
 
-                <div class="flex items-center gap-1 shrink-0">
                     <flux:button
                         size="sm"
-                        variant="ghost"
+                        variant="subtle"
                         x-bind:disabled="!canGoToday"
                         @click="goToday()"
                     >
@@ -432,13 +455,11 @@
                     <flux:button
                         x-bind:disabled="!canGoNext"
                         @click="nextMonth()"
-                        x-bind:class="canGoNext ? 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer' :
-                            'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'"
-                        class="p-1 rounded-md transition-colors shrink-0"
                         aria-label="Mes siguiente"
                         icon="chevron-right"
-                        variant="ghost"
-                        size="xs"
+                        variant="subtle"
+                        size="sm"
+                        square
                     />
                 </div>
             </div>
@@ -489,7 +510,6 @@
                                     x-text="cell.d"
                                 ></span>
 
-                                {{-- Previsualización de eventos (visible solo en tiers lg/xl vía CSS) --}}
                                 <div
                                     class="{{ $scopeId }}-preview mt-0.5 w-full px-1 flex-col gap-0.5 overflow-hidden">
                                     <template
@@ -514,7 +534,6 @@
                                     </template>
                                 </div>
 
-                                {{-- Indicador simple para tiers compactos (visible solo en sm/md vía CSS) --}}
                                 <template x-if="dayEvents(cell).length > 0">
                                     <span
                                         class="{{ $scopeId }}-dot absolute bottom-1 size-1 rounded-full"
@@ -529,4 +548,8 @@
             </div>
         </div>
     </div>
+
+    @if ($hasModel)
+        <flux:error name="{{ $modelName }}" />
+    @endif
 </div>

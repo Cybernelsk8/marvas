@@ -1,15 +1,19 @@
 <div class="dark:bg-zinc-800 rounded-xl">
     <flux:card>
-        <div class="grid xl:grid-cols-3 gap-4 text-cyan-950">
+        <form
+            wire:submit.prevent="store"
+            class="grid xl:grid-cols-3 gap-4 text-cyan-950"
+        >
             <div>
                 <flux:radio.group
                     label="Elige el tipo de cita *"
                     variant="cards"
                     class="flex-col"
-                    wire:model="cita.tipo"
+                    wire:model="tipo"
+                    required
                 >
                     <flux:radio
-                        value="primera_consulta"
+                        value="primera_vez"
                         label="Primer consulta"
                         description="Primera cita para diagnostico y evaluación"
                         class="cursor-pointer"
@@ -26,7 +30,7 @@
                 <x-calendar
                     wire:key="cita-fecha"
                     label="Selecciona la fecha de tu cita *"
-                    wire:model="cita.fecha"
+                    wire:model="fecha"
                     :min-date="now()->format('Y-m')"
                     :max-date="now()->addMonths(3)->format('Y-m-d')"
                     size="md"
@@ -34,9 +38,9 @@
                 <div class="py-5">
                     <flux:radio.group
                         label="Selecciona la hora de tu cita *"
-                        wire:model="cita.hora"
+                        wire:model="hora"
                         variant="pills"
-                        class=""
+                        required
                     >
                         <flux:radio
                             label="09:00 am"
@@ -64,16 +68,23 @@
             </div>
             <div class="space-y-4">
                 <flux:input
-                    label="Nombre completo *"
+                    label="Nombres"
                     icon="user"
-                    wire:model="cita.nombre"
-                    placeholder="Nombre completo"
+                    wire:model="nombres"
+                    placeholder="Nombres"
+                    required
+                />
+                <flux:input
+                    label="Apellidos"
+                    icon="user"
+                    wire:model="apellidos"
+                    placeholder="Apellidos"
                     required
                 />
                 <flux:input
                     label="Teléfono *"
                     icon="phone"
-                    wire:model="cita.telefono"
+                    wire:model="telefono"
                     type="tel"
                     mask="9999-9999"
                     maxlength="9"
@@ -83,23 +94,22 @@
                 <flux:input
                     label="Correo electrónico "
                     icon="envelope"
-                    wire:model="cita.email"
+                    wire:model="email"
                     placeholder="email@dominio.com"
                 />
                 <flux:textarea
                     label="Motivo de consulta *"
-                    wire:model="cita.mensaje"
+                    wire:model="mensaje"
                     placeholder="Mensaje (opcional)"
                 />
                 <flux:button
+                    type="submit"
                     icon="calendar"
-                    wire:click="agendarCita"
                     class="btn--primary w-full"
                 >
                     Agendar cita
                 </flux:button>
             </div>
-        </div>
-
+        </form>
     </flux:card>
 </div>
