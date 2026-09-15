@@ -44,7 +44,7 @@ class DatabaseSeeder extends Seeder
             'route' => 'admin.users.index',
             'icon' => 'users',
             'page_id' => 1,
-            'type' => 'page',
+            'type' => 'child',
             'order' => 1,
             'permission_name' => 'page.view.users'
         ]);
@@ -54,7 +54,7 @@ class DatabaseSeeder extends Seeder
             'route' => 'admin.pages',
             'icon' => 'window',
             'page_id' => 1,
-            'type' => 'page',
+            'type' => 'child',
             'order' => 2,
             'permission_name' => 'page.view.pages'
         ]);
@@ -65,7 +65,7 @@ class DatabaseSeeder extends Seeder
             'route' => 'admin.roles',
             'icon' => 'tag',
             'page_id' => 1,
-            'type' => 'page',
+            'type' => 'child',
             'order' => 3,
             'permission_name' => 'page.view.roles'
         ]);
@@ -75,7 +75,7 @@ class DatabaseSeeder extends Seeder
             'route' => 'admin.permissions',
             'icon' => 'lock-closed',
             'page_id' => 1,
-            'type' => 'page',
+            'type' => 'child',
             'order' => 4,
             'permission_name' => 'page.view.permissions'
         ]);

@@ -14,7 +14,6 @@ class Paciente extends Model
     protected $table = 'pacientes';
 
     protected $fillable = [
-        'codigo_expediente',
         'nombres',
         'apellidos',
         'fecha_nacimiento',
@@ -32,6 +31,10 @@ class Paciente extends Model
         'activo',
     ];
 
+    protected $appends = [
+        'nombre_completo',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -40,11 +43,17 @@ class Paciente extends Model
         ];
     }
 
-    // --- Accesores ---
+    public function getAccessorMap(): array
+    {
+        return [
+            'nombre_completo' => ['nombres', 'apellidos'],
+        ];
+    }
 
+    // --- Accesores ---
     public function getNombreCompletoAttribute(): string
     {
-        return trim("{$this->nombre} {$this->apellidos}");
+        return trim("{$this->nombres} {$this->apellidos}");
     }
 
     // --- Relaciones ---

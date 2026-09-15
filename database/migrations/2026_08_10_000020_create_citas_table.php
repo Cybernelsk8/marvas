@@ -17,15 +17,15 @@ return new class extends Migration
                 ->constrained('expediente_maestro')
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
-            $table->foreignId('sucursal_id')
+            $table->foreignId('sucursal_id')->nullable()
                 ->constrained('sucursales')
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
-            $table->foreignId('profesional_id')
+            $table->foreignId('profesional_id')->nullable()
                 ->constrained('profesionales')
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
-            $table->foreignId('especialidad_id')
+            $table->foreignId('especialidad_id')->nullable()
                 ->constrained('especialidades')
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
@@ -34,7 +34,7 @@ return new class extends Migration
                 ->constrained('paquetes_paciente')
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
-            $table->foreignId('agendada_por')
+            $table->foreignId('agendada_por')->nullable()
                 ->comment('FK a usuarios')
                 ->constrained('users')
                 ->restrictOnDelete()
@@ -50,6 +50,7 @@ return new class extends Migration
                 'procedimiento',
             ])->default('seguimiento');
             $table->enum('estado', [
+                'solicitada',
                 'agendada',
                 'confirmada',
                 'en_atencion',

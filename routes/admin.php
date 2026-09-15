@@ -8,26 +8,26 @@ use App\Livewire\Admin\User\Index;
 use App\Livewire\Admin\User\Show;
 use Illuminate\Support\Facades\Route;
 
-Route::get('users', Index::class)
+Route::livewire('users', Index::class)
     ->middleware(['can:page.view.users'])
     ->name('admin.users.index');
 
-Route::get('users/{user}', Show::class)
+Route::livewire('users/{user}', Show::class)
     ->middleware(['can:page.view.users'])
     ->name('admin.users.show');
 
-Route::get('pages', Pages::class)
+Route::livewire('pages', Pages::class)
     ->middleware(['can:page.view.pages'])
     ->name('admin.pages');
 
-Route::get('roles', Roles::class)
+Route::livewire('roles', Roles::class)
     ->middleware(['can:page.view.roles'])
     ->name('admin.roles');
 
-Route::get('permissions', Permissions::class)
+Route::livewire('permissions', Permissions::class)
     ->middleware(['can:page.view.permissions'])
     ->name('admin.permissions');
 
-Route::get('areas', Areas::class)
+Route::livewire('areas', Areas::class)
     ->middleware(['can:page.view.areas'])
     ->name('admin.areas');

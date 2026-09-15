@@ -26,7 +26,7 @@ class AgendarCita extends Component
             'tipo' => 'required|in:primera_vez,seguimiento',
             'nombres' => 'required|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$/u|',
             'apellidos' => 'required|string|max:150|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$/u|',
-            'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+            'email' => 'nullable|email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'telefono' => 'required|regex:/^\d{4}-\d{4}$/',
             'mensaje' => 'nullable',
             'fecha' => 'required|date|date_format:Y-m-d',
@@ -74,6 +74,8 @@ class AgendarCita extends Component
                     throw new \Exception('No se pudo crear la cita');
                 }
 
+                $this->resetData();
+
                 Flux::toast(
                     variant: 'success',
                     text: 'Cita agendada correctamente, pronto nos pondremos en contacto contigo.',
@@ -86,5 +88,19 @@ class AgendarCita extends Component
                 text: 'Ocurrió un error al agendar la cita, por favor intenta nuevamente.' . $th->getMessage()
             );
         }
+    }
+
+    private function resetData()
+    {
+        $this->reset([
+            'tipo',
+            'nombres',
+            'apellidos',
+            'email',
+            'telefono',
+            'mensaje',
+            'fecha',
+            'hora',
+        ]);
     }
 }

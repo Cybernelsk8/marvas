@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Cita extends Model
 {
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $table = 'citas';
 
@@ -93,7 +94,7 @@ class Cita extends Model
         return static::query()
             ->where('profesional_id', $profesionalId)
             ->whereNotIn('estado', ['cancelada', 'no_asistio'])
-            ->when($ignorarCitaId, fn ($q) => $q->whereKeyNot($ignorarCitaId))
+            ->when($ignorarCitaId, fn($q) => $q->whereKeyNot($ignorarCitaId))
             ->where('fecha_hora_inicio', '<', $fin)
             ->where('fecha_hora_fin', '>', $inicio)
             ->lockForUpdate()

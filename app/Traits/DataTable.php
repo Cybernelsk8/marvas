@@ -30,7 +30,7 @@ trait DataTable
     protected array $stringOperators = ['like', 'not like'];
     protected array $nullOperators = ['null', 'not null'];
 
-    protected array $queryString = [
+    public array $queryString = [
         'search'        => ['except' => ''],
         'sortBy'        => ['except' => 'id'],
         'sortDirection' => ['except' => 'desc'],
@@ -351,5 +351,123 @@ trait DataTable
         } else {
             $this->selectedRows = $currentPageIds;
         }
+    }
+
+    // ========== MÉTODOS PÚBLICOS PARA VISTAS ==========
+
+    /**
+     * Establece o actualiza un filtro directo por campo.
+     * Si el campo ya existe en $filters, actualiza su operador y valor.
+     * Si no existe, reemplaza la primera fila vacía o agrega una nueva.
+     */
+    public function setFilter(string $field, string $operator, mixed $value): void
+    {
+        // Limpiamos el valor por si viene vacío
+        if ($value === '' || $value === null) {
+            $this->removeFilter($field);
+            return;
+        }
+
+        $existingIndex = collect($this->filters)->search(
+            fn($f) => ($f['field'] ?? '') === $field
+        );
+
+        if ($existingIndex !== false) {
+            // Actualizar filtro existente
+            $this->filters[$existingIndex] = [
+                'field'    => $field,
+                'operator' => $operator,
+                'value'    => $value,
+            ];
+        } else {
+            // Si la primera fila es el filtro vacío por defecto, lo reemplazamos
+            if (count($this->filters) === 1 && empty($this->filters[0]['field'])) {
+                $this->filters[0] = [
+                    'field'    => $field,
+                    'operator' => $operator,
+                    'value'    => $value,
+                ];
+            } else {
+                // Si ya hay otros filtros activos, agregamos uno nuevo
+                $this->filters[] = [
+                    'field'    => $field,
+                    'operator' => $operator,
+                    'value'    => $value,
+                ];
+            }
+        }
+
+        $this->resetPage();
+    }
+
+    /**
+     * Elimina todos los filtros aplicados a un campo específico.
+     */
+    public function removeFilter(string $field): void
+    {
+        $this->filters = collect($this->filters)
+            ->reject(fn($f) => ($f['field'] ?? '') === $field)
+            ->values()
+            ->toArray();
+
+        // Si nos quedamos sin filtros, mantenemos la estructura base vacía
+        if (empty($this->filters)) {
+            $this->filters = [['field' => '', 'operator' => '', 'value' => '']];
+        }
+
+        $this->resetPage();
+    }
+
+    /**
+     * Alterna el orden de un campo (ASC -> DESC -> ASC).
+     * Si es un campo nuevo, establece 'asc' por defecto.
+     */
+    public function sortBy(string $field): void
+    {
+        if ($this->sortBy === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy = $field;
+            $this->sortDirection = 'asc';
+        }
+
+        $this->resetPage();
+    }
+
+    /**
+     * Establece explícitamente el campo y la dirección del orden.
+     */
+    public function setSort(string $field, string $direction = 'asc'): void
+    {
+        $this->sortBy = $field;
+        $this->sortDirection = strtolower($direction) === 'desc' ? 'desc' : 'asc';
+
+        $this->resetPage();
+    }
+
+    /**
+     * Helper para saber si un campo específico está activo en el ordenamiento actual.
+     */
+    public function isSortedBy(string $field, ?string $direction = null): bool
+    {
+        if ($this->sortBy !== $field) {
+            return false;
+        }
+
+        if ($direction !== null) {
+            return $this->sortDirection === strtolower($direction);
+        }
+
+        return true;
+    }
+
+    /**
+     * Restablece el ordenamiento al estado por defecto o lo vacía.
+     */
+    public function clearSort(): void
+    {
+        $this->reset(['sortBy', 'sortDirection']);
+
+        $this->resetPage();
     }
 }
