@@ -99,7 +99,7 @@
                     icon="calendar"
                     class="btn--primary w-full"
                 >
-                    Agendar cita
+                    Solicitar cita
                 </flux:button>
             </div>
         </form>

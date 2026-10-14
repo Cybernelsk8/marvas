@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\LandingPage\FormularioPaciente;
 use App\Livewire\Solicitud;
 use Illuminate\Support\Facades\Route;
 
@@ -9,10 +10,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
 
-require __DIR__ . '/settings.php';
-
+require __DIR__.'/settings.php';
 
 // SOLICITUDES DE CITA Y LLENADO DE FORMULARIO DE PACIENTE
 
+Route::livewire('formulario-paciente/{cita}', FormularioPaciente::class)
+    ->name('formulario-paciente')
+    ->middleware('signed');
 
-Route::livewire('solicitudes', Solicitud::class)->name('solicitudes')->middleware(['auth', 'verified']);
+Route::livewire('solicitudes', Solicitud::class)
+    ->name('solicitudes')
+    ->middleware(['auth', 'verified', 'can:page.view.requests']);

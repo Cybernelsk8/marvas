@@ -39,7 +39,9 @@ return new class extends Migration
             $table->index('plan_id', 'fk_paqpac_plan');
         });
 
-        DB::statement('ALTER TABLE paquetes_paciente ADD CONSTRAINT chk_sesiones CHECK (sesiones_usadas <= sesiones_totales)');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE paquetes_paciente ADD CONSTRAINT chk_sesiones CHECK (sesiones_usadas <= sesiones_totales)');
+        }
     }
 
     public function down(): void

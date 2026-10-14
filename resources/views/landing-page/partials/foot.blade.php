@@ -65,7 +65,7 @@
         class="btn--gold"
         iconTrailing="chevron-right"
     >
-        AGENDA TU CITA AHORA
+        SOLICITA TU CITA AHORA
     </flux:button>
 </section>
 <footer class="footer">

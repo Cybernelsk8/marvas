@@ -27,8 +27,7 @@
         </flux:sidebar.header>
 
         @php
-            function isGroupActive($childrens): bool
-            {
+            $isGroupActive = function ($childrens): bool {
                 // Convertir Collection a array si es necesario
                 if ($childrens instanceof \Illuminate\Support\Collection) {
                     $childrens = $childrens->toArray();
@@ -45,7 +44,7 @@
                     }
                 }
                 return false;
-            }
+            };
         @endphp
 
         <flux:sidebar.nav>
@@ -56,7 +55,7 @@
                         :heading="$page['label']"
                         class="grid"
                         :icon="$page['icon']"
-                        :expanded="isGroupActive($page['childrens'])"
+                        :expanded="$isGroupActive($page['childrens'])"
                     >
 
                         @foreach ($page['childrens'] as $children)

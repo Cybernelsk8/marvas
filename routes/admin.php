@@ -1,9 +1,11 @@
 <?php
 
 use App\Livewire\Admin\Areas;
+use App\Livewire\Admin\Availability;
 use App\Livewire\Admin\Pages;
 use App\Livewire\Admin\Permissions;
 use App\Livewire\Admin\Roles;
+use App\Livewire\Admin\Schedule;
 use App\Livewire\Admin\User\Index;
 use App\Livewire\Admin\User\Show;
 use Illuminate\Support\Facades\Route;
@@ -31,3 +33,11 @@ Route::livewire('permissions', Permissions::class)
 Route::livewire('areas', Areas::class)
     ->middleware(['can:page.view.areas'])
     ->name('admin.areas');
+
+Route::livewire('availability', Availability::class)
+    ->middleware(['can:page.view.schedule'])
+    ->name('admin.availability');
+
+Route::livewire('schedule', Schedule::class)
+    ->middleware(['can:page.view.schedule'])
+    ->name('admin.schedule');

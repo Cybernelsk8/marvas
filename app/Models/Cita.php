@@ -95,7 +95,21 @@ class Cita extends Model
         return static::query()
             ->where('profesional_id', $profesionalId)
             ->whereNotIn('estado', ['cancelada', 'no_asistio'])
-            ->when($ignorarCitaId, fn($q) => $q->whereKeyNot($ignorarCitaId))
+            ->when($ignorarCitaId, fn ($q) => $q->whereKeyNot($ignorarCitaId))
+            ->where('fecha_hora_inicio', '<', $fin)
+            ->where('fecha_hora_fin', '>', $inicio)
+            ->lockForUpdate()
+            ->exists();
+    }
+
+    public static function existeTraslapeGlobal(
+        \DateTimeInterface $inicio,
+        \DateTimeInterface $fin,
+        ?int $ignorarCitaId = null,
+    ): bool {
+        return static::query()
+            ->whereNotIn('estado', ['cancelada', 'no_asistio'])
+            ->when($ignorarCitaId, fn ($q) => $q->whereKeyNot($ignorarCitaId))
             ->where('fecha_hora_inicio', '<', $fin)
             ->where('fecha_hora_fin', '>', $inicio)
             ->lockForUpdate()

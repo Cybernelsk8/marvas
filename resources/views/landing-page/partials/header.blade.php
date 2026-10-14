@@ -55,7 +55,7 @@
             class="btn--primary header__cta"
             href="{{ route('agendar-cita') }}"
         >
-            AGENDA TU CITA
+            SOLICITA TU CITA
         </flux:button>
         <flux:button
             icon="arrow-right-end-on-rectangle"

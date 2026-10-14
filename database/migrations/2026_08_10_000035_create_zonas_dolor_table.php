@@ -19,9 +19,12 @@ return new class extends Migration
             $table->enum('lateralidad', ['derecha', 'izquierda', 'bilateral', 'central'])
                 ->default('central');
             $table->unsignedTinyInteger('intensidad')->default(1)->comment('Escala 1-10');
-            $table->set('tipo_dolor', [
-                'punzante', 'quemante', 'opresivo', 'irradiado', 'constante', 'intermitente',
-            ]);
+            $tiposDolor = ['punzante', 'quemante', 'opresivo', 'irradiado', 'constante', 'intermitente'];
+            if (DB::getDriverName() === 'sqlite') {
+                $table->string('tipo_dolor');
+            } else {
+                $table->set('tipo_dolor', $tiposDolor);
+            }
             $table->text('descripcion')->nullable();
             $table->decimal('coord_x', 5, 2)->nullable()
                 ->comment('Coordenada X en el SVG del mapa (0-100%)');
@@ -31,7 +34,9 @@ return new class extends Migration
             $table->index('mapa_id', 'idx_zona_mapa');
         });
 
-        DB::statement('ALTER TABLE zonas_dolor ADD CONSTRAINT chk_intensidad CHECK (intensidad BETWEEN 1 AND 10)');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE zonas_dolor ADD CONSTRAINT chk_intensidad CHECK (intensidad BETWEEN 1 AND 10)');
+        }
     }
 
     public function down(): void

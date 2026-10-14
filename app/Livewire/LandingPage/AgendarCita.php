@@ -3,6 +3,8 @@
 namespace App\Livewire\LandingPage;
 
 use App\Livewire\Traits\HasCitas;
+use App\Models\Admin\Setting;
+use App\Models\Cita;
 use App\Models\Paciente;
 use Carbon\Carbon;
 use Flux\Flux;
@@ -14,10 +16,15 @@ class AgendarCita extends Component
     use HasCitas;
 
     public ?string $tipo = null;
+
     public ?string $nombres = null;
+
     public ?string $apellidos = null;
+
     public ?string $email = null;
+
     public ?string $telefono = null;
+
     public ?string $mensaje = null;
 
     public function rules(): array
@@ -29,7 +36,7 @@ class AgendarCita extends Component
             'telefono' => 'required|regex:/^\d{4}-\d{4}$/',
             'email' => 'nullable|email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'mensaje' => 'nullable',
-            'fecha' => 'required|date|date_format:Y-m-d',
+            'fecha' => 'required|date_format:Y-m-d|after_or_equal:today',
             'hora' => 'required|date_format:H:i',
         ];
     }
@@ -57,37 +64,55 @@ class AgendarCita extends Component
     {
         $datos = $this->validate();
 
-        if (! in_array($datos['hora'], $this->getAvailableHours($datos['fecha']), true)) {
-            $this->addError('hora', 'El horario seleccionado ya no está disponible. Elige otro horario.');
-
-            return;
-        }
-
         $inicio = Carbon::parse("{$datos['fecha']} {$datos['hora']}");
 
-        try {
-            DB::transaction(function () use ($datos, $inicio) {
-                $paciente = Paciente::create([
-                    'nombres' => ucwords(mb_strtolower($datos['nombres'])),
-                    'apellidos' => ucwords(mb_strtolower($datos['apellidos'])),
-                    'telefono' => $datos['telefono'],
-                    'email' => filled($datos['email']) ? mb_strtolower($datos['email']) : null,
-                ]);
+        $resultado = DB::transaction(function () use ($datos, $inicio): string {
+            if (! $inicio->isFuture()) {
+                return 'fecha_pasada';
+            }
 
-                $expediente = $paciente->expediente()->create();
-                $expediente->citas()->create([
-                    'tipo_cita' => $datos['tipo'],
-                    'fecha_hora_inicio' => $inicio,
-                    'fecha_hora_fin' => $inicio->copy()->addMinutes(60),
-                    'notas_recepcion' => $datos['mensaje'],
-                ]);
-            });
-        } catch (\Throwable $exception) {
-            report($exception);
+            $horarios = Setting::query()
+                ->where('key', 'horarios_citas')
+                ->lockForUpdate()
+                ->first()?->value;
 
-            Flux::toast(
-                variant: 'danger',
-                text: 'Ocurrió un error al agendar la cita, por favor intenta nuevamente.',
+            if (! is_array($horarios) || ! in_array($datos['hora'], $horarios, true)) {
+                return 'horario_no_configurado';
+            }
+
+            $fin = $inicio->copy()->addMinutes(60);
+
+            if (Cita::existeTraslapeGlobal($inicio, $fin)) {
+                return 'horario_ocupado';
+            }
+
+            $paciente = Paciente::create([
+                'nombres' => ucwords(mb_strtolower($datos['nombres'])),
+                'apellidos' => ucwords(mb_strtolower($datos['apellidos'])),
+                'telefono' => $datos['telefono'],
+                'email' => filled($datos['email']) ? mb_strtolower($datos['email']) : null,
+            ]);
+
+            $expediente = $paciente->expediente()->create();
+            $expediente->citas()->create([
+                'tipo_cita' => $datos['tipo'],
+                'estado' => 'solicitada',
+                'fecha_hora_inicio' => $inicio,
+                'fecha_hora_fin' => $fin,
+                'notas_recepcion' => $datos['mensaje'],
+            ]);
+
+            return 'solicitada';
+        });
+
+        if ($resultado !== 'solicitada') {
+            $this->addError(
+                'hora',
+                match ($resultado) {
+                    'fecha_pasada' => 'La fecha y hora seleccionadas deben estar en el futuro.',
+                    'horario_no_configurado' => 'El horario seleccionado ya no está disponible. Elige otro horario.',
+                    default => 'Ese horario acaba de ocuparse. Elige otro horario.',
+                },
             );
 
             return;
@@ -97,7 +122,7 @@ class AgendarCita extends Component
 
         Flux::toast(
             variant: 'success',
-            text: 'Cita agendada correctamente, pronto nos pondremos en contacto contigo.',
+            text: 'Solicitud recibida correctamente. Recepción se pondrá en contacto contigo para confirmar la cita.',
         );
     }
 

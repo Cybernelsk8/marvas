@@ -55,9 +55,14 @@
                             />
 
                             <flux:navmenu>
-                                <flux:navmenu.item icon="document-text">
-                                    Generar link de formulario
-                                </flux:navmenu.item>
+                                @can('requests.edit')
+                                    <flux:navmenu.item
+                                        icon="document-text"
+                                        wire:click="generarLinkFormulario({{ $solicitud->id }})"
+                                    >
+                                        Generar link de formulario
+                                    </flux:navmenu.item>
+                                @endcan
                                 <flux:navmenu.item
                                     icon="pencil-square"
                                     wire:click="showSolicitud({{ $solicitud->id }})"
@@ -84,9 +89,12 @@
                                 name="phone"
                                 class="size-4"
                             />
-                            <flux:text>
+                            <a
+                                class="underline underline-offset-2"
+                                href="tel:{{ preg_replace('/[^0-9+]/', '', $solicitud->expediente->paciente->telefono ?? '') }}"
+                            >
                                 {{ $solicitud->expediente->paciente->telefono ?? '' }}
-                            </flux:text>
+                            </a>
                         </div>
                         <div class="flex gap-1 items-center">
                             <flux:icon
@@ -97,6 +105,11 @@
                                 {{ $solicitud->expediente->paciente->email ?? '' }}
                             </flux:text>
                         </div>
+                        @if ($solicitud->notas_recepcion)
+                            <flux:text class="mt-2">
+                                <strong>Motivo:</strong> {{ $solicitud->notas_recepcion }}
+                            </flux:text>
+                        @endif
                     </div>
                 </div>
 
@@ -125,6 +138,16 @@
                                 {{ $solicitud->fecha_hora_inicio->format('h:i a') }}
                             </flux:text>
                         </div>
+                        <div class="flex items-center gap-1">
+                            <flux:icon
+                                name="map-pin"
+                                class="size-4"
+                            />
+                            <flux:text size="sm">
+                                <strong>Sede:</strong>
+                                {{ $solicitud->sucursal?->nombre ?? 'Pendiente de asignar' }}
+                            </flux:text>
+                        </div>
                     </div>
                     <flux:badge
                         rounded
@@ -137,8 +160,32 @@
 
                 <flux:card.footer>
                     <flux:card.actions>
-                        <flux:button variant="ghost">Cambiar fecha</flux:button>
-                        <flux:button variant="primary">Confirmar cita</flux:button>
+                        @if ($solicitud->estado === 'solicitada')
+                            @can('requests.reschedule')
+                                <flux:button
+                                    variant="ghost"
+                                    wire:click="prepararReprogramacion({{ $solicitud->id }})"
+                                >
+                                    Cambiar fecha
+                                </flux:button>
+                            @endcan
+                            @can('requests.confirm')
+                                <flux:button
+                                    variant="primary"
+                                    wire:click="prepararConfirmacion({{ $solicitud->id }})"
+                                >
+                                    Confirmar cita
+                                </flux:button>
+                            @endcan
+                            @can('requests.cancel')
+                                <flux:button
+                                    variant="danger"
+                                    wire:click="prepararCancelacion({{ $solicitud->id }})"
+                                >
+                                    Cancelar
+                                </flux:button>
+                            @endcan
+                        @endif
                     </flux:card.actions>
                 </flux:card.footer>
 
@@ -165,6 +212,97 @@
 
     {{-- MODALES --}}
     <flux:modal
+        name="confirmar-cita-modal"
+        class="max-w-lg"
+    >
+        <form
+            wire:submit="confirmar({{ $solicitudId }})"
+            class="space-y-4"
+        >
+            <flux:heading size="lg">Confirmar cita</flux:heading>
+            <flux:text>
+                Asigna la sede donde se atenderá y confirma con el paciente la fecha y hora. La cita cambiará al estado
+                <strong>confirmada</strong>.
+            </flux:text>
+            @if ($sucursalesActivas->isEmpty())
+                <flux:callout variant="danger" icon="exclamation-triangle">
+                    <flux:callout.heading>No hay sedes activas</flux:callout.heading>
+                    <flux:callout.text>
+                        Activa o registra una sede antes de confirmar citas.
+                    </flux:callout.text>
+                </flux:callout>
+            @else
+                <flux:select
+                    label="Sede de atención *"
+                    wire:model="sucursalConfirmacion"
+                    placeholder="Selecciona la sede"
+                    required
+                >
+                    @foreach ($sucursalesActivas as $sucursal)
+                        <flux:select.option value="{{ $sucursal->id }}">
+                            {{ $sucursal->nombre }}
+                        </flux:select.option>
+                    @endforeach
+                </flux:select>
+                @error('sucursalConfirmacion')
+                    <flux:error>{{ $message }}</flux:error>
+                @enderror
+            @endif
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button type="button" variant="ghost">Volver</flux:button>
+                </flux:modal.close>
+                <flux:button
+                    variant="primary"
+                    type="submit"
+                    wire:loading.attr="disabled"
+                    wire:target="confirmar"
+                    :disabled="$sucursalesActivas->isEmpty()"
+                >
+                    Confirmar cita
+                </flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    <flux:modal
+        name="formulario-paciente-link-modal"
+        class="max-w-xl"
+    >
+        <div class="space-y-4">
+            <flux:heading size="lg">Formulario para {{ $formularioNombre }}</flux:heading>
+            <flux:text>
+                Comparte este enlace para que el paciente complete sus datos. El enlace vence en 7 días.
+            </flux:text>
+            <flux:input
+                icon="key"
+                label="Enlace del formulario"
+                :value="$formularioUrl"
+                readonly
+                copyable
+            />
+            @if ($formularioUrl)
+                <div class="flex justify-end gap-2">
+                    <flux:button
+                        icon="clipboard"
+                        x-on:click="navigator.clipboard.writeText(@js($formularioUrl))"
+                    >
+                        Copiar enlace
+                    </flux:button>
+                    <flux:button
+                        href="{{ 'https://wa.me/?text=' . urlencode('Hola ' . $formularioNombre . ', por favor completa tus datos en este formulario: ' . $formularioUrl) }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        icon="chat-bubble-left-right"
+                    >
+                        Compartir por WhatsApp
+                    </flux:button>
+                </div>
+            @endif
+        </div>
+    </flux:modal>
+
+    <flux:modal
         name="nueva-cita-modal"
         flyout
         @close="resetData"
@@ -188,27 +326,40 @@
         <form wire:submit.prevent="store">
             <flux:heading size="lg">Solicitud</flux:heading>
             <flux:separator class="my-4" />
+            @if (!empty($solicitud['notas_recepcion']))
+                <flux:callout
+                    icon="chat-bubble-left-right"
+                    class="mb-4"
+                >
+                    <flux:callout.heading>Motivo indicado por el paciente</flux:callout.heading>
+                    <flux:callout.text>{{ $solicitud['notas_recepcion'] }}</flux:callout.text>
+                </flux:callout>
+            @endif
             <div class="grid grid-cols-1 gap-4">
                 <div class="grid grid-cols-2 gap-2">
                     <flux:input
                         label="Nombres"
                         wire:model="solicitud.expediente.paciente.nombres"
                         icon="pencil-square"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:input
                         label="Apellidos"
                         wire:model="solicitud.expediente.paciente.apellidos"
                         icon="pencil-square"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:input
                         label="Fecha nacimiento"
                         wire:model="solicitud.expediente.paciente.fecha_nacimiento"
                         type="date"
                         icon="cake"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:select
                         label="Sexo"
                         wire:model="solicitud.expediente.paciente.sexo"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     >
                         <flux:select.option value="">
                             -- Seleccion Genero --
@@ -227,6 +378,7 @@
                     <flux:select
                         label="Estado Civil"
                         wire:model="solicitud.expediente.paciente.estado_civil"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     >
                         <flux:select.option value="">
                             -- Seleccion estado --
@@ -254,6 +406,7 @@
                     <flux:select
                         label="Religión"
                         wire:model="solicitud.expediente.paciente.religion"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     >
                         <flux:select.option value="">
                             -- Seleccion religión --
@@ -285,44 +438,111 @@
                         label="Dpi"
                         wire:model="solicitud.expediente.paciente.numero_dpi"
                         icon="identification"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:input
                         label="Teléfono"
                         wire:model="solicitud.expediente.paciente.telefono"
                         icon="phone"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:input
                         label="Teléfono Emergencia"
                         wire:model="solicitud.expediente.paciente.telefono_emergencia"
                         icon="device-phone-mobile"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:input
                         label="Correo"
                         wire:model="solicitud.expediente.paciente.email"
                         icon="envelope"
                         type="email"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:input
                         label="Dirección"
                         wire:model="solicitud.expediente.paciente.direccion"
                         icon="home"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:input
                         label="Ocupación"
                         wire:model="solicitud.expediente.paciente.ocupacion"
                         icon="building-office"
+                        :disabled="!auth()->user()->can('requests.edit')"
                     />
                 </div>
             </div>
-            <div class="flex mt-4">
-                <flux:spacer />
+            @can('requests.edit')
+                <div class="flex mt-4">
+                    <flux:spacer />
+                    <flux:button
+                        type="submit"
+                        variant="primary"
+                        icon="check"
+                    >
+                        Guardar cambios
+                    </flux:button>
+                </div>
+            @endcan
+        </form>
+    </flux:modal>
+
+    <flux:modal
+        name="reprogramar-cita-modal"
+        flyout
+        @close="resetData"
+    >
+        <form
+            wire:submit="reprogramar"
+            class="space-y-4"
+        >
+            <flux:heading size="lg">Cambiar fecha de la solicitud</flux:heading>
+            <x-date-picker
+                label="Nueva fecha"
+                wire:model="reprogramacion.fecha"
+                min-date="{{ now()->format('Y-m-d') }}"
+            />
+            <flux:input
+                label="Nueva hora"
+                type="time"
+                wire:model="reprogramacion.hora"
+            />
+            @error('reprogramacion.hora')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+            <div class="flex justify-end">
                 <flux:button
                     type="submit"
                     variant="primary"
-                    icon="check"
-                >
-                    Guardar cambios
-                </flux:button>
+                >Guardar nueva fecha</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    <flux:modal
+        name="cancelar-cita-modal"
+        flyout
+        @close="resetData"
+    >
+        <form
+            wire:submit="cancelar"
+            class="space-y-4"
+        >
+            <flux:heading size="lg">Cancelar solicitud</flux:heading>
+            <flux:textarea
+                label="Motivo de cancelación"
+                wire:model="motivoCancelacion"
+                required
+            />
+            @error('motivoCancelacion')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+            <div class="flex justify-end">
+                <flux:button
+                    type="submit"
+                    variant="danger"
+                >Confirmar cancelación</flux:button>
             </div>
         </form>
     </flux:modal>

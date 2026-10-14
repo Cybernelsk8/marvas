@@ -55,8 +55,10 @@ return new class extends Migration
             $table->index('especialidad_id', 'fk_anamnesis_especialidad');
         });
 
-        DB::statement('ALTER TABLE anamnesis_generales ADD CONSTRAINT chk_anamgen_talla CHECK (talla_cm IS NULL OR talla_cm > 0)');
-        DB::statement('ALTER TABLE anamnesis_generales ADD CONSTRAINT chk_anamgen_peso CHECK (peso_kg IS NULL OR peso_kg > 0)');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE anamnesis_generales ADD CONSTRAINT chk_anamgen_talla CHECK (talla_cm IS NULL OR talla_cm > 0)');
+            DB::statement('ALTER TABLE anamnesis_generales ADD CONSTRAINT chk_anamgen_peso CHECK (peso_kg IS NULL OR peso_kg > 0)');
+        }
     }
 
     public function down(): void

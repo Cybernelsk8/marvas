@@ -5,16 +5,20 @@ namespace App\Livewire\Traits;
 use App\Models\Admin\Setting;
 use App\Models\Cita;
 use Carbon\Carbon;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Database\Eloquent\Collection;
 
 trait HasCitas
 {
     public ?string $fecha = null;
+
     public ?string $hora = null;
 
-    public function getConfiguredHours(int $settingId = 1): array
+    public function getConfiguredHours(): array
     {
-        $horarios = Setting::query()->find($settingId)?->value;
+        $horarios = Setting::query()
+            ->where('key', 'horarios_citas')
+            ->first()?->value;
 
         if (! is_array($horarios)) {
             return [];
@@ -22,9 +26,13 @@ trait HasCitas
 
         return collect($horarios)
             ->map(function ($horario) {
+                if (! is_string($horario) || trim($horario) === '') {
+                    return null;
+                }
+
                 try {
                     return Carbon::parse($horario)->format('H:i');
-                } catch (\Throwable) {
+                } catch (InvalidFormatException) {
                     return null;
                 }
             })
@@ -94,7 +102,7 @@ trait HasCitas
     ): array {
         try {
             $fechaValida = Carbon::createFromFormat('!Y-m-d', $fecha);
-        } catch (\Throwable) {
+        } catch (InvalidFormatException) {
             return [];
         }
 
@@ -112,7 +120,7 @@ trait HasCitas
     protected function availableHoursForDate(string $fecha, array $horarios, iterable $citas): array
     {
         $horarios = collect($horarios)
-            ->map(fn($horario) => Carbon::parse($horario)->format('H:i'))
+            ->map(fn ($horario) => Carbon::parse($horario)->format('H:i'))
             ->unique()
             ->values();
 

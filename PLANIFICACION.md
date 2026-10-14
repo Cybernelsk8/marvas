@@ -223,12 +223,13 @@ El archivo global también revela que los formatos y locale de `config/datatable
 
 **Pasos:**
 
-1. Definir si la disponibilidad pública es global o por profesional y sucursal; esta decisión afecta la reserva y la agenda.
+1. **Decisión acordada (2026-10-13):** mantener la disponibilidad pública global para toda la clínica; no separar horarios por profesional ni sucursal en esta fase.
 2. Identificar la forma final de almacenar horarios (settings existentes u otra estructura) y validar intervalos, zonas horarias y excepciones.
 3. Centralizar las reglas de disponibilidad para que landing, recepción y agenda usen la misma fuente.
-4. Comprobar conflictos por profesional con `Cita::existeTraslape()` dentro de transacción; incluir reglas de sede cuando el negocio las defina.
-5. Añadir la vista de calendario Flux/Livewire y filtros.
-6. Probar límites de intervalos, citas de duración distinta, cancelaciones, turnos que cruzan medianoche si se permiten y concurrencia.
+4. **Decisión acordada (2026-10-13):** recepción asigna una sede activa al revisar cada solicitud; la sede es obligatoria para confirmar y queda guardada en `citas.sucursal_id`. La selección ocurre en el modal de confirmación, no en la landing. La asignación de profesional sigue pendiente. Mientras no se introduzca esa asignación, mantener la regla de conflictos globales.
+5. **Implementado:** calendario Flux/Livewire de recepción con vistas día/semana/mes, filtros por estado y sede (incluyendo citas sin sede), y detalle con la sede relacionada. Las sedes inactivas se conservan como opción de filtro para consultar citas históricas.
+6. **Implementado:** acciones directas en agenda para confirmar, reprogramar y cancelar; mantener una sola implementación de las reglas transaccionales en `AppointmentManagementService`, compartida con Solicitudes.
+7. Completar las reglas de disponibilidad y probar límites de intervalos, citas de duración distinta, cancelaciones, turnos que cruzan medianoche si se permiten y concurrencia.
 
 **Aceptación:** todos los puntos de entrada aplican la misma regla, muestran el estado actual y no pueden reservar el mismo recurso en horarios traslapados.
 

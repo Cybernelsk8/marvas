@@ -40,6 +40,30 @@ return new class extends Migration
             $table->index('fecha_caducidad', 'idx_lote_caducidad');
         });
 
+        if (DB::getDriverName() === 'sqlite') {
+            DB::unprepared(<<<'SQL'
+                CREATE TRIGGER chk_lote_cantidad_insert
+                BEFORE INSERT ON lotes_inventario
+                FOR EACH ROW
+                WHEN NEW.cantidad_actual > NEW.cantidad_recibida
+                BEGIN
+                    SELECT RAISE(ABORT, 'cantidad_actual cannot exceed cantidad_recibida');
+                END
+            SQL);
+
+            DB::unprepared(<<<'SQL'
+                CREATE TRIGGER chk_lote_cantidad_update
+                BEFORE UPDATE OF cantidad_actual, cantidad_recibida ON lotes_inventario
+                FOR EACH ROW
+                WHEN NEW.cantidad_actual > NEW.cantidad_recibida
+                BEGIN
+                    SELECT RAISE(ABORT, 'cantidad_actual cannot exceed cantidad_recibida');
+                END
+            SQL);
+
+            return;
+        }
+
         DB::statement('ALTER TABLE lotes_inventario ADD CONSTRAINT chk_lote_cantidad CHECK (cantidad_actual <= cantidad_recibida)');
     }
 

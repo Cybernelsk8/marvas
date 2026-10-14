@@ -39,7 +39,7 @@
                     class="btn--gold"
                     href="{{ route('agendar-cita') }}"
                 >
-                    Agenda tu cita
+                    Solicita tu cita
                 </flux:button>
             </div>
         </div>

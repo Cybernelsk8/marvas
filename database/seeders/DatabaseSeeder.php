@@ -1636,5 +1636,7 @@ class DatabaseSeeder extends Seeder
             'direccion' => 'Avenida ferrocarril 7-28 Torre 3 Nivel 4 apartamento 3043',
             'user_information_id' => 1
         ]);
+
+        $this->call(CatalogosClinicosSeeder::class);
     }
 }

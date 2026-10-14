@@ -25,7 +25,9 @@ return new class extends Migration
             $table->decimal('subtotal', 10, 2)->storedAs('cantidad_solicitada * costo_unitario');
         });
 
-        DB::statement('ALTER TABLE ordenes_compra_detalle ADD CONSTRAINT chk_ordendet_recibida CHECK (cantidad_recibida <= cantidad_solicitada)');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ordenes_compra_detalle ADD CONSTRAINT chk_ordendet_recibida CHECK (cantidad_recibida <= cantidad_solicitada)');
+        }
     }
 
     public function down(): void

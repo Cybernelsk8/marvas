@@ -41,7 +41,9 @@ return new class extends Migration
             $table->index('expediente_id', 'idx_consent_expediente');
         });
 
-        DB::statement('ALTER TABLE consentimientos_registro ADD CONSTRAINT chk_consent_completo CHECK (confirma_lectura_fisica = 1 AND confirma_resolucion_dudas = 1 AND acepta_voluntariamente = 1)');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE consentimientos_registro ADD CONSTRAINT chk_consent_completo CHECK (confirma_lectura_fisica = 1 AND confirma_resolucion_dudas = 1 AND acepta_voluntariamente = 1)');
+        }
     }
 
     public function down(): void
