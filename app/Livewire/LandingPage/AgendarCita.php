@@ -2,6 +2,7 @@
 
 namespace App\Livewire\LandingPage;
 
+use App\Livewire\Traits\HasCitas;
 use App\Models\Paciente;
 use Carbon\Carbon;
 use Flux\Flux;
@@ -10,6 +11,7 @@ use Livewire\Component;
 
 class AgendarCita extends Component
 {
+    use HasCitas;
 
     public ?string $tipo = null;
     public ?string $nombres = null;
@@ -17,80 +19,89 @@ class AgendarCita extends Component
     public ?string $email = null;
     public ?string $telefono = null;
     public ?string $mensaje = null;
-    public ?string $fecha = null;
-    public ?string $hora = null;
 
-    public function rules()
+    public function rules(): array
     {
         return [
             'tipo' => 'required|in:primera_vez,seguimiento',
-            'nombres' => 'required|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$/u|',
-            'apellidos' => 'required|string|max:150|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$/u|',
-            'email' => 'nullable|email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+            'nombres' => 'required|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$/u',
+            'apellidos' => 'required|string|max:150|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$/u',
             'telefono' => 'required|regex:/^\d{4}-\d{4}$/',
+            'email' => 'nullable|email|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'mensaje' => 'nullable',
             'fecha' => 'required|date|date_format:Y-m-d',
             'hora' => 'required|date_format:H:i',
         ];
     }
 
-    public function render()
+    public function updatedFecha(): void
     {
-        return view('livewire.landing-page.agendar-cita');
-    }
-
-    public function store()
-    {
-
-        $this->validate();
-
-        try {
-            DB::transaction(function () {
-                $paciente = Paciente::create([
-                    'nombres' => ucwords($this->nombres),
-                    'apellidos' => ucwords($this->apellidos),
-                    'telefono' => $this->telefono,
-                    'email' => mb_strtolower($this->email),
-                ]);
-
-                if (!$paciente) {
-                    throw new \Exception('No se pudo crear el paciente');
-                }
-
-                $expediente = $paciente->expediente()->create();
-
-                if (!$expediente) {
-                    throw new \Exception('No se pudo crear el expediente');
-                }
-
-                $cita = $expediente->citas()->create([
-                    'tipo' => $this->tipo,
-                    'fecha_hora_inicio' => Carbon::parse($this->fecha . ' ' . $this->hora),
-                    'fecha_hora_fin' => Carbon::parse($this->fecha . ' ' . $this->hora)->addMinutes(60),
-                    'motivo_consulta' => $this->mensaje,
-                ]);
-
-                if (!$cita) {
-                    throw new \Exception('No se pudo crear la cita');
-                }
-
-                $this->resetData();
-
-                Flux::toast(
-                    variant: 'success',
-                    text: 'Cita agendada correctamente, pronto nos pondremos en contacto contigo.',
-                );
-            });
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            Flux::toast(
-                variant: 'danger',
-                text: 'Ocurrió un error al agendar la cita, por favor intenta nuevamente.' . $th->getMessage()
-            );
+        if ($this->fecha && $this->hora && ! in_array($this->hora, $this->getAvailableHours($this->fecha), true)) {
+            $this->reset('hora');
         }
     }
 
-    private function resetData()
+    public function render()
+    {
+        $horariosConfigurados = $this->getConfiguredHours();
+        $citas = $this->getCalendarAppointments();
+        $eventos = $this->getEvents($citas);
+        $fechasLlenas = $this->getFechasLlenas($horariosConfigurados, $citas);
+
+        $horarios = $this->fecha ? $this->getAvailableHours($this->fecha, $horariosConfigurados, $citas) : [];
+
+        return view('livewire.landing-page.agendar-cita', compact('horarios', 'eventos', 'fechasLlenas'));
+    }
+
+    public function store(): void
+    {
+        $datos = $this->validate();
+
+        if (! in_array($datos['hora'], $this->getAvailableHours($datos['fecha']), true)) {
+            $this->addError('hora', 'El horario seleccionado ya no está disponible. Elige otro horario.');
+
+            return;
+        }
+
+        $inicio = Carbon::parse("{$datos['fecha']} {$datos['hora']}");
+
+        try {
+            DB::transaction(function () use ($datos, $inicio) {
+                $paciente = Paciente::create([
+                    'nombres' => ucwords(mb_strtolower($datos['nombres'])),
+                    'apellidos' => ucwords(mb_strtolower($datos['apellidos'])),
+                    'telefono' => $datos['telefono'],
+                    'email' => filled($datos['email']) ? mb_strtolower($datos['email']) : null,
+                ]);
+
+                $expediente = $paciente->expediente()->create();
+                $expediente->citas()->create([
+                    'tipo_cita' => $datos['tipo'],
+                    'fecha_hora_inicio' => $inicio,
+                    'fecha_hora_fin' => $inicio->copy()->addMinutes(60),
+                    'notas_recepcion' => $datos['mensaje'],
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            Flux::toast(
+                variant: 'danger',
+                text: 'Ocurrió un error al agendar la cita, por favor intenta nuevamente.',
+            );
+
+            return;
+        }
+
+        $this->resetData();
+
+        Flux::toast(
+            variant: 'success',
+            text: 'Cita agendada correctamente, pronto nos pondremos en contacto contigo.',
+        );
+    }
+
+    private function resetData(): void
     {
         $this->reset([
             'tipo',

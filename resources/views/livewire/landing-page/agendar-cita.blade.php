@@ -30,38 +30,30 @@
                 <x-calendar
                     wire:key="cita-fecha"
                     label="Selecciona la fecha de tu cita *"
-                    wire:model="fecha"
-                    :min-date="now()->format('Y-m')"
+                    wire:model.live="fecha"
+                    :events="$eventos"
+                    :disabled-dates="$fechasLlenas"
+                    :min-date="now()->format('Y-m-d')"
                     :max-date="now()->addMonths(3)->format('Y-m-d')"
                     size="md"
                 />
                 <div class="py-5">
+
                     <flux:radio.group
                         label="Selecciona la hora de tu cita *"
                         wire:model="hora"
                         variant="pills"
                         required
                     >
-                        <flux:radio
-                            label="09:00 am"
-                            value="09:00"
-                            class="cursor-pointer"
-                        />
-                        <flux:radio
-                            label="11:00 am"
-                            value="11:00"
-                            class="cursor-pointer"
-                        />
-                        <flux:radio
-                            label="03:00 pm"
-                            value="15:00"
-                            class="cursor-pointer"
-                        />
-                        <flux:radio
-                            label="05:00 pm"
-                            value="17:00"
-                            class="cursor-pointer"
-                        />
+                        @forelse($horarios as $horario)
+                            <flux:radio
+                                label="{{ \Carbon\Carbon::parse($horario)->format('h:i a') }}"
+                                value="{{ \Carbon\Carbon::parse($horario)->format('H:i') }}"
+                                class="cursor-pointer"
+                            />
+                        @empty
+                            {{ $fecha ? 'No hay horarios disponibles para esta fecha.' : 'Selecciona una fecha para ver los horarios disponibles.' }}
+                        @endforelse
 
                     </flux:radio.group>
                 </div>

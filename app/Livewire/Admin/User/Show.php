@@ -16,7 +16,9 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Spatie\Permission\Models\Role;
+use Livewire\Attributes\Title;
 
+#[Title('Detalles del usuario')]
 class Show extends Component
 {
     use WithFileUploads, DataTable;

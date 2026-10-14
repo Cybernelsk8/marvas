@@ -1,267 +1,73 @@
 <div>
-    <div class="flex justify-between items-center mb-4">
-        <flux:dropdown>
 
-            <flux:button icon:trailing="chevron-down">Filtros</flux:button>
-
-            <flux:menu>
-
-                <flux:menu.submenu
-                    heading="Ordenar por"
-                    icon="bars-arrow-down"
-                >
-                    <flux:menu.radio.group>
-                        <flux:menu.radio
-                            wire:click="setSort('fecha_hora_inicio', 'desc')"
-                            :checked="$this->isSortedBy('fecha_hora_inicio', 'desc')"
-                        >
-                            Más recientes primero
-                        </flux:menu.radio>
-
-                        <flux:menu.radio
-                            wire:click="setSort('fecha_hora_inicio', 'asc')"
-                            :checked="$this->isSortedBy('fecha_hora_inicio', 'asc')"
-                        >
-                            Más antiguos primero
-                        </flux:menu.radio>
-
-                        <flux:menu.radio
-                            wire:click="setSort('nombres', 'asc')"
-                            :checked="$this->isSortedBy('nombres', 'asc')"
-                        >
-                            Nombre (A-Z)
-                        </flux:menu.radio>
-                        <flux:menu.radio
-                            wire:click="clearSort()"
-                            :checked="$this->isSortedBy('id', 'asc')"
-                        >
-                            Restaurar
-                        </flux:menu.radio>
-                    </flux:menu.radio.group>
-                </flux:menu.submenu>
-
-                <flux:menu.submenu
-                    heading="Por fecha"
-                    icon="calendar"
-                >
-                    <flux:menu.radio.group>
-                        <flux:menu.radio
-                            wire:click="setFilter('fecha_hora_inicio', 'like', '{{ now()->subDay()->format('Y-m-d') }}')"
-                        >
-                            Ayer
-                        </flux:menu.radio>
-                        <flux:menu.radio
-                            wire:click="setFilter('fecha_hora_inicio', 'like', '{{ now()->format('Y-m-d') }}')"
-                        >
-                            Hoy
-                        </flux:menu.radio>
-                        <flux:menu.radio
-                            wire:click="setFilter('fecha_hora_inicio', 'like', '{{ now()->addDay()->format('Y-m-d') }}')"
-                        >
-                            Mañana
-                        </flux:menu.radio>
-                        <flux:menu.radio wire:click="removeFilter('fecha_hora_inicio')">
-                            Todos
-                        </flux:menu.radio>
-                    </flux:menu.radio.group>
-                </flux:menu.submenu>
-
-                <flux:menu.submenu
-                    heading="Por estado"
-                    icon="flag"
-                >
-                    <flux:menu.radio.group>
-                        <flux:menu.radio wire:click="setFilter('estado', '=', 'solicitada')">
-                            Solicitada
-                        </flux:menu.radio>
-                        <flux:menu.radio wire:click="setFilter('estado', '=', 'agendada')">
-                            Agendada
-                        </flux:menu.radio>
-                        <flux:menu.radio wire:click="setFilter('estado', '=', 'confirmada')">
-                            Confirmada
-                        </flux:menu.radio>
-                        <flux:menu.radio wire:click="setFilter('estado', '=', 'en_atencion')">
-                            En atencion
-                        </flux:menu.radio>
-                        <flux:menu.radio wire:click="setFilter('estado', '=', 'finalizada')">
-                            Finalizada
-                        </flux:menu.radio>
-                        <flux:menu.radio wire:click="setFilter('estado', '=', 'cancelada')">
-                            Cancelada
-                        </flux:menu.radio>
-                        <flux:menu.radio wire:click="setFilter('estado', '=', 'reprogramada')">
-                            Reprogramada
-                        </flux:menu.radio>
-                        <flux:menu.radio wire:click="removeFilter('estado')">
-                            Todos
-                        </flux:menu.radio>
-                    </flux:menu.radio.group>
-                </flux:menu.submenu>
-
-
-            </flux:menu>
-        </flux:dropdown>
-
-        <div class="flex gap-1">
-            <flux:input
-                wire:model.live.debounce.500ms="search"
-                icon="magnifying-glass"
-                placeholder="Buscar ..."
-                type="search"
-                wire:key="search-input"
-            />
-
-            <flux:dropdown>
-                <flux:tooltip content="Filtros avanzados">
-                    <flux:button
-                        icon="funnel"
-                        icon-variant="outline"
-                        iconTrailing="chevron-down"
-                    >
-                        @if ($this->getActiveFiltersCount() > 0)
-                            <flux:badge
-                                size="sm"
-                                color="blue"
-                            >
-                                {{ $this->getActiveFiltersCount() }}
-                            </flux:badge>
-                        @endif
-                    </flux:button>
-                </flux:tooltip>
-                <flux:menu keep-open>
-                    <div class="flex justify-center gap-4">
-                        <flux:button
-                            wire:click="addFilter()"
-                            variant="primary"
-                            icon="plus"
-                            size="sm"
-                            title="Agregar filtro"
-                        />
-
-                        <flux:button
-                            wire:click="clearFilters()"
-                            variant="danger"
-                            icon="trash"
-                            size="sm"
-                            title="Limpiar filtros"
-                        />
-
-                    </div>
-
-                    <flux:menu.separator />
-
-                    @foreach ($this->filters as $index => $filter)
-                        <flux:menu.item>
-                            <div class="flex gap-2 items-center">
-
-                                <flux:select
-                                    wire:key="field-campo-{{ $index }}"
-                                    wire:model.live.debounce.500ms="filters.{{ $index }}.field"
-                                    placeholder="Campo"
-                                    size="sm"
-                                >
-                                    @foreach ($this->getAvailableHeaders() as $header)
-                                        <flux:select.option value="{{ $header['index'] }}">
-                                            {{ $header['label'] }}
-                                        </flux:select.option>
-                                    @endforeach
-                                </flux:select>
-
-                                {{-- El wire:key incluye el campo actual: fuerza a Livewire a recrear
-                                             el <select> cuando cambia el campo, evitando que quede seleccionada
-                                             una <option> vieja que ya no existe en la nueva lista filtrada. --}}
-                                <flux:select
-                                    wire:key="field-operator-{{ $index }}-{{ $filter['field'] ?? '' }}"
-                                    wire:model.live.debounce.500ms="filters.{{ $index }}.operator"
-                                    placeholder="Operador"
-                                    size="sm"
-                                >
-                                    @foreach ($this->getGroupedOperators($filter['field'] ?? '') as $group => $operators)
-                                        <optgroup label="{{ $group }}">
-                                            @foreach ($operators as $operator)
-                                                <flux:select.option value="{{ $operator }}">
-                                                    {{ $operator }}
-                                                </flux:select.option>
-                                            @endforeach
-                                        </optgroup>
-                                    @endforeach
-                                </flux:select>
-
-                                @php
-                                    $currentField = $filter['field'] ?? '';
-                                    $currentOperator = strtolower($filter['operator'] ?? '');
-                                    $family = $currentField ? $this->getFieldFamily($currentField) : 'string';
-                                    $fieldType = $currentField ? $this->getFieldType($currentField) : 'string';
-                                    $isRangeOrList = in_array($currentOperator, [
-                                        'between',
-                                        'not between',
-                                        'in',
-                                        'not in',
-                                    ]);
-                                    $isNullOperator = in_array($currentOperator, ['null', 'not null']);
-
-                                    // Tipo de <input> HTML: para operadores de rango/lista se deja texto
-                                    // (siguen siendo valores separados por coma), para un valor único se
-                                    // usa el input nativo del navegador según la família del campo.
-                                    $inputType = match (true) {
-                                        $isRangeOrList => 'text',
-                                        $fieldType === 'datetime' => 'datetime-local',
-                                        $fieldType === 'time' => 'time',
-                                        $family === 'date' => 'date',
-                                        $family === 'numeric' => 'number',
-                                        default => 'text',
-                                    };
-
-                                    $placeholder = match (true) {
-                                        $isNullOperator => 'No requiere valor',
-                                        in_array($currentOperator, ['between', 'not between']) => 'Desde, Hasta',
-                                        in_array($currentOperator, ['in', 'not in']) => 'Valor1, Valor2, ...',
-                                        default => 'Valores',
-                                    };
-                                @endphp
-
-                                <flux:input
-                                    x-on:keydown.stop=""
-                                    wire:key="field-value-{{ $index }}"
-                                    type="{{ $inputType }}"
-                                    :disabled="$isNullOperator"
-                                    wire:model.live.debounce.500ms="filters.{{ $index }}.value"
-                                    placeholder="{{ $placeholder }}"
-                                    size="sm"
-                                />
-
-                                <flux:icon.x-circle
-                                    wire:click="deleteFilter({{ $index }})"
-                                    class="cursor-pointer text-red-500"
-                                />
-                            </div>
-                        </flux:menu.item>
-                    @endforeach
-                </flux:menu>
-            </flux:dropdown>
-
-
-        </div>
-    </div>
-    <div class="grid md:grid-cols-2 lg:grid-cols-3  gap-4">
-        @forelse ($this->rows() as $solicitud)
-            <flux:card
-                class="cursor-pointer hover:scale-105 hover:border-accent transition-transform duration-200 ease-in-out"
-                wire:click="showSolicitud({{ $solicitud->id }})"
+    <div class="flex justify-center mb-4">
+        <flux:modal.trigger name="nueva-cita-modal">
+            <flux:button
+                icon="calendar-days"
+                title="Agendar cita"
+                variant="primary"
             >
+                Agendar cita
+            </flux:button>
+        </flux:modal.trigger>
+    </div>
 
-                <div class="mb-2">
-                    <flux:heading
+    {{-- FILTROS --}}
+    <div class="flex justify-between items-center mb-4">
+        <x-data-table.filter
+            :filters="$this->filtersOptions"
+            label="Filtros"
+        />
+        <x-data-table.advance-filter />
+
+    </div>
+
+    {{-- CARDS --}}
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 mb-6 gap-4">
+        @forelse ($this->rows() as $solicitud)
+            <flux:card class="hover:scale-105 hover:border-accent transition-transform duration-200 ease-in-out">
+                <flux:card.header>
+                    <flux:card.heading
                         size="xl"
-                        class=" capitalize"
+                        class="capitalize"
                     >
                         {{ $solicitud->tipo_cita }}
-                    </flux:heading>
-                    <flux:text>
-                        <strong>Expediente # : </strong>
-                        {{ $solicitud->expediente->id }}
-                    </flux:text>
-                </div>
+                    </flux:card.heading>
+                    <flux:card.subheading class="flex items-center justify-between">
+
+                        <flux:text>
+                            <strong>Expediente # : </strong>
+                            {{ $solicitud->expediente->id }}
+                        </flux:text>
+                        <flux:text size="sm">
+                            {{ $solicitud->created_at->format('d F Y') }}
+                        </flux:text>
+
+                    </flux:card.subheading>
+                    <flux:card.actions>
+                        <flux:dropdown
+                            position="bottom"
+                            align="end"
+                        >
+                            <flux:button
+                                icon:trailing="ellipsis-vertical"
+                                variant="ghost"
+                            />
+
+                            <flux:navmenu>
+                                <flux:navmenu.item icon="document-text">
+                                    Generar link de formulario
+                                </flux:navmenu.item>
+                                <flux:navmenu.item
+                                    icon="pencil-square"
+                                    wire:click="showSolicitud({{ $solicitud->id }})"
+                                >
+                                    Editar datos paciente
+                                </flux:navmenu.item>
+                            </flux:navmenu>
+                        </flux:dropdown>
+                    </flux:card.actions>
+                </flux:card.header>
 
                 <div class="flex items-center gap-4">
                     <flux:avatar
@@ -293,9 +99,12 @@
                         </div>
                     </div>
                 </div>
+
                 <flux:separator class="my-4" />
+
                 <div class="flex justify-between gap-4 items-center">
                     <div class="space-y-1">
+
                         <div class="flex items-center gap-1">
                             <flux:icon
                                 name="calendar"
@@ -325,6 +134,14 @@
                         {{ $solicitud->estado }}
                     </flux:badge>
                 </div>
+
+                <flux:card.footer>
+                    <flux:card.actions>
+                        <flux:button variant="ghost">Cambiar fecha</flux:button>
+                        <flux:button variant="primary">Confirmar cita</flux:button>
+                    </flux:card.actions>
+                </flux:card.footer>
+
             </flux:card>
         @empty
             <div
@@ -344,6 +161,25 @@
         @endforelse
     </div>
 
+    <flux:pagination :paginator="$this->rows" />
+
+    {{-- MODALES --}}
+    <flux:modal
+        name="nueva-cita-modal"
+        flyout
+        @close="resetData"
+    >
+        <x-calendar
+            wire:key="cita-fecha"
+            label="Selecciona la fecha de tu cita *"
+            wire:model.live="fecha"
+            :min-date="now()->format('Y-m-d')"
+            :max-date="now()->addMonths(3)->format('Y-m-d')"
+            size="md"
+        />
+
+    </flux:modal>
+
     <flux:modal
         name="solicitud-modal"
         flyout
@@ -352,7 +188,7 @@
         <form wire:submit.prevent="store">
             <flux:heading size="lg">Solicitud</flux:heading>
             <flux:separator class="my-4" />
-            <div>
+            <div class="grid grid-cols-1 gap-4">
                 <div class="grid grid-cols-2 gap-2">
                     <flux:input
                         label="Nombres"
@@ -396,7 +232,7 @@
                             -- Seleccion estado --
                         </flux:select.option>
                         <flux:select.option value="soltero">
-                            Solter
+                            Soltero
                         </flux:select.option>
                         <flux:select.option value="casado">
                             Casado
@@ -478,6 +314,18 @@
                     />
                 </div>
             </div>
+            <div class="flex mt-4">
+                <flux:spacer />
+                <flux:button
+                    type="submit"
+                    variant="primary"
+                    icon="check"
+                >
+                    Guardar cambios
+                </flux:button>
+            </div>
         </form>
     </flux:modal>
+
+
 </div>

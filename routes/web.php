@@ -15,4 +15,4 @@ require __DIR__ . '/settings.php';
 // SOLICITUDES DE CITA Y LLENADO DE FORMULARIO DE PACIENTE
 
 
-Route::livewire('solicitudes', Solicitud::class)->name('solicitudes');
+Route::livewire('solicitudes', Solicitud::class)->name('solicitudes')->middleware(['auth', 'verified']);

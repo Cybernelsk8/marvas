@@ -7,7 +7,9 @@ use App\Traits\DataTable;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\Attributes\Title;
 
+#[Title('Permisos')]
 class Permissions extends Component
 {
     use DataTable;

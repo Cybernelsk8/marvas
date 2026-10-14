@@ -1,0 +1,3 @@
+- Que se le recuerde a la recepcionista o persona a cargo con anticipacion llamar a los pacientes 2 o 3 dias antes.
+- Poder enviar un link a los pacientes con el formulario para llenado de datos del mismo.
+- 

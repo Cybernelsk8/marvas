@@ -539,6 +539,8 @@
                                         class="{{ $scopeId }}-dot absolute bottom-1 size-1 rounded-full"
                                         :class="isSelectedDate(cell) ? 'bg-white dark:bg-zinc-900' :
                                             'bg-zinc-500 dark:bg-zinc-300'"
+                                        :style="!isSelectedDate(cell) && dayEvents(cell)[0] && dayEvents(cell)[0].color ?
+                                            'background-color:' + dayEvents(cell)[0].color : ''"
                                     ></span>
                                 </template>
                             </button>

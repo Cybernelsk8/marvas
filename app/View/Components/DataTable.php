@@ -25,7 +25,7 @@ class DataTable extends Component
 
             $this->captureSlots($data);
 
-            return view('components.data-table', [
+            return view('components.data-table.index', [
                 'headers' => $this->headers,
                 'rows' => $this->rows,
                 'capturedSlots' => $this->capturedSlots,

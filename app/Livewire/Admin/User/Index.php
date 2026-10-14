@@ -13,7 +13,9 @@ use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Spatie\Permission\Models\Role;
+use Livewire\Attributes\Title;
 
+#[Title('Usuarios')]
 class Index extends Component
 {
     use DataTable;

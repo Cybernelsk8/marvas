@@ -8,7 +8,9 @@ use App\Traits\DataTable;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\Attributes\Title;
 
+#[Title('Páginas')]
 class Pages extends Component
 {
     use DataTable;

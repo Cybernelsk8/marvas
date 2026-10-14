@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Spatie\Permission\Models\Role;
+use Livewire\Attributes\Title;
 
+#[Title('Roles')]
 class Roles extends Component
 {
     use DataTable;
