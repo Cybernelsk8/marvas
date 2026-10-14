@@ -5,8 +5,8 @@
 ## Estado general
 
 - **Última actualización:** 2026-10-14.
-- **Estado de fase:** Fase A cerrada; Módulo 2 validado visualmente y Módulo 3 iniciado con directorio y ficha de paciente de solo lectura.
-- **Resumen:** Recepción puede gestionar solicitudes desde la bandeja o la agenda, asignar sede y profesional al confirmar y filtrar por periodo/estado/sede/profesional. Disponibilidad se configura con grupos de días sin duplicados, horas de inicio agregadas individualmente y duración global configurable en intervalos de 15 minutos (predeterminado: 60); las horas sí pueden repetirse entre grupos con días distintos, pero no dentro del mismo grupo. El directorio usa `DataTable` y `Searchable` para buscar y filtrar por campos y relaciones; permite buscar pacientes y consultar la ficha básica protegida por permiso.
+- **Estado de fase:** Fase A cerrada; Módulos 2 y 3 validados visualmente. En Módulo 4 se abren consultas desde citas confirmadas y se captura anamnesis general y evaluaciones de Homeopatía, Quiropraxia y Acupuntura disponibles para cualquier paciente sin depender de la especialidad de la consulta. Cierre/reapertura tienen permisos y confirmación mediante modales de Flux.
+- **Resumen:** Recepción puede gestionar solicitudes desde la bandeja o la agenda, asignar sede y profesional al confirmar y filtrar por periodo/estado/sede/profesional. Disponibilidad se configura con grupos de días sin duplicados, horas de inicio agregadas individualmente y duración global configurable en intervalos de 15 minutos (predeterminado: 60); las horas sí pueden repetirse entre grupos con días distintos, pero no dentro del mismo grupo. El directorio usa `DataTable` y `Searchable`; alta/edición y recepción sugieren coincidencias. Reutilizar desde solicitudes o fusionar manualmente requiere confirmación; el sistema traslada relaciones/historial en transacción, deja el origen inactivo y enlazado y audita los cambios y las decisiones sobre conflictos. Las evaluaciones se guardan por paciente y consulta con auditoría; el IMC se calcula en base de datos; cerrar requiere motivo y observaciones finales, y reabrir devuelve la consulta a `en_proceso`.
 - **Importante:** este resumen refleja los archivos observados en el árbol de trabajo al crear la bitácora, no implica que los cambios estén confirmados en Git ni que la aplicación esté desplegada.
 
 > **Reutilización transversal:** consultar la sección “Componentes, traits, servicios y helpers reutilizables” de `PLANIFICACION.md` antes de construir tablas, calendarios, selectores, gráficos, utilidades o lógica común. En especial, estudiar el contrato de `x-data-table` + `DataTable` + `Searchable` + `HeaderMap` y los ejemplos `@interact` de Admin.
@@ -17,9 +17,9 @@
 |---|---|---|---|
 | 0. Fundamentos y permisos | Parcial | Hay autenticación, permisos Spatie, áreas, roles, páginas y permisos; existen rutas admin con middleware. Falta definir permisos de cada módulo clínico/operativo. | Aprobar matriz de roles/permisos para recepción, profesionales, caja, inventario y administración. |
 | 1. Solicitudes y recepción | Implementado y validado | `App\Livewire\Solicitud` permite editar datos, asignar sede activa al confirmar, reprogramar, cancelar y generar enlaces firmados temporales del formulario de paciente. | Hacer prueba visual con usuarios reales; después decidir historial de llamadas y automatización de mensajes. |
-| 2. Agenda y disponibilidad | Implementado y validado | `admin.schedule` reutiliza `x-calendar` para vistas día/semana/mes, filtra por estado/sede/profesional (incluidas citas sin asignar) y ofrece modales de confirmar/reprogramar/cancelar; `/admin/availability` configura días, horas, duración y cierres. Se validaron visualmente horarios, duración configurable, cierres y conflictos con citas futuras. | Continuar con pruebas de uso en recepción y atender incidencias operativas. |
-| 3. Pacientes y expediente | En curso | `/admin/patients` busca pacientes por nombre, DPI, teléfono y correo, filtra por estado y pagina resultados; la ficha protegida muestra datos básicos, resumen del expediente y citas paginadas. La política acordada es mostrar coincidencias y dejar la selección/fusión en manos de recepción, sin fusiones automáticas. | Implementar coincidencias al alta/edición y fusión explícita transaccional con auditoría, conservando el origen inactivo y resolviendo campos en conflicto mediante revisión. |
-| 4. Consultas y evaluación | Parcial en datos / pendiente en pantallas | Tablas/modelos de consultas, anamnesis, evaluaciones e informes existen; no se encontró flujo Livewire de consulta. | Diseñar flujo clínico y formulario general por especialidad. |
+| 2. Agenda y disponibilidad | Implementado y validado | `admin.schedule` reutiliza `x-calendar` para vistas día/semana/mes, filtra por estado/sede/profesional y, al confirmar, asigna sede, profesional y especialidad; `/admin/availability` configura días, horas, duración y cierres. | Continuar con pruebas de uso en recepción y atender incidencias operativas. |
+| 3. Pacientes y expediente | Implementado; cierre de módulo pendiente | `/admin/patients` ofrece directorio/ficha y fusión manual; el expediente tiene citas y secciones clínicas, documentos/consentimientos y pagos/paquetes protegidos por permisos. El usuario confirmó visualmente las secciones. | Completar pruebas visuales de integración y cerrar el módulo con el flujo clínico inicial. |
+| 4. Consultas y evaluación | En curso | Desde la ficha se abre una consulta autorizada; anamnesis general y evaluaciones Homeopatía/Quiropraxia/Acupuntura se ofrecen sin filtrar por especialidad de la consulta. Cierre/reapertura tiene controles, permisos y auditoría. | Validar visualmente formularios de evaluación y cierre/reapertura; construir evaluaciones clínicas adicionales en componentes separados. |
 | 5. Clasificación y tratamiento | Parcial en datos / pendiente en pantallas | Existen clasificación, plan terapéutico, paquete asociado y evolución en esquema/modelos. | Definir Modelo 6+ con el equipo y crear flujo de clasificación/plan/evolución. |
 | 6. Consentimientos y archivos | Parcial en datos / pendiente en pantallas | Hay plantillas/registros de consentimiento, archivos y campos de trazabilidad. | Definir política legal/de almacenamiento y crear pantallas seguras. |
 | 7. Paquetes, pagos y facturación | Parcial en datos / pendiente en pantallas | Existen paquetes clínicos/paciente, pagos y datos de facturación. | Acordar reglas financieras e implementar catálogo/registro de cobro. |
@@ -76,10 +76,9 @@
 
 ## Inconsistencias/pendientes inmediatos
 
-1. **Prueba visual operativa:** ingresar con una cuenta de `Recepcionista` a `/solicitudes`, `/admin/schedule` y `/admin/availability`; recorrer gestión de solicitud, calendario y permisos de lectura/edición.
-2. **Asignaciones:** las citas todavía pueden no tener profesional ni sede; decidir cuándo se asignan antes de añadir esos filtros o imponer conflictos por recurso.
-3. **Identificación y contacto:** definir detección asistida de pacientes existentes, campos obligatorios antes de confirmar y conservación del historial de llamadas/contacto.
-4. **Enlace y recordatorios:** el enlace firmado temporal para completar datos ya funciona y se comparte manualmente; faltan historial de contacto y envío automatizado por un canal aprobado.
+1. **Módulo 4:** validar visualmente cierre y reapertura; definir los formularios clínicos que seguirán.
+2. **Asignaciones:** la confirmación desde agenda/solicitudes asigna sede, profesional y especialidad; si ya hay citas confirmadas con asignación incompleta, la agenda ofrece «Completar asignación» sin cambiar su estado.
+3. **Contacto y recordatorios:** faltan historial de contacto y envío automatizado por un canal aprobado.
 
 ## Pruebas y verificaciones conocidas
 
@@ -89,15 +88,19 @@
 | Autenticación/perfil/seguridad | Pruebas en `tests/Feature/Auth` y `tests/Feature/Settings` | Existen pruebas; el estado de ejecución actual no se verificó. |
 | Seeders y solicitudes | `tests/Feature/Database/CatalogosClinicosSeederTest.php`, `tests/Feature/Livewire/AgendarCitaTest.php`, `tests/Feature/Livewire/SolicitudTest.php` | Pasaron: idempotencia/guardia de demo, reserva pública exitosa y conflicto, edición de paciente, confirmación, solapamiento, reprogramación y cancelación. |
 | Agenda interna y configuración global | `tests/Feature/Livewire/ScheduleTest.php`, `AvailabilityTest.php` | Pasaron: permiso, selección de fecha, filtros por día/semana/estado, actualización y validación de horarios. |
-| Consultas, expediente, pagos e inventario | No se encontró cobertura de sus pantallas porque no se encontraron tales pantallas | Pendiente al implementar los módulos. |
+| Apertura inicial de consultas | `ConsultationTest`, `PatientDirectoryTest` y `CatalogosClinicosSeederTest` | Pasaron en esta entrega: 20 pruebas y 134 assertions; Pint y `git diff --check` pasaron. |
+| Asignación al confirmar citas | `ScheduleTest` y `SolicitudTest` | Pasaron tras resolver la selección de opciones únicas: 28 pruebas y 123 assertions. |
+| Ficha de pacientes y aislamiento de secciones | `PatientDirectoryTest` y `CatalogosClinicosSeederTest` | Pasaron en la entrega anterior: 16 pruebas y 118 assertions; Pint, caché de vistas Blade y `git diff --check` también pasaron. El usuario confirmó verificación visual. |
 
 ## Decisiones de negocio
 
 | Tema | Decisión | Responsable | Fecha |
 |---|---|---|---|
 | Estado inicial de cita web y transición a confirmada | Implementado como decisión técnica de Fase A: `solicitada` al enviar; recepción confirma después de contactar. | Implementación Fase A | 2026-10-13 |
-| Disponibilidad global o por profesional/sucursal | Mantener horas globales. Recepción asigna una sede activa al revisar la solicitud y antes de confirmar; la selección no se pide en la landing. La asignación de profesional sigue pendiente. | Usuario | 2026-10-13 |
-| Identificación de paciente existente desde solicitud | Pendiente. Evitar coincidencia automática únicamente por nombre. | Por definir | — |
+| Asignación antes de confirmar | En recepción, confirmar requiere seleccionar sede, profesional activo de esa sede y especialidad activa asociada al profesional. La disponibilidad de horarios continúa siendo global. | Implementación / pendiente de confirmación operativa | 2026-10-14 |
+| Identificación de paciente existente desde solicitud | Coincidencias sugeridas; recepción elige si reutiliza. Nunca fusionar automáticamente. | Usuario | 2026-10-14 |
+| Visibilidad de secciones de expediente | Permisos independientes `patients.clinical.view`, `patients.documents.view` y `patients.billing.view`; sin asignación automática a roles nominales. Sysadmin administra asignaciones con Spatie. | Usuario | 2026-10-14 |
+| Apertura de consulta | Solo desde cita confirmada con sede, profesional y especialidad asignados; abre en estado `abierta`, conserva la cita sin modificar y requiere `consultations.create`. | Implementación / pendiente de confirmación operativa | 2026-10-14 |
 | Campos requeridos antes de confirmar | Pendiente. | Por definir | — |
 | Historial de llamadas y resultados de contacto | Pendiente: decidir campos/eventos a conservar. | Por definir | — |
 | Canal de confirmaciones y recordatorios | Pendiente: correo, SMS, WhatsApp u otro; revisar consentimiento/costo/proveedor. | Por definir | — |
@@ -115,11 +118,10 @@
 
 ## Próximos pasos recomendados
 
-1. **Hacer prueba visual operativa** del ciclo landing → solicitud → recepción → agenda con cuenta `Recepcionista`; verificar que solo Sysadmin edite horarios.
-2. **Agregar acciones de gestión desde la agenda** reutilizando los flujos existentes en Solicitudes; definir el flujo de asignación de profesional antes de agregar ese filtro o reglas de traslape por profesional.
-3. **Definir detección asistida de pacientes existentes**, registro de contacto y campos requeridos para confirmar.
-4. **Aprobar canal de comunicación y consentimiento** para recordatorios/enlaces; después implementar historial y envío.
-5. **Crear búsqueda/ficha de paciente** y comenzar el flujo de consulta clínica.
+1. Validar visualmente la pantalla de anamnesis, guardar/editar datos y confirmar que el IMC se actualiza.
+2. Acordar requisitos clínicos, responsabilidades y datos obligatorios para cerrar una consulta antes de implementar transiciones a `en_proceso` o `cerrada`.
+3. Continuar con formularios clínicos específicos por especialidad, manteniendo componentes separados y permisos explícitos.
+4. Definir historial de contacto y canal de comunicación antes de automatizar confirmaciones/recordatorios.
 
 ## Registro cronológico de sesiones/agentes
 
@@ -272,7 +274,125 @@
 - **Decisiones tomadas (responsable/fecha):** listado/ficha protegidos por `page.view.patients`; acceso de lectura asignado a Recepcionista y Sysadmin (implementación/2026-10-14).
 - **Pendientes o bloqueos:** implementar la detección de coincidencias y fusión manual; hoy la landing puede generar un registro de paciente nuevo por solicitud y esta entrega no intenta unir esos registros.
 - **Próximo paso recomendado:** sugerir candidatos por DPI/teléfono/correo/nombre en flujos de alta y recepción; permitir selección manual y fusión explícita iniciada por recepción. La fusión trasladará el historial al paciente principal, conservará el origen inactivo y enlazado, pedirá revisión para elegir valores de perfil en conflicto y dejará auditoría de la operación.
-- **Estado del trabajo:** primera entrega de consulta implementada y validada automáticamente; pendiente de prueba visual.
+- **Estado del trabajo:** primera entrega de consulta implementada, validada automáticamente y corroborada visualmente por el usuario (2026-10-14).
+
+### 2026-10-14 — Alta y edición de pacientes con detección de coincidencias
+
+- **Objetivo:** permitir a recepción crear/actualizar pacientes desde el directorio, evitando duplicados inadvertidos y manteniendo un expediente maestro por paciente.
+- **Cambios realizados:** se añadieron los formularios Livewire de alta y edición, los permisos `patients.create` y `patients.edit`, y el servicio `PatientMatchService` para sugerir coincidencias por DPI, teléfono, correo y nombre. Si hay candidatos durante un alta, se requiere confirmación explícita para crear un registro diferente; nunca se fusionan automáticamente. La creación/actualización y el registro de auditoría ocurren en transacción; el alta crea o reutiliza el expediente único.
+- **Archivos modificados:** `app/Livewire/Admin/Patient/Index.php`, `app/Services/PatientMatchService.php`, `database/seeders/PacientesAccessSeeder.php`, `resources/views/livewire/admin/patient/index.blade.php`, pruebas de directorio y permisos.
+- **Pruebas/comandos y resultado:** `PatientDirectoryTest` y `CatalogosClinicosSeederTest`: 13 pruebas y 65 assertions pasaron; Pint, compilación/limpieza de vistas y `git diff --check` pasaron.
+- **Decisiones tomadas (responsable/fecha):** sugerencias, no fusión automática; recepción debe confirmar explícitamente un alta cuando se detectan candidatos (usuario/2026-10-14).
+- **Pendientes o bloqueos:** la captura desde el directorio está lista; las solicitudes públicas/administrativas aún pueden generar pacientes separados y no ofrecen selección asistida. La fusión manual sigue pendiente.
+- **Próximo paso recomendado:** integrar la revisión de posibles coincidencias en el flujo de recepción de solicitudes para permitir reutilizar un paciente existente sin perder los datos enviados en la solicitud; luego abordar la fusión manual con traslado de relaciones, resolución de conflictos y auditoría.
+- **Estado del trabajo:** implementado, validado automáticamente y corroborado visualmente por el usuario en `/admin/patients` (2026-10-14).
+
+### 2026-10-14 — Reutilización de pacientes desde solicitudes
+
+- **Objetivo:** permitir a recepción vincular una solicitud con un expediente existente cuando las coincidencias confirman que se trata de la misma persona, evitando expedientes paralelos.
+- **Cambios realizados:** la modal de recepción sugiere coincidencias con `PatientMatchService`. La selección requiere confirmación explícita; `PatientMergeService` bloquea y revalida pacientes y solicitud dentro de una transacción, traslada las relaciones con `expediente_id` y los datos de facturación, completa solo campos vacíos del paciente principal, conserva conflictos en el perfil de origen/auditoría e inactiva y enlaza el origen. La ficha del origen señala el expediente vigente.
+- **Archivos modificados:** componente y vista de solicitudes, `PatientMergeService`, `PatientMatchService`, modelo `Paciente`, ficha Livewire/vista del paciente, migración del vínculo autorreferencial y pruebas de solicitudes.
+- **Pruebas/comandos y resultado:** `SolicitudTest`, `PatientDirectoryTest` y `CatalogosClinicosSeederTest`: 26 pruebas y 130 assertions pasaron; Pint, compilación/limpieza de vistas y `git diff --check` pasaron.
+- **Base local:** se detectó que la migración `2026_10_14_131300_add_merged_into_patient_to_pacientes_table` seguía pendiente; se aplicó únicamente esa migración en la base MariaDB local y se confirmó su estado `Ran`.
+- **Decisiones tomadas (responsable/fecha):** al reutilizar, llenar únicamente campos vacíos del paciente existente; los conflictos no se sobrescriben y permanecen en el registro inactivo de origen y en auditoría (usuario/2026-10-14).
+- **Pendientes o bloqueos:** falta verificar visualmente el selector y el aviso de vínculo. La fusión general manual se registra en la siguiente entrega.
+- **Próximo paso recomendado:** validar visualmente la reutilización desde `/solicitudes` y la fusión manual en `/admin/patients`; después construir pestañas clínicas/documentales con autorización específica.
+- **Estado del trabajo:** implementado y validado automáticamente; revisión visual pendiente. La migración ya está aplicada en el entorno local.
+
+### 2026-10-14 — Fusión manual de expedientes desde el directorio
+
+- **Objetivo:** permitir a personal autorizado consolidar dos registros verificados desde `/admin/patients`, revisar diferencias antes de confirmar y conservar la trazabilidad.
+- **Cambios realizados:** se añadió `patients.merge`, asignado a Sysadmin y Recepcionista. Cada paciente activo puede iniciar una fusión; recepción busca y elige el paciente principal. La vista muestra conflictos de perfil y resumen del expediente, exige una decisión por cada diferencia y confirmación explícita. `PatientMergeService` revalida la selección y decisiones dentro de una transacción, completa campos vacíos, aplica las elecciones explícitas, traslada citas y demás relaciones de expediente/datos de facturación, re-enlaza pacientes previamente fusionados al principal, conserva el estado del expediente principal, inactiva y enlaza el origen y audita las decisiones y relaciones trasladadas.
+- **Archivos modificados:** `PatientMergeService.php`, `Admin/Patient/Index.php`, vista del directorio, `PacientesAccessSeeder.php`, pruebas de directorio y prueba de permisos del seeder.
+- **Pruebas/comandos y resultado:** `PatientDirectoryTest`, `SolicitudTest` y `CatalogosClinicosSeederTest`: 28 pruebas y 159 assertions pasaron; Pint, compilación/limpieza de Blade y `git diff --check` pasaron.
+- **Base local:** se ejecutó `PacientesAccessSeeder` para crear y otorgar `patients.merge` a Sysadmin y Recepcionista.
+- **Decisiones tomadas (responsable/fecha):** recepción elige qué valor mantener en cada campo conflictivo; el expediente principal conserva su estado de operación. La fusión no puede deshacerse desde la interfaz (usuario/2026-10-14).
+- **Pendientes o bloqueos:** no quedan bloqueos conocidos en esta entrega.
+- **Próximo paso recomendado:** agregar las secciones clínicas/documentales protegidas por permisos.
+- **Estado del trabajo:** implementado, validado automáticamente y corroborado visualmente por el usuario.
+
+### 2026-10-14 — Secciones protegidas de la ficha del paciente
+
+- **Objetivo:** mostrar información clínica, documental y financiera solo a usuarios autorizados, manteniendo disponibles los datos básicos y citas a quienes ya tienen acceso a pacientes.
+- **Cambios realizados:** se añadieron secciones de consultas/planes, archivos/consentimientos y pagos/paquetes en la ficha. Se restringieron también la clasificación, fase y objetivo clínico del resumen. `PacientesAccessSeeder` crea `patients.clinical.view`, `patients.documents.view` y `patients.billing.view`, pero no los concede a roles por nombre; Sysadmin puede asignarlos mediante Spatie. Las consultas de datos de cada sección solo se ejecutan con el permiso. Los listados de archivos y consentimientos no exponen rutas de almacenamiento, firmas, huellas, IP ni datos de dispositivos.
+- **Archivos modificados:** componente/vista de ficha, seeder de permisos, pruebas del directorio y pruebas del seeder; esta bitácora y la planificación.
+- **Pruebas/comandos y resultado:** `php artisan test tests/Feature/Livewire/PatientDirectoryTest.php tests/Feature/Database/CatalogosClinicosSeederTest.php`: 16 pruebas y 118 assertions pasaron; `vendor/bin/pint --test ...`, `php artisan view:cache` y `git diff --check` pasaron.
+- **Base local:** ejecutado `php artisan db:seed --class=Database\Seeders\PacientesAccessSeeder`; los permisos de secciones quedan disponibles para asignación administrativa y no se otorgan automáticamente a roles nominados.
+- **Decisiones tomadas:** permisos por sección independientes y asignación controlada por administración, sin roles fijos (usuario/2026-10-14).
+- **Pendientes o bloqueos:** ninguno en esta entrega.
+- **Próximo paso recomendado:** implementar el formulario de anamnesis general y acordar reglas para el cierre clínico.
+- **Estado del trabajo:** implementado, validado automáticamente y corroborado visualmente por el usuario.
+
+### 2026-10-14 — Apertura inicial de consultas clínicas
+
+- **Objetivo:** iniciar el Módulo 4 con creación controlada de una consulta desde una cita confirmada del paciente.
+- **Cambios realizados:** la ficha ofrece «Iniciar consulta» a usuarios con `consultations.create`. `ConsultationService` revalida estado y relación paciente/expediente dentro de una transacción, exige sede, profesional y especialidad, impide duplicar consultas para una cita y crea una consulta `abierta` enlazada a cita/expediente. El bloqueo del expediente serializa la asignación de `numero_consulta` por expediente/especialidad. La cita permanece sin cambios y la creación se audita. El permiso se crea con el seeder sin asignación automática a roles.
+- **Archivos modificados:** servicio de consultas, componente/vista de ficha, seeder, pruebas de consultas y permisos, bitácora y planificación.
+- **Pruebas/comandos y resultado:** `php artisan test tests/Feature/Livewire/ConsultationTest.php tests/Feature/Livewire/PatientDirectoryTest.php tests/Feature/Database/CatalogosClinicosSeederTest.php`: 20 pruebas y 134 assertions pasaron; Pint y `git diff --check` pasaron.
+- **Base local:** ejecutado `PacientesAccessSeeder` para registrar `consultations.create`, sin asignarlo automáticamente a roles.
+- **Decisiones tomadas:** en esta etapa solo se abre desde citas confirmadas; no se inicia si falta sede, profesional o especialidad. No se alteran estados de cita y aún no se implementan edición ni cierre clínico.
+- **Pendientes o bloqueos:** definir datos clínicos obligatorios y quién puede editar/cerrar/reabrir; falta formulario de anamnesis.
+- **Próximo paso recomendado:** implementar guardado incremental de anamnesis general y acordar validaciones para cierre.
+- **Estado del trabajo:** implementado y validado automáticamente; la comprobación visual quedó bloqueada por falta de flujo para asignar profesional/especialidad, resuelta en la siguiente entrega.
+
+### 2026-10-14 — Asignación de profesional y especialidad a citas
+
+- **Objetivo:** permitir configurar todos los datos requeridos para abrir una consulta, al confirmar citas nuevas y también corregir citas confirmadas que quedaron sin asignación completa.
+- **Cambios realizados:** los dos modales de confirmación presentan selectores dependientes de sede, profesional y especialidad. Las especialidades se limitan a las activas asociadas al profesional elegido. Agenda muestra «Completar asignación» en una cita confirmada incompleta; se guardan los recursos sin cambiar el estado y se auditan los valores anteriores/nuevos. El servicio revalida relaciones y traslapes dentro de la transacción.
+- **Archivos modificados:** `AppointmentManagementService`, componentes y vistas de agenda/solicitudes, pruebas de ambos flujos y bitácora.
+- **Pruebas/comandos y resultado:** `php artisan test tests/Feature/Livewire/ScheduleTest.php tests/Feature/Livewire/SolicitudTest.php tests/Feature/Livewire/ConsultationTest.php`: 31 pruebas y 135 assertions pasaron; Pint, `php artisan view:cache` y `git diff --check` pasaron.
+- **Decisiones tomadas:** asignar especialidad al confirmar junto a sede/profesional; usuarios no pueden escoger una especialidad ajena al profesional.
+- **Pendientes o bloqueos:** comprobar visualmente «Completar asignación» en agenda y después iniciar consulta desde esa cita.
+- **Próximo paso recomendado:** completar la verificación visual, luego implementar anamnesis general.
+- **Estado del trabajo:** implementado y validado automáticamente; verificación visual pendiente.
+
+### 2026-10-14 — Corrección de asignación con opciones únicas
+
+- **Objetivo:** permitir guardar la asignación cuando los selectores de sede, profesional o especialidad tienen una sola opción disponible.
+- **Cambios realizados:** los selectores de especialidad ahora sincronizan inmediatamente con Livewire. Al seleccionar una sede o profesional, el componente autoelige el profesional/especialidad cuando solo existe una opción; al abrir el modal, también autocompleta opciones únicas desde el inicio. Se aplica a los flujos de Agenda y Solicitudes.
+- **Archivos modificados:** componentes y vistas de Agenda/Solicitudes, prueba de asignación en `ScheduleTest` y esta bitácora.
+- **Pruebas/comandos y resultado:** `php artisan test tests/Feature/Livewire/ScheduleTest.php tests/Feature/Livewire/SolicitudTest.php`: 28 pruebas y 123 assertions pasaron; Pint y `php artisan view:cache` pasaron.
+- **Decisiones tomadas:** una opción única se considera una selección inequívoca y se asigna automáticamente; con varias opciones, el usuario debe elegir.
+- **Pendientes o bloqueos:** volver a comprobar en navegador que el botón queda habilitado y que la consulta puede iniciarse.
+- **Próximo paso recomendado:** reintentar «Completar asignación» y «Iniciar consulta»; después continuar con anamnesis general.
+- **Estado del trabajo:** corregido y validado automáticamente; verificación visual pendiente.
+
+### 2026-10-14 — Captura de anamnesis general
+
+- **Objetivo:** documentar la evaluación inicial de una consulta abierta con acceso clínico autorizado.
+- **Cambios realizados:** nueva pantalla de anamnesis enlazada desde la ficha del paciente; permite crear y actualizar motivo, historia, antecedentes, alergias, medicamentos, hábitos, signos vitales, medidas y observaciones. Solo `consultations.edit` puede acceder/guardar; el servicio revalida el estado bajo transacción y audita los nombres de campos modificados sin copiar datos clínicos a la auditoría. Consultas cerradas no son editables. El IMC permanece como columna generada; se ajustó la expresión para evitar división entera en SQLite y obtener el cálculo correcto.
+- **Archivos modificados:** componente/vista de consulta, servicio, ruta, permiso `consultations.edit`, enlace de ficha, migración de anamnesis y pruebas.
+- **Pruebas/comandos y resultado:** `php artisan test tests/Feature/Livewire/ConsultationTest.php tests/Feature/Database/CatalogosClinicosSeederTest.php`: 10 pruebas y 61 assertions pasaron; Pint, `php artisan view:cache`, registro de ruta y `git diff --check` pasaron.
+- **Decisiones tomadas:** antecedentes patológicos y hábitos se capturan como líneas y se guardan como arrays JSON; estados permitidos para guardar: `abierta` y `en_proceso`. No se automatizó el otorgamiento del permiso a roles.
+- **Pendientes o bloqueos:** definir los requisitos y autorizaciones de cierre clínico antes de implementar transiciones de estado.
+- **Próximo paso recomendado:** acordar qué datos son obligatorios, quién puede cerrar/reabrir y qué estados debe recorrer la consulta.
+- **Estado del trabajo:** implementado, validado automáticamente y corroborado visualmente por el usuario.
+
+### 2026-10-14 — Verificación visual de anamnesis general
+
+- **Resultado:** el usuario confirmó que puede visualizar la anamnesis, guardar datos y volver a consultarlos o editarlos.
+- **Pendientes:** acordar las reglas clínicas y autorizaciones para cierre/reapertura antes de implementar ese flujo.
+- **Estado del trabajo:** verificado visualmente por el usuario.
+
+### 2026-10-14 — Cierre y reapertura de consultas
+
+- **Objetivo:** completar las transiciones clínicas acordadas para consultas abiertas.
+- **Cambios realizados:** se puede cerrar una consulta en estado `abierta` o `en_proceso` únicamente con motivo y observaciones finales; la operación guarda la anamnesis pendiente y cambia el estado en una misma transacción. Reabrir una consulta `cerrada` la devuelve a `en_proceso`. Cancelación no se mezcla con estas acciones. Se agregaron permisos independientes `consultations.close` y `consultations.reopen`; se puede acceder a la pantalla con cualquiera de los permisos clínicos de edición/cierre/reapertura. Las transiciones se auditan sin incluir contenido clínico. Por preferencia del usuario, las confirmaciones de cierre y reapertura se muestran en modales de Flux en lugar del diálogo nativo del navegador.
+- **Pruebas/comandos y resultado:** tras el cambio de modales, `php artisan test tests/Feature/Livewire/ConsultationTest.php`: 11 pruebas y 65 assertions pasaron; Pint, compilación de vistas y `git diff --check` pasaron.
+- **Decisiones tomadas (usuario/2026-10-14):** cierre exige motivo y observaciones finales; permisos separados para cerrar/reabrir; se permite cerrar desde `abierta` o `en_proceso`, reabrir como `en_proceso`; cancelación queda fuera de este flujo.
+- **Pendientes o bloqueos:** otorgar explícitamente los permisos de cierre/reapertura a los usuarios correspondientes y validar visualmente ambas acciones y sus modales.
+- **Próximo paso recomendado:** ejecutar el seeder de permisos en la base local, asignar los permisos deseados desde administración y probar cierre/reapertura en navegador.
+- **Estado del trabajo:** implementado y validado automáticamente; verificación visual pendiente.
+
+### 2026-10-14 — Formularios de anamnesis por especialidad
+
+- **Objetivo:** capturar los datos clínicos adicionales ya contemplados en el esquema, sin mezclar formularios de terapias distintas.
+- **Cambios realizados:** se añadieron paneles independientes para evaluación homeopática, quiropráctica y de acupuntura, disponibles para cualquier consulta/paciente sin depender de la especialidad asignada a la cita. Cada formulario se persiste solo cuando tiene datos y se vuelve a cargar para edición; la especialidad de la consulta sigue siendo el contexto del profesional/terapia, no un filtro de evaluación. Quiropraxia valida enums, semanas de gestación y booleanos; Acupuntura captura los campos JSON como listas (una opción por línea) y valida humedad. El servicio valida campos por formulario y registra auditoría de campos cambiados sin valores clínicos. Se ajustó el modelo para las tablas de Quiropraxia y Acupuntura, que no tienen columnas de timestamps.
+- **Archivos modificados:** componente y servicio de consulta; modelos de Quiropraxia/Acupuntura; vista principal y tres parciales; pruebas.
+- **Pruebas/comandos y resultado:** `php artisan test tests/Feature/Livewire/ConsultationTest.php tests/Feature/Database/CatalogosClinicosSeederTest.php`: 16 pruebas y 119 assertions pasaron; Pint, `php artisan view:cache` y `git diff --check` pasaron. Pruebas de una consulta Homeopatía verifican que los tres formularios se muestran, guardan y vuelven a cargar; también prueban Quiropraxia y Acupuntura desde consultas de otra especialidad.
+- **Pendientes o bloqueos:** validar visualmente los formularios; definir opciones clínicas controladas para campos JSON libres de Acupuntura si el equipo clínico las requiere.
+- **Próximo paso recomendado:** continuar con evaluación integral MBI, informe por sistemas y test de intoxicación en componentes separados.
+- **Estado del trabajo:** implementado y validado automáticamente; verificación visual pendiente.
 
 ## Plantilla para registrar una entrega
 

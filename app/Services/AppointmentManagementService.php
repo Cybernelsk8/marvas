@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Auditoria;
 use App\Models\Cita;
+use App\Models\Especialidad;
 use App\Models\Profesional;
 use App\Models\Sucursal;
 use Carbon\CarbonInterface;
@@ -10,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 
 class AppointmentManagementService
 {
-    public function confirm(int $citaId, int $sucursalId, int $userId, ?int $profesionalId = null): string
+    public function confirm(int $citaId, int $sucursalId, int $userId, int $profesionalId, int $especialidadId): string
     {
-        return DB::transaction(function () use ($citaId, $sucursalId, $userId, $profesionalId): string {
+        return DB::transaction(function () use ($citaId, $sucursalId, $userId, $profesionalId, $especialidadId): string {
             $sucursalActiva = Sucursal::query()
                 ->whereKey($sucursalId)
                 ->where('activa', true)
@@ -31,35 +33,116 @@ class AppointmentManagementService
                 return 'no_pendiente';
             }
 
-            if ($profesionalId !== null) {
-                $profesionalAsignado = Profesional::query()
-                    ->whereKey($profesionalId)
-                    ->where('activo', true)
-                    ->whereHas('sucursales', fn ($query) => $query->whereKey($sucursalId))
-                    ->lockForUpdate()
-                    ->exists();
+            $assignmentResult = $this->validateAssignment($sucursalId, $profesionalId, $especialidadId);
 
-                if (! $profesionalAsignado) {
-                    return 'profesional_no_disponible';
-                }
+            if ($assignmentResult !== 'asignacion_valida') {
+                return $assignmentResult;
             }
 
             if (! $cita->fecha_hora_inicio->isFuture()
                 || ! $availability->isSlotAllowed($cita->fecha_hora_inicio, $cita->duracion_minutos, $configuration)
-                || ($profesionalId !== null
-                    ? Cita::existeTraslape($profesionalId, $cita->fecha_hora_inicio, $cita->fecha_hora_fin, $cita->id)
-                    : Cita::existeTraslapeGlobal($cita->fecha_hora_inicio, $cita->fecha_hora_fin, $cita->id))) {
+                || Cita::existeTraslape($profesionalId, $cita->fecha_hora_inicio, $cita->fecha_hora_fin, $cita->id)) {
                 return 'no_disponible';
             }
 
             $cita->estado = 'confirmada';
             $cita->sucursal_id = $sucursalId;
             $cita->profesional_id = $profesionalId;
+            $cita->especialidad_id = $especialidadId;
             $cita->agendada_por = $userId;
             $cita->save();
 
             return 'confirmada';
         });
+    }
+
+    public function assignConfirmedAppointment(
+        int $citaId,
+        int $sucursalId,
+        int $userId,
+        int $profesionalId,
+        int $especialidadId,
+    ): string {
+        return DB::transaction(function () use ($citaId, $sucursalId, $userId, $profesionalId, $especialidadId): string {
+            $sucursalActiva = Sucursal::query()
+                ->whereKey($sucursalId)
+                ->where('activa', true)
+                ->lockForUpdate()
+                ->first(['id']);
+
+            if (! $sucursalActiva) {
+                return 'sede_no_disponible';
+            }
+
+            $cita = Cita::query()->lockForUpdate()->findOrFail($citaId);
+
+            if ($cita->estado !== 'confirmada'
+                || ($cita->sucursal_id && $cita->profesional_id && $cita->especialidad_id)) {
+                return 'no_asignable';
+            }
+
+            $assignmentResult = $this->validateAssignment($sucursalId, $profesionalId, $especialidadId);
+
+            if ($assignmentResult !== 'asignacion_valida') {
+                return $assignmentResult;
+            }
+
+            if (Cita::existeTraslape($profesionalId, $cita->fecha_hora_inicio, $cita->fecha_hora_fin, $cita->id)) {
+                return 'no_disponible';
+            }
+
+            $previous = [
+                'sucursal_id' => $cita->sucursal_id,
+                'profesional_id' => $cita->profesional_id,
+                'especialidad_id' => $cita->especialidad_id,
+            ];
+            $cita->sucursal_id = $sucursalId;
+            $cita->profesional_id = $profesionalId;
+            $cita->especialidad_id = $especialidadId;
+            $cita->save();
+
+            Auditoria::create([
+                'user_id' => $userId,
+                'tabla_afectada' => 'citas',
+                'registro_id' => $cita->id,
+                'accion' => 'editar',
+                'datos_anteriores' => $previous,
+                'datos_nuevos' => [
+                    'sucursal_id' => $sucursalId,
+                    'profesional_id' => $profesionalId,
+                    'especialidad_id' => $especialidadId,
+                ],
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            return 'asignada';
+        });
+    }
+
+    private function validateAssignment(int $sucursalId, int $profesionalId, int $especialidadId): string
+    {
+        if (! Especialidad::query()->whereKey($especialidadId)->where('activa', true)->exists()) {
+            return 'especialidad_no_disponible';
+        }
+
+        $professionalAvailableAtBranch = Profesional::query()
+            ->whereKey($profesionalId)
+            ->where('activo', true)
+            ->whereHas('sucursales', fn ($query) => $query->whereKey($sucursalId))
+            ->lockForUpdate()
+            ->exists();
+
+        if (! $professionalAvailableAtBranch) {
+            return 'profesional_no_disponible';
+        }
+
+        $specialtyBelongsToProfessional = Profesional::query()
+            ->whereKey($profesionalId)
+            ->whereHas('especialidades', fn ($query) => $query->whereKey($especialidadId)->where('activa', true))
+            ->exists();
+
+        return $specialtyBelongsToProfessional ? 'asignacion_valida' : 'especialidad_no_disponible';
     }
 
     public function reschedule(int $citaId, CarbonInterface $inicio): string

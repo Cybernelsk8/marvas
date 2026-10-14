@@ -5,6 +5,7 @@ namespace Tests\Feature\Livewire;
 use App\Livewire\Solicitud;
 use App\Models\Admin\Setting;
 use App\Models\Admin\User;
+use App\Models\Auditoria;
 use App\Models\Cita;
 use App\Models\Paciente;
 use App\Models\Sucursal;
@@ -74,12 +75,163 @@ class SolicitudTest extends TestCase
         ]);
     }
 
+    public function test_reception_can_reuse_a_matching_patient_without_overwriting_conflicting_data(): void
+    {
+        $cita = $this->crearSolicitud();
+        $source = $cita->expediente->paciente;
+        $target = Paciente::query()->create([
+            'nombres' => 'Paciente existente',
+            'apellidos' => 'Registrado',
+            'numero_dpi' => '1234567890101',
+            'telefono' => '5555-1111',
+            'direccion' => 'Dirección existente',
+        ]);
+        $targetExpediente = $target->expediente()->create();
+        $sourceExpediente = $source->expediente;
+
+        $snapshot = $this->componentSnapshot(
+            $this->actingAs($this->recepcionista)->get('/solicitudes')->assertOk(),
+            'solicitud',
+        );
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent(
+            $snapshot,
+            calls: [['showSolicitud', [$cita->id]]],
+        )->assertOk());
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent($snapshot, [
+            'solicitud.expediente.paciente.numero_dpi' => '1234567890101',
+            'solicitud.expediente.paciente.sexo' => 'F',
+            'solicitud.expediente.paciente.email' => 'solicitud@example.test',
+            'solicitud.expediente.paciente.direccion' => 'Dirección de solicitud',
+        ])->assertOk());
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent(
+            $snapshot,
+            calls: [['selectExistingPatient', [$target->id]]],
+        )->assertOk());
+
+        $this->updateLivewireComponent(
+            $snapshot,
+            ['confirmPatientReuse' => true],
+            [['reuseExistingPatient']],
+        )->assertOk();
+
+        $this->assertDatabaseHas('citas', [
+            'id' => $cita->id,
+            'expediente_id' => $targetExpediente->id,
+        ]);
+        $this->assertDatabaseHas('pacientes', [
+            'id' => $source->id,
+            'activo' => false,
+            'fusionado_en_paciente_id' => $target->id,
+        ]);
+        $this->assertDatabaseHas('pacientes', [
+            'id' => $target->id,
+            'nombres' => 'Paciente existente',
+            'numero_dpi' => '1234567890101',
+            'sexo' => 'F',
+            'email' => 'solicitud@example.test',
+            'direccion' => 'Dirección existente',
+        ]);
+        $this->assertDatabaseHas('expediente_maestro', [
+            'id' => $sourceExpediente->id,
+            'estado' => 'inactivo',
+        ]);
+        $this->assertSame('Dirección de solicitud', $source->fresh()->direccion);
+        $this->assertDatabaseHas('auditoria', [
+            'tabla_afectada' => 'pacientes',
+            'registro_id' => $source->id,
+            'accion' => 'editar',
+        ]);
+
+        $sourceAudit = Auditoria::query()
+            ->where('tabla_afectada', 'pacientes')
+            ->where('registro_id', $source->id)
+            ->latest('id')
+            ->firstOrFail();
+        $this->assertSame('Dirección de solicitud', $sourceAudit->datos_nuevos['datos_solicitud']['direccion']);
+        $this->assertSame('Dirección existente', $sourceAudit->datos_nuevos['perfil_conflictivo']['direccion']['existente']);
+        $this->assertSame('Dirección de solicitud', $sourceAudit->datos_nuevos['perfil_conflictivo']['direccion']['solicitud']);
+
+        $this->actingAs($this->recepcionista)
+            ->get(route('admin.patients.show', $source))
+            ->assertOk()
+            ->assertSee('Registro vinculado a otro paciente')
+            ->assertSee($target->nombre_completo);
+    }
+
+    public function test_reception_must_explicitly_confirm_reusing_a_matching_patient(): void
+    {
+        $cita = $this->crearSolicitud();
+        $source = $cita->expediente->paciente;
+        $target = Paciente::query()->create([
+            'nombres' => 'Otro paciente',
+            'apellidos' => 'Existente',
+            'telefono' => '5555-1111',
+        ]);
+
+        $snapshot = $this->componentSnapshot(
+            $this->actingAs($this->recepcionista)->get('/solicitudes')->assertOk(),
+            'solicitud',
+        );
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent(
+            $snapshot,
+            calls: [['showSolicitud', [$cita->id]]],
+        )->assertOk());
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent(
+            $snapshot,
+            calls: [['selectExistingPatient', [$target->id]]],
+        )->assertOk());
+
+        $this->updateLivewireComponent(
+            $snapshot,
+            calls: [['reuseExistingPatient']],
+        )->assertOk();
+
+        $this->assertDatabaseHas('citas', [
+            'id' => $cita->id,
+            'expediente_id' => $source->expediente->id,
+        ]);
+        $this->assertDatabaseHas('pacientes', [
+            'id' => $source->id,
+            'activo' => true,
+            'fusionado_en_paciente_id' => null,
+        ]);
+    }
+
+    public function test_request_viewers_without_edit_permission_do_not_see_other_patient_matches(): void
+    {
+        $cita = $this->crearSolicitud();
+        $target = Paciente::query()->create([
+            'nombres' => 'Paciente confidencial',
+            'apellidos' => 'Coincidente',
+            'telefono' => '5555-1111',
+        ]);
+        $viewer = User::create([
+            'email' => 'solo-lectura@example.test',
+            'password' => 'test-password',
+            'email_verified_at' => now(),
+        ]);
+        $viewer->givePermissionTo('page.view.requests');
+
+        $snapshot = $this->componentSnapshot(
+            $this->actingAs($viewer)->get('/solicitudes')->assertOk(),
+            'solicitud',
+        );
+        $response = $this->updateLivewireComponent(
+            $snapshot,
+            calls: [['showSolicitud', [$cita->id]]],
+        )->assertOk();
+
+        $this->assertStringNotContainsString($target->nombre_completo, $response->getContent());
+    }
+
     public function test_reception_can_confirm_a_pending_request_when_its_slot_is_still_free(): void
     {
         $cita = $this->crearSolicitud();
         $page = $this->actingAs($this->recepcionista)->get('/solicitudes')->assertOk()
-            ->assertSee('wire:submit="confirmar(', false)
-            ->assertSee('wire:model="sucursalConfirmacion"', false);
+            ->assertSee('wire:submit="confirmar(', false);
+        $sucursal = Sucursal::query()->where('activa', true)->firstOrFail();
+        $profesional = $sucursal->profesionales()->firstOrFail();
+        $especialidad = $profesional->especialidades()->firstOrFail();
         $snapshot = $this->componentSnapshot(
             $page,
             'solicitud',
@@ -90,16 +242,26 @@ class SolicitudTest extends TestCase
             calls: [['prepararConfirmacion', [$cita->id]]],
         )->assertOk());
 
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent(
+            $snapshot,
+            ['sucursalConfirmacion' => (string) $sucursal->id],
+        )->assertOk());
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent(
+            $snapshot,
+            ['profesionalConfirmacion' => (string) $profesional->id],
+        )->assertOk());
         $this->updateLivewireComponent(
             $snapshot,
-            ['sucursalConfirmacion' => (string) Sucursal::query()->where('activa', true)->value('id')],
+            ['especialidadConfirmacion' => (string) $especialidad->id],
             calls: [['confirmar', [$cita->id]]],
         )->assertOk();
 
         $this->assertDatabaseHas('citas', [
             'id' => $cita->id,
             'estado' => 'confirmada',
-            'sucursal_id' => Sucursal::query()->where('activa', true)->value('id'),
+            'sucursal_id' => $sucursal->id,
+            'profesional_id' => $profesional->id,
+            'especialidad_id' => $especialidad->id,
             'agendada_por' => $this->recepcionista->id,
         ]);
     }
@@ -108,6 +270,9 @@ class SolicitudTest extends TestCase
     {
         Setting::query()->where('key', 'disponibilidad_global_citas')->delete();
         $cita = $this->crearSolicitud();
+        $sucursal = Sucursal::query()->where('activa', true)->firstOrFail();
+        $profesional = $sucursal->profesionales()->firstOrFail();
+        $especialidad = $profesional->especialidades()->firstOrFail();
         $snapshot = $this->componentSnapshot(
             $this->actingAs($this->recepcionista)->get('/solicitudes')->assertOk(),
             'solicitud',
@@ -117,16 +282,26 @@ class SolicitudTest extends TestCase
             calls: [['prepararConfirmacion', [$cita->id]]],
         )->assertOk());
 
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent(
+            $snapshot,
+            ['sucursalConfirmacion' => (string) $sucursal->id],
+        )->assertOk());
+        $snapshot = $this->updatedSnapshot($this->updateLivewireComponent(
+            $snapshot,
+            ['profesionalConfirmacion' => (string) $profesional->id],
+        )->assertOk());
         $this->updateLivewireComponent(
             $snapshot,
-            ['sucursalConfirmacion' => (string) Sucursal::query()->where('activa', true)->value('id')],
+            ['especialidadConfirmacion' => (string) $especialidad->id],
             calls: [['confirmar', [$cita->id]]],
         )->assertOk();
 
         $this->assertDatabaseHas('citas', [
             'id' => $cita->id,
             'estado' => 'confirmada',
-            'sucursal_id' => Sucursal::query()->where('activa', true)->value('id'),
+            'sucursal_id' => $sucursal->id,
+            'profesional_id' => $profesional->id,
+            'especialidad_id' => $especialidad->id,
             'agendada_por' => $this->recepcionista->id,
         ]);
     }

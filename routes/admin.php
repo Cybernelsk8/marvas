@@ -2,6 +2,7 @@
 
 use App\Livewire\Admin\Areas;
 use App\Livewire\Admin\Availability;
+use App\Livewire\Admin\Consultation\Show as ConsultationShow;
 use App\Livewire\Admin\Pages;
 use App\Livewire\Admin\Patient\Index as PatientIndex;
 use App\Livewire\Admin\Patient\Show as PatientShow;
@@ -51,3 +52,6 @@ Route::livewire('patients', PatientIndex::class)
 Route::livewire('patients/{patient}', PatientShow::class)
     ->middleware(['can:page.view.patients'])
     ->name('admin.patients.show');
+
+Route::livewire('consultations/{consultation}', ConsultationShow::class)
+    ->name('admin.consultations.show');

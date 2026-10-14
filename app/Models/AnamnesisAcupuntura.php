@@ -10,6 +10,8 @@ class AnamnesisAcupuntura extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $table = 'anamnesis_acupuntura';
 
     protected $fillable = [

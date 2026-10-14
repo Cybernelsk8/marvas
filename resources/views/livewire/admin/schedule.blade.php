@@ -136,6 +136,9 @@
                                 @if (
                                     (in_array($appointment->estado, ['solicitada', 'reprogramada', 'agendada'], true) &&
                                         auth()->user()->can('requests.confirm')) ||
+                                        ($appointment->estado === 'confirmada' &&
+                                            (! $appointment->sucursal_id || ! $appointment->profesional_id || ! $appointment->especialidad_id) &&
+                                            auth()->user()->can('requests.confirm')) ||
                                         ($appointment->estado === 'solicitada' &&
                                             (auth()->user()->can('requests.reschedule') || auth()->user()->can('requests.cancel'))))
                                     <div class="mt-4 flex flex-wrap gap-2">
@@ -144,6 +147,14 @@
                                             <flux:button size="sm" variant="primary" icon="check"
                                                 wire:click="prepareConfirmation({{ $appointment->id }})">
                                                 Confirmar
+                                            </flux:button>
+                                        @endif
+                                        @if ($appointment->estado === 'confirmada' &&
+                                                (! $appointment->sucursal_id || ! $appointment->profesional_id || ! $appointment->especialidad_id) &&
+                                                auth()->user()->can('requests.confirm'))
+                                            <flux:button size="sm" variant="primary" icon="user-plus"
+                                                wire:click="prepareConfirmation({{ $appointment->id }})">
+                                                Completar asignación
                                             </flux:button>
                                         @endif
                                         @if ($appointment->estado === 'solicitada' && auth()->user()->can('requests.reschedule'))
@@ -174,15 +185,18 @@
 
     <flux:modal name="agenda-confirmar-cita-modal" class="max-w-lg">
         <form wire:submit="confirmAppointment" class="space-y-4">
-            <flux:heading size="lg">Confirmar cita</flux:heading>
-            <flux:text>Asigna la sede donde se atenderá y confirma la fecha y hora.</flux:text>
+            <flux:heading size="lg">{{ $assigningConfirmedAppointment ? 'Completar asignación de cita' : 'Confirmar cita' }}</flux:heading>
+            <flux:text>
+                Asigna la sede, el profesional y la especialidad de atención
+                {{ $assigningConfirmedAppointment ? 'que faltan para esta cita confirmada.' : 'antes de confirmar.' }}
+            </flux:text>
             @if ($sucursales->where('activa', true)->isEmpty())
                 <flux:callout variant="danger" icon="exclamation-triangle">
                     <flux:callout.heading>No hay sedes activas</flux:callout.heading>
                     <flux:callout.text>Activa o registra una sede antes de confirmar citas.</flux:callout.text>
                 </flux:callout>
             @else
-                <flux:select label="Sede de atención *" wire:model="sucursalConfirmacion"
+                <flux:select label="Sede de atención *" wire:model.live="sucursalConfirmacion"
                     placeholder="Selecciona la sede" required>
                     @foreach ($sucursales->where('activa', true) as $sucursal)
                         <flux:select.option value="{{ $sucursal->id }}">{{ $sucursal->nombre }}</flux:select.option>
@@ -198,7 +212,7 @@
                                 cita.</flux:callout.text>
                         </flux:callout>
                     @else
-                        <flux:select label="Profesional de atención *" wire:model="profesionalConfirmacion"
+                        <flux:select label="Profesional de atención *" wire:model.live="profesionalConfirmacion"
                             placeholder="Selecciona el profesional" required>
                             @foreach ($profesionalesDeSede as $profesional)
                                 <flux:select.option value="{{ $profesional->id }}">
@@ -206,6 +220,23 @@
                                 </flux:select.option>
                             @endforeach
                         </flux:select>
+                        @if ($profesionalConfirmacion)
+                            @if ($especialidadesConfirmacion->isEmpty())
+                                <flux:callout variant="warning" icon="exclamation-triangle">
+                                    <flux:callout.heading>Sin especialidades disponibles</flux:callout.heading>
+                                    <flux:callout.text>Asocia una especialidad activa al profesional antes de confirmar la cita.</flux:callout.text>
+                                </flux:callout>
+                            @else
+                                <flux:select label="Especialidad de atención *" wire:model.live="especialidadConfirmacion"
+                                    placeholder="Selecciona la especialidad" required>
+                                    @foreach ($especialidadesConfirmacion as $especialidad)
+                                        <flux:select.option value="{{ $especialidad->id }}">
+                                            {{ $especialidad->nombre }}
+                                        </flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                            @endif
+                        @endif
                     @endif
                 @endif
             @endif
@@ -215,13 +246,16 @@
             @error('profesionalConfirmacion')
                 <flux:error>{{ $message }}</flux:error>
             @enderror
+            @error('especialidadConfirmacion')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
             <div class="flex justify-end gap-2">
                 <flux:modal.close>
                     <flux:button type="button" variant="ghost">Volver</flux:button>
                 </flux:modal.close>
                 <flux:button type="submit" variant="primary" wire:loading.attr="disabled"
-                    :disabled="$sucursales->where('activa', true)->isEmpty() || ! $sucursalConfirmacion || ($sucursalConfirmacion && ($profesionales ?? collect())->isEmpty())">
-                    Confirmar cita
+                    :disabled="$sucursales->where('activa', true)->isEmpty() || ! $sucursalConfirmacion || ! $profesionalConfirmacion || ! $especialidadConfirmacion">
+                    {{ $assigningConfirmedAppointment ? 'Guardar asignación' : 'Confirmar cita' }}
                 </flux:button>
             </div>
         </form>

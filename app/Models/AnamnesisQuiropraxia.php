@@ -10,6 +10,8 @@ class AnamnesisQuiropraxia extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $table = 'anamnesis_quiropraxia';
 
     protected $fillable = [

@@ -4,8 +4,13 @@ namespace App\Livewire;
 
 use App\Livewire\Traits\HasCitas;
 use App\Models\Cita;
+use App\Models\Especialidad;
+use App\Models\Paciente;
+use App\Models\Profesional;
 use App\Models\Sucursal;
 use App\Services\AppointmentManagementService;
+use App\Services\PatientMatchService;
+use App\Services\PatientMergeService;
 use App\Traits\DataTable;
 use Carbon\Carbon;
 use Flux\Flux;
@@ -43,9 +48,17 @@ class Solicitud extends Component
 
     public ?string $sucursalConfirmacion = null;
 
+    public ?string $profesionalConfirmacion = null;
+
+    public ?string $especialidadConfirmacion = null;
+
     public ?string $formularioUrl = null;
 
     public ?string $formularioNombre = null;
+
+    public ?int $selectedExistingPatientId = null;
+
+    public bool $confirmPatientReuse = false;
 
     #[Computed]
     public function rows()
@@ -124,6 +137,8 @@ class Solicitud extends Component
     {
         return view('livewire.solicitud', [
             'sucursalesActivas' => Sucursal::query()->where('activa', true)->orderBy('nombre')->get(),
+            'profesionalesConfirmacion' => $this->profesionalesPorSucursal((int) ($this->sucursalConfirmacion ?? 0)),
+            'especialidadesConfirmacion' => $this->especialidadesPorProfesional((int) ($this->profesionalConfirmacion ?? 0)),
         ]);
     }
 
@@ -134,7 +149,96 @@ class Solicitud extends Component
         $cita = Cita::with(['expediente.paciente'])->findOrFail($id);
         $this->solicitudId = $cita->id;
         $this->solicitud = $cita->toArray();
+        $this->selectedExistingPatientId = null;
+        $this->confirmPatientReuse = false;
+        $this->resetValidation();
         Flux::modal('solicitud-modal')->show();
+    }
+
+    #[Computed]
+    public function possiblePatientMatches()
+    {
+        $patient = $this->solicitud['expediente']['paciente'] ?? [];
+
+        if (! is_array($patient)
+            || $patient === []
+            || ! in_array($this->solicitud['estado'] ?? null, ['solicitada', 'reprogramada'], true)) {
+            return collect();
+        }
+
+        return app(PatientMatchService::class)->matchingCandidates(
+            $patient,
+            isset($patient['id']) ? (int) $patient['id'] : null,
+        );
+    }
+
+    public function updatedSolicitud(): void
+    {
+        $this->selectedExistingPatientId = null;
+        $this->confirmPatientReuse = false;
+    }
+
+    public function selectExistingPatient(int $patientId): void
+    {
+        $this->authorize('requests.edit');
+
+        abort_if(! $this->possiblePatientMatches->contains('id', $patientId), 404);
+
+        $this->selectedExistingPatientId = $patientId;
+        $this->confirmPatientReuse = false;
+        $this->resetValidation('selectedExistingPatientId');
+        $this->resetValidation('confirmPatientReuse');
+    }
+
+    public function reuseExistingPatient(): void
+    {
+        $this->authorize('requests.edit');
+
+        $this->validate([
+            'selectedExistingPatientId' => ['required', 'integer'],
+            'confirmPatientReuse' => ['accepted'],
+            'solicitud.expediente.paciente.nombres' => ['required', 'string', 'max:150'],
+            'solicitud.expediente.paciente.apellidos' => ['required', 'string', 'max:150'],
+            'solicitud.expediente.paciente.fecha_nacimiento' => ['nullable', 'date', 'before_or_equal:today'],
+            'solicitud.expediente.paciente.sexo' => ['required', Rule::in(['M', 'F', 'otro'])],
+            'solicitud.expediente.paciente.estado_civil' => ['nullable', Rule::in(['soltero', 'casado', 'divorciado', 'viudo', 'union_libre', 'otro'])],
+            'solicitud.expediente.paciente.religion' => ['nullable', 'string', 'max:60'],
+            'solicitud.expediente.paciente.numero_dpi' => ['nullable', 'string', 'max:20'],
+            'solicitud.expediente.paciente.telefono' => ['nullable', 'string', 'max:20'],
+            'solicitud.expediente.paciente.telefono_emergencia' => ['nullable', 'string', 'max:20'],
+            'solicitud.expediente.paciente.email' => ['nullable', 'email', 'max:191'],
+            'solicitud.expediente.paciente.direccion' => ['nullable', 'string'],
+            'solicitud.expediente.paciente.ocupacion' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $sourcePatientId = (int) data_get($this->solicitud, 'expediente.paciente.id');
+        $submittedPatient = data_get($this->solicitud, 'expediente.paciente', []);
+        $dpiOwner = filled($submittedPatient['numero_dpi'] ?? null)
+            ? Paciente::query()->where('numero_dpi', $submittedPatient['numero_dpi'])->value('id')
+            : null;
+
+        if ($dpiOwner !== null && (int) $dpiOwner !== $sourcePatientId && (int) $dpiOwner !== $this->selectedExistingPatientId) {
+            $this->addError('solicitud.expediente.paciente.numero_dpi', 'El DPI ya pertenece a otro expediente. Selecciona ese paciente como coincidencia para vincularlo.');
+
+            return;
+        }
+
+        $result = app(PatientMergeService::class)->mergeRequestPatient(
+            $this->solicitudId,
+            $sourcePatientId,
+            $this->selectedExistingPatientId,
+            $submittedPatient,
+        );
+
+        $conflictCount = count($result['profile_conflicts']) + count($result['expediente_conflicts']);
+        $message = 'La solicitud se vinculó al expediente de '.$result['target']->nombre_completo.'.';
+
+        if ($conflictCount > 0) {
+            $message .= ' Los datos en conflicto se conservaron en el registro de origen y en auditoría para revisión.';
+        }
+
+        $this->resetData();
+        Flux::toast(text: $message, variant: 'success');
     }
 
     public function store(): void
@@ -197,19 +301,71 @@ class Solicitud extends Component
                 'integer',
                 Rule::exists('sucursales', 'id')->where('activa', true),
             ],
+            'profesionalConfirmacion' => [
+                'required',
+                'integer',
+                Rule::exists('profesionales', 'id')->where('activo', true),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $this->sucursalConfirmacion || ! $value) {
+                        return;
+                    }
+
+                    $exists = Profesional::query()
+                        ->whereKey((int) $value)
+                        ->where('activo', true)
+                        ->whereHas('sucursales', fn ($query) => $query->whereKey((int) $this->sucursalConfirmacion))
+                        ->exists();
+
+                    if (! $exists) {
+                        $fail('El profesional no pertenece a la sede seleccionada.');
+                    }
+                },
+            ],
+            'especialidadConfirmacion' => [
+                'required',
+                'integer',
+                Rule::exists('especialidades', 'id')->where('activa', true),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $this->profesionalConfirmacion || ! $value) {
+                        return;
+                    }
+
+                    $exists = Profesional::query()
+                        ->whereKey((int) $this->profesionalConfirmacion)
+                        ->where('activo', true)
+                        ->whereHas('especialidades', fn ($query) => $query->whereKey((int) $value)->where('activa', true))
+                        ->exists();
+
+                    if (! $exists) {
+                        $fail('La especialidad no está asociada al profesional seleccionado.');
+                    }
+                },
+            ],
         ], [
             'sucursalConfirmacion.required' => 'Selecciona la sede donde se atenderá la cita.',
             'sucursalConfirmacion.exists' => 'La sede seleccionada no está activa. Selecciona otra.',
+            'profesionalConfirmacion.required' => 'Selecciona el profesional que atenderá la cita.',
+            'profesionalConfirmacion.exists' => 'El profesional seleccionado no está activo.',
+            'especialidadConfirmacion.required' => 'Selecciona la especialidad de atención.',
+            'especialidadConfirmacion.exists' => 'La especialidad seleccionada no está activa.',
         ]);
         $sucursalId = (int) $datos['sucursalConfirmacion'];
 
-        $resultado = app(AppointmentManagementService::class)->confirm($id, $sucursalId, Auth::id());
+        $resultado = app(AppointmentManagementService::class)->confirm(
+            $id,
+            $sucursalId,
+            Auth::id(),
+            (int) $datos['profesionalConfirmacion'],
+            (int) $datos['especialidadConfirmacion'],
+        );
 
         if ($resultado !== 'confirmada') {
             Flux::toast(
                 text: match ($resultado) {
                     'no_pendiente' => 'La solicitud ya no se encuentra pendiente.',
                     'sede_no_disponible' => 'La sede seleccionada dejó de estar activa. Selecciona otra sede.',
+                    'profesional_no_disponible' => 'El profesional seleccionado no está disponible para esa sede.',
+                    'especialidad_no_disponible' => 'La especialidad ya no está activa o no corresponde al profesional.',
                     default => 'El horario ya no está disponible. Reprograma la solicitud antes de confirmarla.',
                 },
                 variant: 'danger',
@@ -218,7 +374,7 @@ class Solicitud extends Component
             return;
         }
 
-        $this->reset('sucursalConfirmacion');
+        $this->reset(['sucursalConfirmacion', 'profesionalConfirmacion', 'especialidadConfirmacion']);
         Flux::modals()->close();
         Flux::toast(text: 'La cita fue confirmada correctamente.', variant: 'success');
     }
@@ -237,8 +393,106 @@ class Solicitud extends Component
 
         $this->solicitudId = $cita->id;
         $this->sucursalConfirmacion = $cita->sucursal_id ? (string) $cita->sucursal_id : null;
-        $this->resetValidation('sucursalConfirmacion');
+        $this->profesionalConfirmacion = $cita->profesional_id ? (string) $cita->profesional_id : null;
+        $this->especialidadConfirmacion = $cita->especialidad_id ? (string) $cita->especialidad_id : null;
+        $this->selectOnlyAvailableAssignments();
+        $this->resetValidation(['sucursalConfirmacion', 'profesionalConfirmacion', 'especialidadConfirmacion']);
         Flux::modal('confirmar-cita-modal')->show();
+    }
+
+    public function updatedSucursalConfirmacion(?string $sucursalId): void
+    {
+        $this->profesionalConfirmacion = null;
+        $this->especialidadConfirmacion = null;
+        $this->resetValidation(['profesionalConfirmacion', 'especialidadConfirmacion']);
+
+        if ($sucursalId !== null && $sucursalId !== '') {
+            $this->validateOnly('sucursalConfirmacion', [
+                'sucursalConfirmacion' => [
+                    'required',
+                    'integer',
+                    Rule::exists('sucursales', 'id')->where('activa', true),
+                ],
+            ]);
+
+            $professionals = $this->profesionalesPorSucursal((int) $sucursalId);
+
+            if ($professionals->count() === 1) {
+                $this->profesionalConfirmacion = (string) $professionals->first()->id;
+                $this->updatedProfesionalConfirmacion($this->profesionalConfirmacion);
+            }
+        }
+    }
+
+    public function updatedProfesionalConfirmacion(?string $profesionalId): void
+    {
+        $this->especialidadConfirmacion = null;
+        $this->resetValidation('especialidadConfirmacion');
+
+        if ($profesionalId !== null && $profesionalId !== '') {
+            $this->validateOnly('profesionalConfirmacion', [
+                'profesionalConfirmacion' => ['required', 'integer', Rule::exists('profesionales', 'id')->where('activo', true)],
+            ]);
+
+            $specialties = $this->especialidadesPorProfesional((int) $profesionalId);
+
+            if ($specialties->count() === 1) {
+                $this->especialidadConfirmacion = (string) $specialties->first()->id;
+            }
+        }
+    }
+
+    public function profesionalesPorSucursal(?int $sucursalId)
+    {
+        if (! $sucursalId) {
+            return collect();
+        }
+
+        return Profesional::query()
+            ->where('activo', true)
+            ->whereHas('sucursales', fn ($query) => $query->whereKey($sucursalId))
+            ->orderBy('nombre_completo')
+            ->get();
+    }
+
+    private function selectOnlyAvailableAssignments(): void
+    {
+        if (! $this->sucursalConfirmacion) {
+            $branches = Sucursal::query()->where('activa', true)->orderBy('nombre')->get(['id']);
+
+            if ($branches->count() === 1) {
+                $this->sucursalConfirmacion = (string) $branches->first()->id;
+            }
+        }
+
+        if (! $this->profesionalConfirmacion && $this->sucursalConfirmacion) {
+            $professionals = $this->profesionalesPorSucursal((int) $this->sucursalConfirmacion);
+
+            if ($professionals->count() === 1) {
+                $this->profesionalConfirmacion = (string) $professionals->first()->id;
+            }
+        }
+
+        if (! $this->especialidadConfirmacion && $this->profesionalConfirmacion) {
+            $specialties = $this->especialidadesPorProfesional((int) $this->profesionalConfirmacion);
+
+            if ($specialties->count() === 1) {
+                $this->especialidadConfirmacion = (string) $specialties->first()->id;
+            }
+        }
+    }
+
+    public function especialidadesPorProfesional(?int $profesionalId)
+    {
+        if (! $profesionalId) {
+            return collect();
+        }
+
+        return Especialidad::query()
+            ->where('activa', true)
+            ->whereHas('profesionales', fn ($query) => $query->whereKey($profesionalId)->where('activo', true))
+            ->orderBy('nombre')
+            ->get();
     }
 
     public function generarLinkFormulario(int $id): void
@@ -346,7 +600,19 @@ class Solicitud extends Component
 
     public function resetData(): void
     {
-        $this->reset(['solicitud', 'solicitudId', 'sucursalConfirmacion', 'reprogramacion', 'motivoCancelacion', 'formularioUrl', 'formularioNombre']);
+        $this->reset([
+            'solicitud',
+            'solicitudId',
+            'sucursalConfirmacion',
+            'profesionalConfirmacion',
+            'especialidadConfirmacion',
+            'reprogramacion',
+            'motivoCancelacion',
+            'formularioUrl',
+            'formularioNombre',
+            'selectedExistingPatientId',
+            'confirmPatientReuse',
+        ]);
         Flux::modals()->close();
     }
 

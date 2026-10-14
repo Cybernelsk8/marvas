@@ -42,7 +42,7 @@ return new class extends Migration
             $table->decimal('peso_kg', 5, 2)->nullable();
             $table->decimal('talla_cm', 5, 2)->nullable();
             $table->decimal('imc', 4, 2)
-                ->storedAs('peso_kg / (talla_cm / 100 * (talla_cm / 100))')
+                ->storedAs('peso_kg / (talla_cm / 100.0 * (talla_cm / 100.0))')
                 ->nullable()
                 ->comment('Calculado automáticamente. Único IMC del sistema.');
 

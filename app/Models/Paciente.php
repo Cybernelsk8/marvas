@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Paciente extends Model
 {
@@ -30,6 +31,7 @@ class Paciente extends Model
         'como_nos_conocio',
         'foto_path',
         'activo',
+        'fusionado_en_paciente_id',
     ];
 
     protected $appends = [
@@ -67,5 +69,15 @@ class Paciente extends Model
     public function datosFacturacion(): HasMany
     {
         return $this->hasMany(DatosFacturacion::class);
+    }
+
+    public function fusionadoEn(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'fusionado_en_paciente_id');
+    }
+
+    public function pacientesFusionados(): HasMany
+    {
+        return $this->hasMany(self::class, 'fusionado_en_paciente_id');
     }
 }

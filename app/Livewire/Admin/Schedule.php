@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Cita;
+use App\Models\Especialidad;
 use App\Models\Profesional;
 use App\Models\Sucursal;
 use App\Services\AppointmentManagementService;
@@ -38,6 +39,10 @@ class Schedule extends Component
 
     public ?string $profesionalConfirmacion = null;
 
+    public ?string $especialidadConfirmacion = null;
+
+    public bool $assigningConfirmedAppointment = false;
+
     public array $reprogramacion = ['fecha' => null, 'hora' => null];
 
     public string $motivoCancelacion = '';
@@ -57,6 +62,7 @@ class Schedule extends Component
             'sucursales' => Sucursal::query()->orderBy('nombre')->get(['id', 'nombre', 'activa']),
             'profesionalesFiltro' => Profesional::query()->orderBy('nombre_completo')->get(['id', 'nombre_completo', 'activo']),
             'profesionales' => $this->profesionalesPorSucursal((int) ($this->sucursalConfirmacion ?? 0)),
+            'especialidadesConfirmacion' => $this->especialidadesPorProfesional((int) ($this->profesionalConfirmacion ?? 0)),
             'appointmentDays' => $this->appointmentDays(),
         ]);
     }
@@ -164,7 +170,8 @@ class Schedule extends Component
     public function updatedSucursalConfirmacion(?string $sucursalId): void
     {
         $this->profesionalConfirmacion = null;
-        $this->resetValidation(['profesionalConfirmacion']);
+        $this->especialidadConfirmacion = null;
+        $this->resetValidation(['profesionalConfirmacion', 'especialidadConfirmacion']);
 
         if ($sucursalId === null || $sucursalId === '') {
             return;
@@ -177,6 +184,37 @@ class Schedule extends Component
                 Rule::exists('sucursales', 'id')->where('activa', true),
             ],
         ]);
+
+        $professionals = $this->profesionalesPorSucursal((int) $sucursalId);
+
+        if ($professionals->count() === 1) {
+            $this->profesionalConfirmacion = (string) $professionals->first()->id;
+            $this->updatedProfesionalConfirmacion($this->profesionalConfirmacion);
+        }
+    }
+
+    public function updatedProfesionalConfirmacion(?string $profesionalId): void
+    {
+        $this->especialidadConfirmacion = null;
+        $this->resetValidation('especialidadConfirmacion');
+
+        if ($profesionalId === null || $profesionalId === '') {
+            return;
+        }
+
+        $this->validateOnly('profesionalConfirmacion', [
+            'profesionalConfirmacion' => [
+                'required',
+                'integer',
+                Rule::exists('profesionales', 'id')->where('activo', true),
+            ],
+        ]);
+
+        $specialties = $this->especialidadesPorProfesional((int) $profesionalId);
+
+        if ($specialties->count() === 1) {
+            $this->especialidadConfirmacion = (string) $specialties->first()->id;
+        }
     }
 
     public function prepareConfirmation(int $id): void
@@ -185,16 +223,22 @@ class Schedule extends Component
 
         $cita = Cita::query()->findOrFail($id);
 
-        if (! in_array($cita->estado, ['solicitada', 'reprogramada', 'agendada'], true)) {
+        $isPending = in_array($cita->estado, ['solicitada', 'reprogramada', 'agendada'], true);
+        $hasIncompleteAssignment = ! $cita->sucursal_id || ! $cita->profesional_id || ! $cita->especialidad_id;
+
+        if (! $isPending && ! ($cita->estado === 'confirmada' && $hasIncompleteAssignment)) {
             Flux::toast(text: 'La solicitud ya no se encuentra pendiente.', variant: 'danger');
 
             return;
         }
 
         $this->appointmentActionId = $cita->id;
+        $this->assigningConfirmedAppointment = ! $isPending;
         $this->sucursalConfirmacion = $cita->sucursal_id ? (string) $cita->sucursal_id : null;
         $this->profesionalConfirmacion = $cita->profesional_id ? (string) $cita->profesional_id : null;
-        $this->resetValidation(['sucursalConfirmacion', 'profesionalConfirmacion']);
+        $this->especialidadConfirmacion = $cita->especialidad_id ? (string) $cita->especialidad_id : null;
+        $this->selectOnlyAvailableAssignments();
+        $this->resetValidation(['sucursalConfirmacion', 'profesionalConfirmacion', 'especialidadConfirmacion']);
         Flux::modal('agenda-confirmar-cita-modal')->show();
     }
 
@@ -228,26 +272,60 @@ class Schedule extends Component
                     }
                 },
             ],
+            'especialidadConfirmacion' => [
+                'required',
+                'integer',
+                Rule::exists('especialidades', 'id')->where('activa', true),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $this->profesionalConfirmacion || ! $value) {
+                        return;
+                    }
+
+                    $exists = Profesional::query()
+                        ->whereKey((int) $this->profesionalConfirmacion)
+                        ->where('activo', true)
+                        ->whereHas('especialidades', fn ($query) => $query->whereKey((int) $value)->where('activa', true))
+                        ->exists();
+
+                    if (! $exists) {
+                        $fail('La especialidad no está asociada al profesional seleccionado.');
+                    }
+                },
+            ],
         ], [
             'sucursalConfirmacion.required' => 'Selecciona la sede donde se atenderá la cita.',
             'sucursalConfirmacion.exists' => 'La sede seleccionada no está activa. Selecciona otra.',
             'profesionalConfirmacion.required' => 'Selecciona el profesional que atenderá la cita.',
             'profesionalConfirmacion.exists' => 'El profesional seleccionado no está activo.',
+            'especialidadConfirmacion.required' => 'Selecciona la especialidad de atención.',
+            'especialidadConfirmacion.exists' => 'La especialidad seleccionada no está activa.',
         ]);
 
-        $result = app(AppointmentManagementService::class)->confirm(
-            $this->appointmentActionId,
-            (int) $data['sucursalConfirmacion'],
-            Auth::id(),
-            (int) $data['profesionalConfirmacion'],
-        );
+        $management = app(AppointmentManagementService::class);
+        $result = $this->assigningConfirmedAppointment
+            ? $management->assignConfirmedAppointment(
+                $this->appointmentActionId,
+                (int) $data['sucursalConfirmacion'],
+                Auth::id(),
+                (int) $data['profesionalConfirmacion'],
+                (int) $data['especialidadConfirmacion'],
+            )
+            : $management->confirm(
+                $this->appointmentActionId,
+                (int) $data['sucursalConfirmacion'],
+                Auth::id(),
+                (int) $data['profesionalConfirmacion'],
+                (int) $data['especialidadConfirmacion'],
+            );
 
-        if ($result !== 'confirmada') {
+        if (! in_array($result, ['confirmada', 'asignada'], true)) {
             Flux::toast(
                 text: match ($result) {
                     'no_pendiente' => 'La solicitud ya no se encuentra pendiente.',
+                    'no_asignable' => 'La cita cambió o ya tiene completa su asignación. Actualiza la agenda.',
                     'sede_no_disponible' => 'La sede seleccionada dejó de estar activa. Selecciona otra sede.',
                     'profesional_no_disponible' => 'El profesional seleccionado no está disponible para esa sede.',
+                    'especialidad_no_disponible' => 'La especialidad ya no está activa o no corresponde al profesional.',
                     default => 'El horario ya no está disponible. Reprograma la solicitud antes de confirmarla.',
                 },
                 variant: 'danger',
@@ -256,10 +334,20 @@ class Schedule extends Component
             return;
         }
 
-        $this->reset(['appointmentActionId', 'sucursalConfirmacion', 'profesionalConfirmacion']);
+        $wasAssignment = $this->assigningConfirmedAppointment;
+        $this->reset([
+            'appointmentActionId',
+            'sucursalConfirmacion',
+            'profesionalConfirmacion',
+            'especialidadConfirmacion',
+            'assigningConfirmedAppointment',
+        ]);
         unset($this->appointments);
         Flux::modals()->close();
-        Flux::toast(text: 'La cita fue confirmada correctamente.', variant: 'success');
+        Flux::toast(
+            text: $wasAssignment ? 'Se asignaron profesional y especialidad a la cita.' : 'La cita fue confirmada correctamente.',
+            variant: 'success',
+        );
     }
 
     public function prepareRescheduling(int $id): void
@@ -369,6 +457,46 @@ class Schedule extends Component
             ->whereHas('sucursales', fn ($query) => $query->whereKey($sucursalId))
             ->orderBy('nombre_completo')
             ->get();
+    }
+
+    public function especialidadesPorProfesional(?int $profesionalId): SupportCollection
+    {
+        if (! $profesionalId) {
+            return collect();
+        }
+
+        return Especialidad::query()
+            ->where('activa', true)
+            ->whereHas('profesionales', fn ($query) => $query->whereKey($profesionalId)->where('activo', true))
+            ->orderBy('nombre')
+            ->get();
+    }
+
+    private function selectOnlyAvailableAssignments(): void
+    {
+        if (! $this->sucursalConfirmacion) {
+            $branches = Sucursal::query()->where('activa', true)->orderBy('nombre')->get(['id']);
+
+            if ($branches->count() === 1) {
+                $this->sucursalConfirmacion = (string) $branches->first()->id;
+            }
+        }
+
+        if (! $this->profesionalConfirmacion && $this->sucursalConfirmacion) {
+            $professionals = $this->profesionalesPorSucursal((int) $this->sucursalConfirmacion);
+
+            if ($professionals->count() === 1) {
+                $this->profesionalConfirmacion = (string) $professionals->first()->id;
+            }
+        }
+
+        if (! $this->especialidadConfirmacion && $this->profesionalConfirmacion) {
+            $specialties = $this->especialidadesPorProfesional((int) $this->profesionalConfirmacion);
+
+            if ($specialties->count() === 1) {
+                $this->especialidadConfirmacion = (string) $specialties->first()->id;
+            }
+        }
     }
 
     #[Computed]

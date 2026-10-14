@@ -6,6 +6,7 @@ use App\Livewire\Admin\Schedule;
 use App\Models\Admin\Setting;
 use App\Models\Admin\User;
 use App\Models\Cita;
+use App\Models\Especialidad;
 use App\Models\Paciente;
 use App\Models\Profesional;
 use App\Models\Sucursal;
@@ -154,6 +155,7 @@ class ScheduleTest extends TestCase
         $cita = $this->createAppointment('solicitada', 'Paciente para gestionar', $date.' 09:00');
         $sucursal = Sucursal::query()->firstOrFail();
         $profesional = $sucursal->profesionales()->firstOrFail();
+        $especialidad = $profesional->especialidades()->firstOrFail();
 
         Livewire::actingAs($this->receptionist)
             ->test(Schedule::class)
@@ -164,6 +166,7 @@ class ScheduleTest extends TestCase
             ->call('prepareConfirmation', $cita->id)
             ->set('sucursalConfirmacion', (string) $sucursal->id)
             ->set('profesionalConfirmacion', (string) $profesional->id)
+            ->set('especialidadConfirmacion', (string) $especialidad->id)
             ->call('confirmAppointment');
 
         $this->assertDatabaseHas('citas', [
@@ -171,8 +174,92 @@ class ScheduleTest extends TestCase
             'estado' => 'confirmada',
             'sucursal_id' => $sucursal->id,
             'profesional_id' => $profesional->id,
+            'especialidad_id' => $especialidad->id,
             'agendada_por' => $this->receptionist->id,
         ]);
+    }
+
+    public function test_confirmation_rejects_a_specialty_not_associated_with_the_selected_professional(): void
+    {
+        $date = now()->addDays(2)->toDateString();
+        $appointment = $this->createAppointment('solicitada', 'Paciente especialidad incorrecta', $date.' 09:00');
+        $branch = Sucursal::query()->firstOrFail();
+        $professional = $branch->profesionales()->firstOrFail();
+        $unrelatedSpecialty = Especialidad::query()
+            ->whereDoesntHave('profesionales', fn ($query) => $query->whereKey($professional->id))
+            ->firstOrFail();
+
+        Livewire::actingAs($this->receptionist)
+            ->test(Schedule::class)
+            ->call('prepareConfirmation', $appointment->id)
+            ->set('sucursalConfirmacion', (string) $branch->id)
+            ->set('profesionalConfirmacion', (string) $professional->id)
+            ->set('especialidadConfirmacion', (string) $unrelatedSpecialty->id)
+            ->call('confirmAppointment')
+            ->assertHasErrors('especialidadConfirmacion');
+
+        $this->assertDatabaseHas('citas', [
+            'id' => $appointment->id,
+            'estado' => 'solicitada',
+            'especialidad_id' => null,
+        ]);
+    }
+
+    public function test_confirmed_appointment_with_missing_assignment_can_be_completed_from_the_schedule(): void
+    {
+        $date = now()->addDays(2)->toDateString();
+        $appointment = $this->createAppointment('confirmada', 'Paciente con asignación pendiente', $date.' 09:00');
+        $branch = Sucursal::query()->where('activa', true)->firstOrFail();
+        $professional = $branch->profesionales()->firstOrFail();
+        $specialty = $professional->especialidades()->firstOrFail();
+
+        Livewire::actingAs($this->receptionist)
+            ->test(Schedule::class)
+            ->call('selectDate', $date)
+            ->assertSee('Completar asignación')
+            ->call('prepareConfirmation', $appointment->id)
+            ->assertSet('assigningConfirmedAppointment', true)
+            ->set('sucursalConfirmacion', (string) $branch->id)
+            ->set('profesionalConfirmacion', (string) $professional->id)
+            ->set('especialidadConfirmacion', (string) $specialty->id)
+            ->call('confirmAppointment')
+            ->assertSet('assigningConfirmedAppointment', false);
+
+        $this->assertDatabaseHas('citas', [
+            'id' => $appointment->id,
+            'estado' => 'confirmada',
+            'sucursal_id' => $branch->id,
+            'profesional_id' => $professional->id,
+            'especialidad_id' => $specialty->id,
+        ]);
+        $this->assertDatabaseHas('auditoria', [
+            'tabla_afectada' => 'citas',
+            'registro_id' => $appointment->id,
+            'accion' => 'editar',
+            'user_id' => $this->receptionist->id,
+        ]);
+    }
+
+    public function test_single_available_professional_and_specialty_are_selected_automatically(): void
+    {
+        $branch = Sucursal::create([
+            'nombre' => 'Sede con profesional único',
+            'activa' => true,
+        ]);
+        $professional = Profesional::create([
+            'user_id' => $this->receptionist->id,
+            'nombre_completo' => 'Profesional único de prueba',
+            'activo' => true,
+        ]);
+        $specialty = Especialidad::query()->where('slug', 'homeopatia')->firstOrFail();
+        $branch->profesionales()->attach($professional->id);
+        $professional->especialidades()->attach($specialty->id);
+
+        Livewire::actingAs($this->receptionist)
+            ->test(Schedule::class)
+            ->set('sucursalConfirmacion', (string) $branch->id)
+            ->assertSet('profesionalConfirmacion', (string) $professional->id)
+            ->assertSet('especialidadConfirmacion', (string) $specialty->id);
     }
 
     public function test_reception_can_reschedule_an_appointment_from_the_schedule(): void
@@ -281,8 +368,7 @@ class ScheduleTest extends TestCase
         string $start,
         ?int $sucursalId = null,
         ?int $profesionalId = null,
-    ): Cita
-    {
+    ): Cita {
         $paciente = Paciente::create([
             'nombres' => $name,
             'apellidos' => 'Prueba',

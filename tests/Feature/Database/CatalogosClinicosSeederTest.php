@@ -37,9 +37,22 @@ class CatalogosClinicosSeederTest extends TestCase
         );
         $this->assertSame('child', Page::query()->where('label', 'Solicitudes')->value('type'));
         $this->assertSame(
-            ['page.view.patients', 'page.view.requests', 'page.view.schedule', 'requests.cancel', 'requests.confirm', 'requests.edit', 'requests.reschedule'],
+            ['page.view.patients', 'page.view.requests', 'page.view.schedule', 'patients.create', 'patients.edit', 'patients.merge', 'requests.cancel', 'requests.confirm', 'requests.edit', 'requests.reschedule'],
             Role::findByName('Recepcionista')->permissions->pluck('name')->sort()->values()->all(),
         );
+        $this->assertDatabaseHas('permissions', ['name' => 'patients.clinical.view', 'guard_name' => 'web']);
+        $this->assertDatabaseHas('permissions', ['name' => 'patients.documents.view', 'guard_name' => 'web']);
+        $this->assertDatabaseHas('permissions', ['name' => 'patients.billing.view', 'guard_name' => 'web']);
+        $this->assertDatabaseHas('permissions', ['name' => 'consultations.create', 'guard_name' => 'web']);
+        $this->assertDatabaseHas('permissions', ['name' => 'consultations.edit', 'guard_name' => 'web']);
+        $this->assertDatabaseHas('permissions', ['name' => 'consultations.close', 'guard_name' => 'web']);
+        $this->assertDatabaseHas('permissions', ['name' => 'consultations.reopen', 'guard_name' => 'web']);
+        $this->assertFalse(Role::findByName('Recepcionista')->hasPermissionTo('patients.clinical.view'));
+        $this->assertFalse(Role::findByName('Recepcionista')->hasPermissionTo('patients.documents.view'));
+        $this->assertFalse(Role::findByName('Recepcionista')->hasPermissionTo('patients.billing.view'));
+        $this->assertFalse(Role::findByName('Recepcionista')->hasPermissionTo('consultations.create'));
+        $this->assertFalse(Role::findByName('Recepcionista')->hasPermissionTo('consultations.close'));
+        $this->assertFalse(Role::findByName('Recepcionista')->hasPermissionTo('consultations.reopen'));
         $this->assertSame('admin.schedule', Page::query()->where('label', 'Agenda de citas')->value('route'));
         $this->assertSame('admin.patients.index', Page::query()->where('label', 'Directorio de pacientes')->value('route'));
     }

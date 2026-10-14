@@ -226,9 +226,9 @@ El archivo global también revela que los formatos y locale de `config/datatable
 1. **Decisión acordada (2026-10-13):** mantener la disponibilidad pública global para toda la clínica; no separar horarios por profesional ni sucursal en esta fase.
 2. Identificar la forma final de almacenar horarios (settings existentes u otra estructura) y validar intervalos, zonas horarias y excepciones.
 3. Centralizar las reglas de disponibilidad para que landing, recepción y agenda usen la misma fuente.
-4. **Decisión acordada (2026-10-13):** recepción asigna una sede activa al revisar cada solicitud; la sede es obligatoria para confirmar y queda guardada en `citas.sucursal_id`. La selección ocurre en el modal de confirmación, no en la landing. La asignación de profesional sigue pendiente. Mientras no se introduzca esa asignación, mantener la regla de conflictos globales.
+4. **Decisión acordada (2026-10-13) y ampliada (2026-10-14):** recepción asigna sede, profesional y especialidad al confirmar en agenda o solicitudes. La especialidad debe estar activa y asociada al profesional seleccionado. La disponibilidad sigue siendo global; antes de asignar profesional se valida traslape para ese profesional. Citas confirmadas existentes con alguno de esos datos vacíos se pueden completar desde la agenda sin alterar su estado.
 5. **Implementado:** calendario Flux/Livewire de recepción con vistas día/semana/mes, filtros por estado y sede (incluyendo citas sin sede), y detalle con la sede relacionada. Las sedes inactivas se conservan como opción de filtro para consultar citas históricas.
-6. **Implementado:** acciones directas en agenda para confirmar, reprogramar y cancelar; mantener una sola implementación de las reglas transaccionales en `AppointmentManagementService`, compartida con Solicitudes.
+6. **Implementado:** acciones directas en agenda para confirmar, completar asignaciones incompletas de citas confirmadas, reprogramar y cancelar; `AppointmentManagementService` comparte reglas transaccionales con Solicitudes.
 7. Completar las reglas de disponibilidad y probar límites de intervalos, citas de duración distinta, cancelaciones, turnos que cruzan medianoche si se permiten y concurrencia.
 
 **Aceptación:** todos los puntos de entrada aplican la misma regla, muestran el estado actual y no pueden reservar el mismo recurso en horarios traslapados.
@@ -249,15 +249,16 @@ El archivo global también revela que los formatos y locale de `config/datatable
 
 **Pasos:**
 
-1. **Decisión acordada (2026-10-14):** sugerir coincidencias por DPI, teléfono, correo y nombre para que recepción elija si reutiliza un paciente; nunca fusionar automáticamente. Debe existir una acción explícita para fusión manual de pacientes/expedientes. La fusión trasladará el historial al paciente principal, conservará el origen inactivo y enlazado para trazabilidad, exigirá revisar datos de perfil en conflicto y registrará auditoría. Falta implementar y probar la operación transaccional.
+1. **Decisión acordada (2026-10-14):** sugerir coincidencias por DPI, teléfono, correo y nombre para que recepción elija si reutiliza un paciente; nunca fusionar automáticamente. Debe existir una acción explícita para fusión manual de pacientes/expedientes. La fusión trasladará el historial al paciente principal, conservará el origen inactivo y enlazado para trazabilidad, exigirá revisar datos de perfil en conflicto y registrará auditoría.
 2. **Implementado (2026-10-14):** crear la ruta `/admin/patients`, componente Livewire de directorio que reutiliza `DataTable` y `Searchable`, vista con paginación/búsqueda por nombre, DPI, teléfono y correo, filtro por estado y filtros avanzados por el expediente relacionado.
-3. **Implementado parcialmente (2026-10-14):** crear ficha Livewire con datos del paciente, resumen del expediente y citas paginadas; quedan pendientes las pestañas clínicas/documentales y sus permisos específicos.
-4. Implementar alta/edición del paciente y creación transaccional del expediente único.
-5. Conectar desde solicitudes y citas sin crear expedientes duplicados.
-6. Añadir autorización de lectura/escritura y auditoría a cambios relevantes.
-7. Probar validaciones, unicidad de DPI, eliminación/desactivación y controles de acceso.
+3. **Implementado (2026-10-14):** ficha Livewire con datos básicos y citas paginadas. Clasificación, objetivo y fase del expediente se consideran datos clínicos y solo se muestran con `patients.clinical.view`.
+4. **Implementado (2026-10-14):** alta y edición desde el directorio, permisos separados, sugerencias de coincidencias mediante `PatientMatchService` y confirmación explícita antes de crear si hay candidatos. Creación/edición y auditoría son transaccionales; el alta garantiza/reutiliza el expediente único.
+5. **Implementado (2026-10-14):** en recepción se sugieren coincidencias y se requiere confirmación explícita. Al reutilizar, una transacción traslada las relaciones e historial del expediente de origen, completa solo campos vacíos del paciente principal y conserva el origen inactivo/enlazado. Los conflictos de perfil no se sobrescriben y se registran para revisión y auditoría.
+6. **Implementado (2026-10-14):** fusión manual desde el directorio con permiso `patients.merge`, búsqueda del paciente principal, resumen de historial y resolución obligatoria de cada conflicto de perfil/resumen del expediente antes de confirmar. La operación revalida y transfiere relaciones en una transacción, preserva el estado del principal, inactiva/enlaza el origen y audita la selección de valores y cantidades trasladadas. Los pacientes previamente fusionados con el origen quedan enlazados directamente al principal final.
+7. **Implementado (2026-10-14):** secciones clínicas, documentos/consentimientos y pagos/paquetes protegidas por `patients.clinical.view`, `patients.documents.view` y `patients.billing.view`. Los permisos se crean sin asignarlos a roles nominales; Sysadmin puede asignarlos mediante la administración existente. Listados documentales excluyen rutas, firmas, huellas, IP y contenido de notificaciones.
+8. **Verificado visualmente por el usuario (2026-10-14):** alta, coincidencias en solicitudes y fusión manual; las nuevas secciones quedan pendientes de validación visual.
 
-**Aceptación:** recepción puede localizar y completar un paciente; el expediente maestro se mantiene único por paciente y el historial asociado no se pierde ni se muestra a roles no autorizados.
+**Aceptación:** recepción puede localizar y completar un paciente; el expediente maestro se mantiene único por paciente y el historial asociado no se pierde ni se muestra a usuarios sin los permisos específicos.
 
 ### Módulo 4 — Consultas y evaluación clínica
 
@@ -274,18 +275,18 @@ El archivo global también revela que los formatos y locale de `config/datatable
 
 **Pasos:**
 
-1. Definir quién puede abrir, editar, cerrar y reabrir consultas y qué datos son obligatorios en cada fase.
-2. Definir transición de estados (`abierta`, `en_proceso`, `cerrada`, `cancelada`) y auditoría.
-3. Crear bandeja y creación de consulta desde una cita confirmada o modalidad walk-in cuando sea necesaria.
-4. Calcular `numero_consulta` con `Consulta::siguienteNumero()` dentro de transacción y bloqueo del expediente, como indica el modelo.
-5. Crear el formulario de anamnesis general, usando sus casts y respetando que `imc` es columna calculada.
-6. Añadir secciones condicionales de acuerdo con la especialidad y persistir en su tabla específica.
-7. Implementar evaluaciones, informe por sistemas, test de intoxicación y mapas corporales como componentes separados si el flujo los requiere.
+1. **Acordado parcialmente (2026-10-14):** cierre exige motivo y observaciones finales; `consultations.close` y `consultations.reopen` son permisos independientes. Pendiente precisar asignación de permisos a perfiles clínicos si se requiere.
+2. **Implementado (2026-10-14):** transiciones `abierta`/`en_proceso` → `cerrada` y `cerrada` → `en_proceso` dentro de transacciones con auditoría. Cancelación queda fuera de este flujo.
+3. **Implementado parcialmente (2026-10-14):** crear una consulta desde una cita confirmada en la ficha del paciente. Requiere `consultations.create` y sede, profesional y especialidad asignados. Recepción asigna estos tres valores al confirmar desde la agenda o solicitudes; modalidad walk-in pendiente.
+4. **Implementado parcialmente (2026-10-14):** crear dentro de transacción y bloquear el expediente antes de `Consulta::siguienteNumero()`, serializando la numeración por expediente/especialidad. Se previene duplicar consultas por cita y se audita la apertura.
+5. **Implementado y verificado visualmente (2026-10-14):** crear, consultar y actualizar anamnesis general desde la ficha para consultas `abierta` o `en_proceso`, con autorización `consultations.edit`, casts JSON, auditoría sin valores clínicos y `imc` calculado por base de datos.
+6. **Implementado parcialmente (2026-10-14):** formularios de evaluación Homeopatía, Quiropraxia y Acupuntura disponibles para cualquier paciente, independientemente de la especialidad de la consulta, y persistidos en sus tablas relacionadas a la anamnesis general. El especialista/terapia de la consulta no filtra la evaluación. Pendiente definir catálogos de opciones para los campos JSON de Acupuntura si se requieren.
+7. Implementar evaluación integral MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
 8. Validar adjuntos, límites de tamaño/MIME, almacenamiento privado y permisos de descarga.
-9. Implementar guardado incremental y cierre solo con las validaciones clínicas acordadas.
+9. **Implementado parcialmente (2026-10-14):** guardar/actualizar anamnesis general con consulta bloqueada dentro de transacción; cerrar/reabrir con validaciones acordadas y transiciones auditadas.
 10. Añadir pruebas para guardado, relaciones, cálculos, numeración concurrente y autorización.
 
-**Aceptación:** el profesional autorizado puede documentar una consulta sin alterar citas o consultas previas; la numeración se mantiene por expediente y especialidad; campos generados y datos clínicos se guardan correctamente.
+**Aceptación:** el profesional autorizado puede documentar una consulta sin alterar citas o consultas previas; la numeración se mantiene por expediente y especialidad; campos generados y datos clínicos se guardan correctamente. La apertura, captura/consulta/edición de anamnesis general y evaluaciones independientes de la especialidad y transiciones de cierre/reapertura están implementadas y probadas. Falta validación visual de los formularios y del flujo de cierre/reapertura. Cierre requiere motivo y observaciones finales.
 
 ### Módulo 5 — Clasificación, planes terapéuticos y evolución
 

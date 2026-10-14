@@ -11,10 +11,30 @@ class PacientesAccessSeeder extends Seeder
 {
     public function run(): void
     {
-        Permission::firstOrCreate([
-            'name' => 'page.view.patients',
-            'guard_name' => 'web',
-        ]);
+        $permissionNames = [
+            'page.view.patients',
+            'patients.create',
+            'patients.edit',
+            'patients.merge',
+        ];
+        $sectionPermissions = [
+            'patients.clinical.view',
+            'patients.documents.view',
+            'patients.billing.view',
+        ];
+        $consultationPermissions = [
+            'consultations.create',
+            'consultations.edit',
+            'consultations.close',
+            'consultations.reopen',
+        ];
+
+        foreach ([...$permissionNames, ...$sectionPermissions, ...$consultationPermissions] as $permissionName) {
+            Permission::firstOrCreate([
+                'name' => $permissionName,
+                'guard_name' => 'web',
+            ]);
+        }
 
         $parent = Page::withTrashed()->firstOrNew(['label' => 'Pacientes']);
         $parent->fill([
@@ -47,6 +67,6 @@ class PacientesAccessSeeder extends Seeder
         Role::query()
             ->whereIn('name', ['Sysadmin', 'Recepcionista'])
             ->get()
-            ->each(fn (Role $role) => $role->givePermissionTo('page.view.patients'));
+            ->each(fn (Role $role) => $role->givePermissionTo($permissionNames));
     }
 }

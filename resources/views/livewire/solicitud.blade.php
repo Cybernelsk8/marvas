@@ -158,7 +158,7 @@
         <form wire:submit="confirmar({{ $solicitudId }})" class="space-y-4">
             <flux:heading size="lg">Confirmar cita</flux:heading>
             <flux:text>
-                Asigna la sede donde se atenderá y confirma con el paciente la fecha y hora. La cita cambiará al estado
+                Asigna la sede, profesional y especialidad de atención, y confirma con el paciente la fecha y hora. La cita cambiará al estado
                 <strong>confirmada</strong>.
             </flux:text>
             @if ($sucursalesActivas->isEmpty())
@@ -169,7 +169,7 @@
                     </flux:callout.text>
                 </flux:callout>
             @else
-                <flux:select label="Sede de atención *" wire:model="sucursalConfirmacion"
+                <flux:select label="Sede de atención *" wire:model.live="sucursalConfirmacion"
                     placeholder="Selecciona la sede" required>
                     @foreach ($sucursalesActivas as $sucursal)
                         <flux:select.option value="{{ $sucursal->id }}">
@@ -180,13 +180,49 @@
                 @error('sucursalConfirmacion')
                     <flux:error>{{ $message }}</flux:error>
                 @enderror
+                @if ($sucursalConfirmacion)
+                    @if ($profesionalesConfirmacion->isEmpty())
+                        <flux:callout variant="warning" icon="exclamation-triangle">
+                            <flux:callout.heading>Sin profesionales disponibles</flux:callout.heading>
+                            <flux:callout.text>Asocia profesionales activos a la sede seleccionada antes de confirmar.</flux:callout.text>
+                        </flux:callout>
+                    @else
+                        <flux:select label="Profesional de atención *" wire:model.live="profesionalConfirmacion"
+                            placeholder="Selecciona el profesional" required>
+                            @foreach ($profesionalesConfirmacion as $profesional)
+                                <flux:select.option value="{{ $profesional->id }}">{{ $profesional->nombre_completo }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        @error('profesionalConfirmacion')
+                            <flux:error>{{ $message }}</flux:error>
+                        @enderror
+                    @endif
+                @endif
+                @if ($profesionalConfirmacion)
+                    @if ($especialidadesConfirmacion->isEmpty())
+                        <flux:callout variant="warning" icon="exclamation-triangle">
+                            <flux:callout.heading>Sin especialidades disponibles</flux:callout.heading>
+                            <flux:callout.text>Asocia una especialidad activa al profesional antes de confirmar.</flux:callout.text>
+                        </flux:callout>
+                    @else
+                        <flux:select label="Especialidad de atención *" wire:model.live="especialidadConfirmacion"
+                            placeholder="Selecciona la especialidad" required>
+                            @foreach ($especialidadesConfirmacion as $especialidad)
+                                <flux:select.option value="{{ $especialidad->id }}">{{ $especialidad->nombre }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        @error('especialidadConfirmacion')
+                            <flux:error>{{ $message }}</flux:error>
+                        @enderror
+                    @endif
+                @endif
             @endif
             <div class="flex justify-end gap-2">
                 <flux:modal.close>
                     <flux:button type="button" variant="ghost">Volver</flux:button>
                 </flux:modal.close>
                 <flux:button variant="primary" type="submit" wire:loading.attr="disabled" wire:target="confirmar"
-                    :disabled="$sucursalesActivas->isEmpty()">
+                    :disabled="$sucursalesActivas->isEmpty() || ! $sucursalConfirmacion || ! $profesionalConfirmacion || ! $especialidadConfirmacion">
                     Confirmar cita
                 </flux:button>
             </div>
@@ -234,9 +270,9 @@
             @endif
             <div class="grid grid-cols-1 gap-4">
                 <div class="grid grid-cols-2 gap-2">
-                    <flux:input label="Nombres" wire:model="solicitud.expediente.paciente.nombres"
+                    <flux:input label="Nombres" wire:model.live.debounce.400ms="solicitud.expediente.paciente.nombres"
                         icon="pencil-square" :disabled="!auth()->user()->can('requests.edit')" />
-                    <flux:input label="Apellidos" wire:model="solicitud.expediente.paciente.apellidos"
+                    <flux:input label="Apellidos" wire:model.live.debounce.400ms="solicitud.expediente.paciente.apellidos"
                         icon="pencil-square" :disabled="!auth()->user()->can('requests.edit')" />
                     <flux:input label="Fecha nacimiento" wire:model="solicitud.expediente.paciente.fecha_nacimiento"
                         type="date" icon="cake" :disabled="!auth()->user()->can('requests.edit')" />
@@ -309,14 +345,14 @@
                         </flux:select.option>
                     </flux:select>
 
-                    <flux:input label="Dpi" wire:model="solicitud.expediente.paciente.numero_dpi"
+                    <flux:input label="Dpi" wire:model.live.debounce.400ms="solicitud.expediente.paciente.numero_dpi"
                         icon="identification" :disabled="!auth()->user()->can('requests.edit')" />
-                    <flux:input label="Teléfono" wire:model="solicitud.expediente.paciente.telefono" icon="phone"
+                    <flux:input label="Teléfono" wire:model.live.debounce.400ms="solicitud.expediente.paciente.telefono" icon="phone"
                         :disabled="!auth()->user()->can('requests.edit')" />
                     <flux:input label="Teléfono Emergencia"
                         wire:model="solicitud.expediente.paciente.telefono_emergencia" icon="device-phone-mobile"
                         :disabled="!auth()->user()->can('requests.edit')" />
-                    <flux:input label="Correo" wire:model="solicitud.expediente.paciente.email" icon="envelope"
+                    <flux:input label="Correo" wire:model.live.debounce.400ms="solicitud.expediente.paciente.email" icon="envelope"
                         type="email" :disabled="!auth()->user()->can('requests.edit')" />
                     <flux:input label="Dirección" wire:model="solicitud.expediente.paciente.direccion" icon="home"
                         :disabled="!auth()->user()->can('requests.edit')" />
@@ -324,6 +360,61 @@
                         icon="building-office" :disabled="!auth()->user()->can('requests.edit')" />
                 </div>
             </div>
+            @can('requests.edit')
+                @if ($this->possiblePatientMatches->isNotEmpty())
+                    <flux:callout variant="warning" icon="exclamation-triangle" class="mt-4">
+                    <flux:callout.heading>Posibles pacientes existentes</flux:callout.heading>
+                    <flux:callout.text>
+                        Selecciona un expediente solo si confirmaste que se trata de la misma persona. Se trasladará el historial de esta solicitud y el expediente de origen quedará inactivo y enlazado. Los datos distintos no reemplazarán los del paciente existente; se conservarán para revisión.
+                    </flux:callout.text>
+                    <div class="mt-3 space-y-2">
+                        @foreach ($this->possiblePatientMatches as $match)
+                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300/40 p-3">
+                                <div>
+                                    <div class="font-medium">{{ $match->nombre_completo }}</div>
+                                    <div class="text-sm">{{ $match->numero_dpi ?: 'Sin DPI' }} · {{ $match->telefono ?: 'Sin teléfono' }} · {{ $match->email ?: 'Sin correo' }}</div>
+                                </div>
+                                @can('requests.edit')
+                                    <flux:button
+                                        type="button"
+                                        size="sm"
+                                        variant="{{ $selectedExistingPatientId === $match->id ? 'primary' : 'ghost' }}"
+                                        wire:click="selectExistingPatient({{ $match->id }})"
+                                    >
+                                        {{ $selectedExistingPatientId === $match->id ? 'Seleccionado' : 'Seleccionar expediente' }}
+                                    </flux:button>
+                                @endcan
+                            </div>
+                        @endforeach
+                    </div>
+                    </flux:callout>
+
+                    @if ($selectedExistingPatientId)
+                        <div class="mt-3 space-y-3 rounded-lg border p-4">
+                            <flux:checkbox
+                                wire:model="confirmPatientReuse"
+                                label="Confirmo que esta solicitud pertenece a la misma persona y deseo trasladar su historial al expediente seleccionado."
+                            />
+                            @error('confirmPatientReuse')
+                                <flux:error>{{ $message }}</flux:error>
+                            @enderror
+                            @error('selectedExistingPatientId')
+                                <flux:error>{{ $message }}</flux:error>
+                            @enderror
+                            <div class="flex justify-end">
+                                <flux:button
+                                    type="button"
+                                    variant="primary"
+                                    icon="arrow-right"
+                                    wire:click="reuseExistingPatient"
+                                >
+                                    Vincular solicitud y trasladar historial
+                                </flux:button>
+                            </div>
+                        </div>
+                    @endif
+                @endif
+            @endcan
             @can('requests.edit')
                 <div class="flex mt-4">
                     <flux:spacer />
