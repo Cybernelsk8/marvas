@@ -16,6 +16,7 @@ class CatalogosClinicosSeeder extends Seeder
             HorariosCitasDemoSeeder::class,
             SolicitudesAccessSeeder::class,
             AgendaAccessSeeder::class,
+            PacientesAccessSeeder::class,
         ]);
     }
 }

@@ -249,9 +249,9 @@ El archivo global también revela que los formatos y locale de `config/datatable
 
 **Pasos:**
 
-1. Definir identificadores de búsqueda y política de duplicados, considerando que DPI y algunos datos pueden faltar.
-2. Crear la ruta, componente Livewire de listado y vista con paginación/búsqueda.
-3. Crear la ficha Livewire y cargar relaciones de forma paginada para evitar consultas y exposiciones innecesarias.
+1. **Decisión acordada (2026-10-14):** sugerir coincidencias por DPI, teléfono, correo y nombre para que recepción elija si reutiliza un paciente; nunca fusionar automáticamente. Debe existir una acción explícita para fusión manual de pacientes/expedientes. La fusión trasladará el historial al paciente principal, conservará el origen inactivo y enlazado para trazabilidad, exigirá revisar datos de perfil en conflicto y registrará auditoría. Falta implementar y probar la operación transaccional.
+2. **Implementado (2026-10-14):** crear la ruta `/admin/patients`, componente Livewire de directorio que reutiliza `DataTable` y `Searchable`, vista con paginación/búsqueda por nombre, DPI, teléfono y correo, filtro por estado y filtros avanzados por el expediente relacionado.
+3. **Implementado parcialmente (2026-10-14):** crear ficha Livewire con datos del paciente, resumen del expediente y citas paginadas; quedan pendientes las pestañas clínicas/documentales y sus permisos específicos.
 4. Implementar alta/edición del paciente y creación transaccional del expediente único.
 5. Conectar desde solicitudes y citas sin crear expedientes duplicados.
 6. Añadir autorización de lectura/escritura y auditoría a cambios relevantes.

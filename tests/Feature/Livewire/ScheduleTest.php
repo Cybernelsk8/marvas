@@ -3,11 +3,15 @@
 namespace Tests\Feature\Livewire;
 
 use App\Livewire\Admin\Schedule;
+use App\Models\Admin\Setting;
 use App\Models\Admin\User;
 use App\Models\Cita;
 use App\Models\Paciente;
+use App\Models\Profesional;
 use App\Models\Sucursal;
+use App\Services\ClinicAvailabilityService;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Database\Seeders\CatalogosClinicosSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -113,11 +117,43 @@ class ScheduleTest extends TestCase
             ->assertHasErrors('sucursalFiltro');
     }
 
+    public function test_schedule_filters_appointments_by_professional_or_unassigned_professional(): void
+    {
+        $date = now()->addDays(2)->toDateString();
+        $professionals = Profesional::query()->orderBy('id')->take(2)->get();
+        $this->assertCount(2, $professionals);
+
+        $this->createAppointment('confirmada', 'Paciente profesional A', $date.' 09:00', null, $professionals[0]->id);
+        $this->createAppointment('confirmada', 'Paciente profesional B', $date.' 10:00', null, $professionals[1]->id);
+        $this->createAppointment('solicitada', 'Paciente sin profesional', $date.' 11:00');
+
+        Livewire::actingAs($this->receptionist)
+            ->test(Schedule::class)
+            ->call('selectDate', $date)
+            ->set('profesionalFiltro', (string) $professionals[0]->id)
+            ->assertSee('Paciente profesional A')
+            ->assertDontSee('Paciente profesional B')
+            ->assertDontSee('Paciente sin profesional')
+            ->set('profesionalFiltro', 'sin_asignar')
+            ->assertSee('Paciente sin profesional')
+            ->assertDontSee('Paciente profesional A')
+            ->assertDontSee('Paciente profesional B');
+    }
+
+    public function test_schedule_professional_filter_rejects_an_unknown_professional(): void
+    {
+        Livewire::actingAs($this->receptionist)
+            ->test(Schedule::class)
+            ->set('profesionalFiltro', '999999')
+            ->assertHasErrors('profesionalFiltro');
+    }
+
     public function test_reception_can_confirm_an_appointment_from_the_schedule(): void
     {
         $date = now()->addDays(2)->toDateString();
         $cita = $this->createAppointment('solicitada', 'Paciente para gestionar', $date.' 09:00');
         $sucursal = Sucursal::query()->firstOrFail();
+        $profesional = $sucursal->profesionales()->firstOrFail();
 
         Livewire::actingAs($this->receptionist)
             ->test(Schedule::class)
@@ -127,12 +163,14 @@ class ScheduleTest extends TestCase
             ->assertSee('Cancelar')
             ->call('prepareConfirmation', $cita->id)
             ->set('sucursalConfirmacion', (string) $sucursal->id)
+            ->set('profesionalConfirmacion', (string) $profesional->id)
             ->call('confirmAppointment');
 
         $this->assertDatabaseHas('citas', [
             'id' => $cita->id,
             'estado' => 'confirmada',
             'sucursal_id' => $sucursal->id,
+            'profesional_id' => $profesional->id,
             'agendada_por' => $this->receptionist->id,
         ]);
     }
@@ -144,7 +182,7 @@ class ScheduleTest extends TestCase
             'Paciente para reprogramar',
             now()->addDays(2)->toDateString().' 09:00',
         );
-        $newDate = now()->addDays(4)->toDateString();
+        $newDate = $this->nextWeekday()->addWeek()->toDateString();
 
         Livewire::actingAs($this->receptionist)
             ->test(Schedule::class)
@@ -157,6 +195,45 @@ class ScheduleTest extends TestCase
             'id' => $cita->id,
             'estado' => 'solicitada',
             'fecha_hora_inicio' => $newDate.' 10:00:00',
+        ]);
+    }
+
+    public function test_rescheduling_uses_the_configured_appointment_duration(): void
+    {
+        $cita = $this->createAppointment(
+            'solicitada',
+            'Paciente con duración configurable',
+            now()->addDays(2)->toDateString().' 09:00',
+        );
+        $newDate = $this->nextWeekday()->addWeek()->toDateString();
+        Setting::query()->updateOrCreate(
+            ['key' => ClinicAvailabilityService::SETTING_KEY],
+            [
+                'type' => 'array',
+                'value' => [
+                    'groups' => [[
+                        'days' => [1, 2, 3, 4, 5],
+                        'hours' => ['08:00', '10:00', '13:00', '15:00'],
+                    ]],
+                    'duration_minutes' => 120,
+                    'closures' => [],
+                ],
+            ],
+        );
+
+        Livewire::actingAs($this->receptionist)
+            ->test(Schedule::class)
+            ->call('prepareRescheduling', $cita->id)
+            ->set('reprogramacion.fecha', $newDate)
+            ->set('reprogramacion.hora', '10:00')
+            ->call('rescheduleAppointment');
+
+        $this->assertDatabaseHas('citas', [
+            'id' => $cita->id,
+            'estado' => 'solicitada',
+            'fecha_hora_inicio' => $newDate.' 10:00:00',
+            'fecha_hora_fin' => $newDate.' 12:00:00',
+            'duracion_minutos' => 120,
         ]);
     }
 
@@ -198,7 +275,13 @@ class ScheduleTest extends TestCase
             ->assertOk();
     }
 
-    private function createAppointment(string $status, string $name, string $start, ?int $sucursalId = null): Cita
+    private function createAppointment(
+        string $status,
+        string $name,
+        string $start,
+        ?int $sucursalId = null,
+        ?int $profesionalId = null,
+    ): Cita
     {
         $paciente = Paciente::create([
             'nombres' => $name,
@@ -210,10 +293,22 @@ class ScheduleTest extends TestCase
 
         return $expediente->citas()->create([
             'sucursal_id' => $sucursalId,
+            'profesional_id' => $profesionalId,
             'tipo_cita' => 'primera_vez',
             'estado' => $status,
             'fecha_hora_inicio' => $inicio,
             'fecha_hora_fin' => $inicio->copy()->addHour(),
         ]);
+    }
+
+    private function nextWeekday(): CarbonInterface
+    {
+        $date = today()->addDay();
+
+        while ($date->isWeekend()) {
+            $date->addDay();
+        }
+
+        return $date;
     }
 }

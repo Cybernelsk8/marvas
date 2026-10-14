@@ -8,6 +8,7 @@ use App\Models\CategoriaInventario;
 use App\Models\Especialidad;
 use App\Models\Profesional;
 use App\Models\Sucursal;
+use App\Services\ClinicAvailabilityService;
 use Database\Seeders\CatalogosClinicosSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -31,15 +32,16 @@ class CatalogosClinicosSeederTest extends TestCase
         $this->assertDatabaseCount('profesional_especialidades', 6);
         $this->assertDatabaseCount('profesional_sucursales', 6);
         $this->assertSame(
-            ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
-            Setting::query()->where('key', 'horarios_citas')->firstOrFail()->value,
+            ClinicAvailabilityService::DEFAULT_CONFIGURATION,
+            Setting::query()->where('key', ClinicAvailabilityService::SETTING_KEY)->firstOrFail()->value,
         );
         $this->assertSame('child', Page::query()->where('label', 'Solicitudes')->value('type'));
         $this->assertSame(
-            ['page.view.requests', 'page.view.schedule', 'requests.cancel', 'requests.confirm', 'requests.edit', 'requests.reschedule'],
+            ['page.view.patients', 'page.view.requests', 'page.view.schedule', 'requests.cancel', 'requests.confirm', 'requests.edit', 'requests.reschedule'],
             Role::findByName('Recepcionista')->permissions->pluck('name')->sort()->values()->all(),
         );
         $this->assertSame('admin.schedule', Page::query()->where('label', 'Agenda de citas')->value('route'));
+        $this->assertSame('admin.patients.index', Page::query()->where('label', 'Directorio de pacientes')->value('route'));
     }
 
     public function test_demo_staff_accounts_are_not_seeded_outside_local_or_testing(): void

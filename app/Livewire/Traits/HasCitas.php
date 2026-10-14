@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Traits;
 
-use App\Models\Admin\Setting;
 use App\Models\Cita;
+use App\Services\ClinicAvailabilityService;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Database\Eloquent\Collection;
@@ -16,31 +16,7 @@ trait HasCitas
 
     public function getConfiguredHours(): array
     {
-        $horarios = Setting::query()
-            ->where('key', 'horarios_citas')
-            ->first()?->value;
-
-        if (! is_array($horarios)) {
-            return [];
-        }
-
-        return collect($horarios)
-            ->map(function ($horario) {
-                if (! is_string($horario) || trim($horario) === '') {
-                    return null;
-                }
-
-                try {
-                    return Carbon::parse($horario)->format('H:i');
-                } catch (InvalidFormatException) {
-                    return null;
-                }
-            })
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
+        return app(ClinicAvailabilityService::class)->recurringHours();
     }
 
     public function getCalendarAppointments(?Carbon $desde = null, ?Carbon $hasta = null): Collection
@@ -77,17 +53,28 @@ trait HasCitas
         ?iterable $citas = null,
         ?Carbon $desde = null,
         ?Carbon $hasta = null,
+        ?array $availabilityConfiguration = null,
     ): array {
         $desde = ($desde ?? Carbon::today())->copy()->startOfDay();
         $hasta = ($hasta ?? $desde->copy()->addMonths(3))->copy()->startOfDay();
         $citas = $citas ?? $this->getCalendarAppointments($desde, $hasta);
         $citasPorFecha = $this->agruparCitasPorFecha($citas);
+        $durationMinutes = $availabilityConfiguration['duration_minutes'] ?? 60;
         $fechasLlenas = [];
 
         for ($fecha = $desde->copy(); $fecha->lte($hasta); $fecha->addDay()) {
             $fechaIso = $fecha->toDateString();
+            $horariosDelDia = $availabilityConfiguration === null
+                ? $horariosConfigurados
+                : app(ClinicAvailabilityService::class)->hoursForDay($fecha->dayOfWeekIso, $availabilityConfiguration);
 
-            if ($this->availableHoursForDate($fechaIso, $horariosConfigurados, $citasPorFecha[$fechaIso] ?? []) === []) {
+            if ($this->availableHoursForDate(
+                $fechaIso,
+                $horariosDelDia,
+                $citasPorFecha[$fechaIso] ?? [],
+                $availabilityConfiguration,
+                $durationMinutes,
+            ) === []) {
                 $fechasLlenas[] = $fechaIso;
             }
         }
@@ -99,6 +86,7 @@ trait HasCitas
         string $fecha,
         ?array $horariosConfigurados = null,
         ?iterable $citas = null,
+        ?array $availabilityConfiguration = null,
     ): array {
         try {
             $fechaValida = Carbon::createFromFormat('!Y-m-d', $fecha);
@@ -110,14 +98,35 @@ trait HasCitas
             return [];
         }
 
-        $horariosConfigurados ??= $this->getConfiguredHours();
+        if ($availabilityConfiguration !== null) {
+            $horariosConfigurados = app(ClinicAvailabilityService::class)
+                ->hoursForDay($fechaValida->dayOfWeekIso, $availabilityConfiguration);
+        } elseif ($horariosConfigurados === null) {
+            $availability = app(ClinicAvailabilityService::class);
+            $availabilityConfiguration ??= $availability->configuration();
+            $horariosConfigurados = $availability->hoursForDay($fechaValida->dayOfWeekIso, $availabilityConfiguration);
+        }
+
         $citas ??= $this->getCalendarAppointments($fechaValida, $fechaValida);
         $citasPorFecha = $this->agruparCitasPorFecha($citas);
+        $durationMinutes = $availabilityConfiguration['duration_minutes'] ?? 60;
 
-        return $this->availableHoursForDate($fecha, $horariosConfigurados, $citasPorFecha[$fecha] ?? []);
+        return $this->availableHoursForDate(
+            $fecha,
+            $horariosConfigurados,
+            $citasPorFecha[$fecha] ?? [],
+            $availabilityConfiguration,
+            $durationMinutes,
+        );
     }
 
-    protected function availableHoursForDate(string $fecha, array $horarios, iterable $citas): array
+    protected function availableHoursForDate(
+        string $fecha,
+        array $horarios,
+        iterable $citas,
+        ?array $availabilityConfiguration = null,
+        int $durationMinutes = 60,
+    ): array
     {
         $horarios = collect($horarios)
             ->map(fn ($horario) => Carbon::parse($horario)->format('H:i'))
@@ -125,9 +134,14 @@ trait HasCitas
             ->values();
 
         return $horarios
-            ->reject(function (string $horario) use ($fecha, $citas) {
+            ->reject(function (string $horario) use ($fecha, $citas, $availabilityConfiguration, $durationMinutes) {
                 $inicio = Carbon::parse("{$fecha} {$horario}");
-                $fin = $inicio->copy()->addMinutes(60);
+                $fin = $inicio->copy()->addMinutes($durationMinutes);
+
+                if ($availabilityConfiguration !== null
+                    && ! app(ClinicAvailabilityService::class)->isSlotAllowed($inicio, $durationMinutes, $availabilityConfiguration)) {
+                    return true;
+                }
 
                 foreach ($citas as $cita) {
                     if ($cita->fecha_hora_inicio->lt($fin) && $cita->fecha_hora_fin->gt($inicio)) {

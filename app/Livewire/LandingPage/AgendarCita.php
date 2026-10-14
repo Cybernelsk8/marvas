@@ -3,9 +3,9 @@
 namespace App\Livewire\LandingPage;
 
 use App\Livewire\Traits\HasCitas;
-use App\Models\Admin\Setting;
 use App\Models\Cita;
 use App\Models\Paciente;
+use App\Services\ClinicAvailabilityService;
 use Carbon\Carbon;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
@@ -43,19 +43,31 @@ class AgendarCita extends Component
 
     public function updatedFecha(): void
     {
-        if ($this->fecha && $this->hora && ! in_array($this->hora, $this->getAvailableHours($this->fecha), true)) {
+        if ($this->fecha && $this->hora && ! in_array(
+            $this->hora,
+            $this->getAvailableHours($this->fecha, availabilityConfiguration: app(ClinicAvailabilityService::class)->configuration()),
+            true,
+        )) {
             $this->reset('hora');
         }
     }
 
     public function render()
     {
-        $horariosConfigurados = $this->getConfiguredHours();
+        $availability = app(ClinicAvailabilityService::class);
+        $configuration = $availability->configuration();
+        $horariosConfigurados = $availability->recurringHours($configuration);
         $citas = $this->getCalendarAppointments();
         $eventos = $this->getEvents($citas);
-        $fechasLlenas = $this->getFechasLlenas($horariosConfigurados, $citas);
+        $fechasLlenas = $this->getFechasLlenas(
+            $horariosConfigurados,
+            $citas,
+            availabilityConfiguration: $configuration,
+        );
 
-        $horarios = $this->fecha ? $this->getAvailableHours($this->fecha, $horariosConfigurados, $citas) : [];
+        $horarios = $this->fecha
+            ? $this->getAvailableHours($this->fecha, $horariosConfigurados, $citas, $configuration)
+            : [];
 
         return view('livewire.landing-page.agendar-cita', compact('horarios', 'eventos', 'fechasLlenas'));
     }
@@ -71,16 +83,15 @@ class AgendarCita extends Component
                 return 'fecha_pasada';
             }
 
-            $horarios = Setting::query()
-                ->where('key', 'horarios_citas')
-                ->lockForUpdate()
-                ->first()?->value;
+            $availability = app(ClinicAvailabilityService::class);
+            $configuration = $availability->configuration(lockForUpdate: true);
 
-            if (! is_array($horarios) || ! in_array($datos['hora'], $horarios, true)) {
+            $durationMinutes = $configuration['duration_minutes'];
+            if (! $availability->isSlotAllowed($inicio, $durationMinutes, $configuration)) {
                 return 'horario_no_configurado';
             }
 
-            $fin = $inicio->copy()->addMinutes(60);
+            $fin = $inicio->copy()->addMinutes($durationMinutes);
 
             if (Cita::existeTraslapeGlobal($inicio, $fin)) {
                 return 'horario_ocupado';
@@ -99,6 +110,7 @@ class AgendarCita extends Component
                 'estado' => 'solicitada',
                 'fecha_hora_inicio' => $inicio,
                 'fecha_hora_fin' => $fin,
+                'duracion_minutos' => $durationMinutes,
                 'notas_recepcion' => $datos['mensaje'],
             ]);
 

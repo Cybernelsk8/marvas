@@ -106,7 +106,7 @@ class SolicitudTest extends TestCase
 
     public function test_reception_can_confirm_an_existing_request_without_a_current_schedule_configuration(): void
     {
-        Setting::query()->where('key', 'horarios_citas')->delete();
+        Setting::query()->where('key', 'disponibilidad_global_citas')->delete();
         $cita = $this->crearSolicitud();
         $snapshot = $this->componentSnapshot(
             $this->actingAs($this->recepcionista)->get('/solicitudes')->assertOk(),
@@ -236,14 +236,14 @@ class SolicitudTest extends TestCase
         )->assertOk());
 
         $this->updateLivewireComponent($snapshot, [
-            'reprogramacion.fecha' => now()->addDays(4)->format('Y-m-d'),
+            'reprogramacion.fecha' => $this->nextWeekday()->addWeek()->format('Y-m-d'),
             'reprogramacion.hora' => '10:00',
         ], [['reprogramar']])->assertOk();
 
         $this->assertDatabaseHas('citas', [
             'id' => $cita->id,
             'estado' => 'solicitada',
-            'fecha_hora_inicio' => now()->addDays(4)->setTime(10, 0)->format('Y-m-d H:i:s'),
+            'fecha_hora_inicio' => $this->nextWeekday()->addWeek()->setTime(10, 0)->format('Y-m-d H:i:s'),
         ]);
     }
 
@@ -291,7 +291,7 @@ class SolicitudTest extends TestCase
             'telefono' => '5555-1111',
         ]);
         $expediente = $paciente->expediente()->create();
-        $inicio ??= now()->addDays(3)->setTime(9, 0);
+        $inicio ??= $this->nextWeekday()->setTime(9, 0);
 
         return $expediente->citas()->create([
             'tipo_cita' => 'primera_vez',
@@ -300,5 +300,16 @@ class SolicitudTest extends TestCase
             'fecha_hora_fin' => $inicio->copy()->addHour(),
             'notas_recepcion' => 'Consulta de primera vez',
         ]);
+    }
+
+    private function nextWeekday(): CarbonInterface
+    {
+        $date = today()->addDay();
+
+        while ($date->isWeekend()) {
+            $date->addDay();
+        }
+
+        return $date;
     }
 }

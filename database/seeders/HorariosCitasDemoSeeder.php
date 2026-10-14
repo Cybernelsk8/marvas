@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Admin\Setting;
+use App\Services\ClinicAvailabilityService;
 use Illuminate\Database\Seeder;
 
 class HorariosCitasDemoSeeder extends Seeder
@@ -14,11 +15,11 @@ class HorariosCitasDemoSeeder extends Seeder
         }
 
         Setting::firstOrCreate(
-            ['key' => 'horarios_citas'],
+            ['key' => ClinicAvailabilityService::SETTING_KEY],
             [
                 'type' => 'array',
-                'value' => ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
-                'description' => 'Horarios de demostración para pruebas locales; sustituir por disponibilidad aprobada de la clínica.',
+                'value' => ClinicAvailabilityService::DEFAULT_CONFIGURATION,
+                'description' => 'Horario global, pausa y cierres para las reservas de la clínica.',
             ],
         );
     }

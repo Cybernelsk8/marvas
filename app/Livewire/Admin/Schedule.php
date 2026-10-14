@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Cita;
+use App\Models\Profesional;
 use App\Models\Sucursal;
 use App\Services\AppointmentManagementService;
 use Carbon\Carbon;
@@ -10,6 +11,7 @@ use Carbon\Exceptions\InvalidFormatException;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -26,11 +28,15 @@ class Schedule extends Component
 
     public string $sucursalFiltro = 'todas';
 
+    public string $profesionalFiltro = 'todos';
+
     public string $viewMode = 'month';
 
     public int $appointmentActionId = 0;
 
     public ?string $sucursalConfirmacion = null;
+
+    public ?string $profesionalConfirmacion = null;
 
     public array $reprogramacion = ['fecha' => null, 'hora' => null];
 
@@ -49,6 +55,8 @@ class Schedule extends Component
             'events' => $this->events(),
             'statuses' => $this->statusOptions(),
             'sucursales' => Sucursal::query()->orderBy('nombre')->get(['id', 'nombre', 'activa']),
+            'profesionalesFiltro' => Profesional::query()->orderBy('nombre_completo')->get(['id', 'nombre_completo', 'activo']),
+            'profesionales' => $this->profesionalesPorSucursal((int) ($this->sucursalConfirmacion ?? 0)),
             'appointmentDays' => $this->appointmentDays(),
         ]);
     }
@@ -130,11 +138,45 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    public function updatedProfesionalFiltro(): void
+    {
+        $this->authorize('page.view.schedule');
+        $this->validateOnly('profesionalFiltro', [
+            'profesionalFiltro' => [
+                'required',
+                Rule::in([
+                    'todos',
+                    'sin_asignar',
+                    ...Profesional::query()->pluck('id')->map(fn (int $id) => (string) $id)->all(),
+                ]),
+            ],
+        ]);
+        unset($this->appointments);
+    }
+
     public function updatedViewMode(): void
     {
         $this->authorize('page.view.schedule');
         $this->validateOnly('viewMode', ['viewMode' => ['required', Rule::in(['day', 'week', 'month'])]]);
         unset($this->appointments);
+    }
+
+    public function updatedSucursalConfirmacion(?string $sucursalId): void
+    {
+        $this->profesionalConfirmacion = null;
+        $this->resetValidation(['profesionalConfirmacion']);
+
+        if ($sucursalId === null || $sucursalId === '') {
+            return;
+        }
+
+        $this->validateOnly('sucursalConfirmacion', [
+            'sucursalConfirmacion' => [
+                'required',
+                'integer',
+                Rule::exists('sucursales', 'id')->where('activa', true),
+            ],
+        ]);
     }
 
     public function prepareConfirmation(int $id): void
@@ -151,7 +193,8 @@ class Schedule extends Component
 
         $this->appointmentActionId = $cita->id;
         $this->sucursalConfirmacion = $cita->sucursal_id ? (string) $cita->sucursal_id : null;
-        $this->resetValidation('sucursalConfirmacion');
+        $this->profesionalConfirmacion = $cita->profesional_id ? (string) $cita->profesional_id : null;
+        $this->resetValidation(['sucursalConfirmacion', 'profesionalConfirmacion']);
         Flux::modal('agenda-confirmar-cita-modal')->show();
     }
 
@@ -165,14 +208,38 @@ class Schedule extends Component
                 'integer',
                 Rule::exists('sucursales', 'id')->where('activa', true),
             ],
+            'profesionalConfirmacion' => [
+                'required',
+                'integer',
+                Rule::exists('profesionales', 'id')->where('activo', true),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $this->sucursalConfirmacion || ! $value) {
+                        return;
+                    }
+
+                    $exists = Profesional::query()
+                        ->whereKey($value)
+                        ->where('activo', true)
+                        ->whereHas('sucursales', fn ($query) => $query->whereKey((int) $this->sucursalConfirmacion))
+                        ->exists();
+
+                    if (! $exists) {
+                        $fail('El profesional no pertenece a la sede seleccionada.');
+                    }
+                },
+            ],
         ], [
             'sucursalConfirmacion.required' => 'Selecciona la sede donde se atenderá la cita.',
             'sucursalConfirmacion.exists' => 'La sede seleccionada no está activa. Selecciona otra.',
+            'profesionalConfirmacion.required' => 'Selecciona el profesional que atenderá la cita.',
+            'profesionalConfirmacion.exists' => 'El profesional seleccionado no está activo.',
         ]);
+
         $result = app(AppointmentManagementService::class)->confirm(
             $this->appointmentActionId,
             (int) $data['sucursalConfirmacion'],
             Auth::id(),
+            (int) $data['profesionalConfirmacion'],
         );
 
         if ($result !== 'confirmada') {
@@ -180,6 +247,7 @@ class Schedule extends Component
                 text: match ($result) {
                     'no_pendiente' => 'La solicitud ya no se encuentra pendiente.',
                     'sede_no_disponible' => 'La sede seleccionada dejó de estar activa. Selecciona otra sede.',
+                    'profesional_no_disponible' => 'El profesional seleccionado no está disponible para esa sede.',
                     default => 'El horario ya no está disponible. Reprograma la solicitud antes de confirmarla.',
                 },
                 variant: 'danger',
@@ -188,7 +256,7 @@ class Schedule extends Component
             return;
         }
 
-        $this->reset(['appointmentActionId', 'sucursalConfirmacion']);
+        $this->reset(['appointmentActionId', 'sucursalConfirmacion', 'profesionalConfirmacion']);
         unset($this->appointments);
         Flux::modals()->close();
         Flux::toast(text: 'La cita fue confirmada correctamente.', variant: 'success');
@@ -290,6 +358,19 @@ class Schedule extends Component
         Flux::toast(text: 'La solicitud fue cancelada.', variant: 'success');
     }
 
+    public function profesionalesPorSucursal(?int $sucursalId): SupportCollection
+    {
+        if (! $sucursalId) {
+            return collect();
+        }
+
+        return Profesional::query()
+            ->where('activo', true)
+            ->whereHas('sucursales', fn ($query) => $query->whereKey($sucursalId))
+            ->orderBy('nombre_completo')
+            ->get();
+    }
+
     #[Computed]
     public function appointments(): Collection
     {
@@ -329,6 +410,11 @@ class Schedule extends Component
             ->when(
                 ! in_array($this->sucursalFiltro, ['todas', 'sin_sede'], true),
                 fn (Builder $query) => $query->where('sucursal_id', $this->sucursalFiltro),
+            )
+            ->when($this->profesionalFiltro === 'sin_asignar', fn (Builder $query) => $query->whereNull('profesional_id'))
+            ->when(
+                ! in_array($this->profesionalFiltro, ['todos', 'sin_asignar'], true),
+                fn (Builder $query) => $query->where('profesional_id', $this->profesionalFiltro),
             );
     }
 

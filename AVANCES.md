@@ -4,9 +4,9 @@
 
 ## Estado general
 
-- **Última actualización:** 2026-10-13.
-- **Estado de fase:** Fase A cerrada; Módulo 2 en curso, con configuración global y calendario interno inicial implementados y validados.
-- **Resumen:** Recepción puede gestionar solicitudes desde la bandeja o la agenda, asignar una sede activa, consultar y filtrar citas por periodo/estado/sede y mantener horarios globales. Sigue pendiente definir la asignación de profesional y ampliar las reglas de disponibilidad.
+- **Última actualización:** 2026-10-14.
+- **Estado de fase:** Fase A cerrada; Módulo 2 validado visualmente y Módulo 3 iniciado con directorio y ficha de paciente de solo lectura.
+- **Resumen:** Recepción puede gestionar solicitudes desde la bandeja o la agenda, asignar sede y profesional al confirmar y filtrar por periodo/estado/sede/profesional. Disponibilidad se configura con grupos de días sin duplicados, horas de inicio agregadas individualmente y duración global configurable en intervalos de 15 minutos (predeterminado: 60); las horas sí pueden repetirse entre grupos con días distintos, pero no dentro del mismo grupo. El directorio usa `DataTable` y `Searchable` para buscar y filtrar por campos y relaciones; permite buscar pacientes y consultar la ficha básica protegida por permiso.
 - **Importante:** este resumen refleja los archivos observados en el árbol de trabajo al crear la bitácora, no implica que los cambios estén confirmados en Git ni que la aplicación esté desplegada.
 
 > **Reutilización transversal:** consultar la sección “Componentes, traits, servicios y helpers reutilizables” de `PLANIFICACION.md` antes de construir tablas, calendarios, selectores, gráficos, utilidades o lógica común. En especial, estudiar el contrato de `x-data-table` + `DataTable` + `Searchable` + `HeaderMap` y los ejemplos `@interact` de Admin.
@@ -17,8 +17,8 @@
 |---|---|---|---|
 | 0. Fundamentos y permisos | Parcial | Hay autenticación, permisos Spatie, áreas, roles, páginas y permisos; existen rutas admin con middleware. Falta definir permisos de cada módulo clínico/operativo. | Aprobar matriz de roles/permisos para recepción, profesionales, caja, inventario y administración. |
 | 1. Solicitudes y recepción | Implementado y validado | `App\Livewire\Solicitud` permite editar datos, asignar sede activa al confirmar, reprogramar, cancelar y generar enlaces firmados temporales del formulario de paciente. | Hacer prueba visual con usuarios reales; después decidir historial de llamadas y automatización de mensajes. |
-| 2. Agenda y disponibilidad | En curso | `admin.schedule` reutiliza `x-calendar` para vistas día/semana/mes, filtros de estado/sede y modales de confirmar/reprogramar/cancelar; las reglas transaccionales se comparten con Solicitudes mediante `AppointmentManagementService`. `/admin/availability` mantiene las horas globales. | Definir asignación de profesional; evaluar duración, pausas y días no laborables. |
-| 3. Pacientes y expediente | Parcial en datos / pendiente en pantallas | Modelos y migraciones `Paciente`, `ExpedienteMaestro`, facturación y domicilios existen; no se encontró una pantalla clínica/paciente específica en Livewire. | Crear búsqueda de pacientes y ficha del expediente sin duplicados. |
+| 2. Agenda y disponibilidad | Implementado y validado | `admin.schedule` reutiliza `x-calendar` para vistas día/semana/mes, filtra por estado/sede/profesional (incluidas citas sin asignar) y ofrece modales de confirmar/reprogramar/cancelar; `/admin/availability` configura días, horas, duración y cierres. Se validaron visualmente horarios, duración configurable, cierres y conflictos con citas futuras. | Continuar con pruebas de uso en recepción y atender incidencias operativas. |
+| 3. Pacientes y expediente | En curso | `/admin/patients` busca pacientes por nombre, DPI, teléfono y correo, filtra por estado y pagina resultados; la ficha protegida muestra datos básicos, resumen del expediente y citas paginadas. La política acordada es mostrar coincidencias y dejar la selección/fusión en manos de recepción, sin fusiones automáticas. | Implementar coincidencias al alta/edición y fusión explícita transaccional con auditoría, conservando el origen inactivo y resolviendo campos en conflicto mediante revisión. |
 | 4. Consultas y evaluación | Parcial en datos / pendiente en pantallas | Tablas/modelos de consultas, anamnesis, evaluaciones e informes existen; no se encontró flujo Livewire de consulta. | Diseñar flujo clínico y formulario general por especialidad. |
 | 5. Clasificación y tratamiento | Parcial en datos / pendiente en pantallas | Existen clasificación, plan terapéutico, paquete asociado y evolución en esquema/modelos. | Definir Modelo 6+ con el equipo y crear flujo de clasificación/plan/evolución. |
 | 6. Consentimientos y archivos | Parcial en datos / pendiente en pantallas | Hay plantillas/registros de consentimiento, archivos y campos de trazabilidad. | Definir política legal/de almacenamiento y crear pantallas seguras. |
@@ -52,13 +52,18 @@
 ### Seeders de catálogos y demostración
 
 - `CatalogosClinicosSeeder` agrupa los seeders de especialidades, categorías de inventario, sede/profesionales demostrativos, horarios demostrativos y acceso al módulo de solicitudes.
+- `AdminAccessSeeder` mantiene de forma idempotente el área Gerencia, las páginas/permisos administrativos y es invocado por `DatabaseSeeder`.
+- `HorariosCitasDemoSeeder` crea en `local`/`testing` el horario inicial de lunes a viernes mediante horas individuales de 08:00 a 16:00, omitiendo 13:00 como pausa; sábado/domingo comienzan cerrados. No sobrescribe configuración existente.
 - Los catálogos de especialidad y categoría son idempotentes y corresponden a los valores del sitio público y del enum de inventario.
 - Sede, cuentas/perfiles de profesionales y horarios de demostración solo se crean en `local` y `testing`. Los usuarios llevan correos `example.test`, contraseñas aleatorias y no reciben roles.
 - Los perfiles demo se enlazan a especialidades y sede porque `profesionales.user_id` es obligatorio y único. Los horarios son datos ficticios, no un horario comercial aprobado.
-- `DatabaseSeeder` invoca `CatalogosClinicosSeeder`; **no ejecutar el `DatabaseSeeder` completo en una base compartida o productiva**: conserva lógica anterior no idempotente y datos de desarrollo. Los nuevos seeders agrupados no hacen seguros los seeders preexistentes.
+- `DatabaseSeeder` invoca `AdminAccessSeeder` y `CatalogosClinicosSeeder`; **no ejecutar el `DatabaseSeeder` completo en una base compartida o productiva**: conserva lógica anterior no idempotente y datos de desarrollo. Los nuevos seeders agrupados no hacen seguros los seeders preexistentes.
+- La disponibilidad ya no lee la configuración antigua `horarios_citas`; las reglas activas se almacenan en `disponibilidad_global_citas`. La migración `2026_10_14_154200_expand_settings_value_column` amplía `settings.value` a `TEXT` para guardar cierres.
 
 ### Administración y plataforma
 
+- La agenda permite filtrar citas y eventos del calendario por sede y profesional, incluyendo citas que aún no tienen profesional asignado.
+- La pantalla Disponibilidad permite definir grupos de días sin solapamiento y añadir/quitar horas de inicio manualmente para cada grupo. Si un día no está asignado o no tiene horas, queda cerrado; cada cita dura 60 minutos, por lo que las horas dentro de un grupo no pueden traslaparse. Se conservan cierres excepcionales por día/intervalo y se rechazan guardados que dejen citas futuras fuera del horario.
 - Pantallas Livewire para administración de usuarios, detalle de usuario, áreas, páginas, permisos y roles.
 - Ajustes Livewire de perfil, apariencia y seguridad.
 - Layout interno con sidebar Flux y notificaciones toast.
@@ -222,6 +227,52 @@
 - **Pruebas/comandos y resultado:** `AgendarCitaTest`: 2 pruebas y 11 assertions; Pint, sintaxis PHP y `git diff --check` pasan.
 - **Próximo paso:** volver a enviar una solicitud desde la landing y confirmar que se guarda como pendiente sin truncamiento.
 - **Estado del trabajo:** corregido y aplicado en la base local configurada.
+
+### 2026-10-14 — Reglas globales de horario y cierres excepcionales
+
+- **Objetivo:** ampliar el Módulo 2 para que disponibilidad pública, confirmaciones y reprogramaciones respeten un único horario global y sus excepciones.
+- **Decisiones funcionales:** lunes a viernes; 08:00–17:00; citas fijas de 60 minutos; pausa diaria 13:00–14:00; permitir cierres de un día o intervalos. Impedir guardar cambios que dejen citas futuras no canceladas/no asistió fuera del nuevo horario; nunca mover ni cancelar citas automáticamente.
+- **Cambios realizados:** nuevo `ClinicAvailabilityService` como fuente compartida para generar horas y validar día laborable, duración, pausa y cierre. La pantalla Disponibilidad configura días, apertura/cierre, pausa y cierres. Landing, confirmación y reprogramación revalidan contra las mismas reglas dentro de transacción. La configuración se guarda en `disponibilidad_global_citas`; los seeders demo crean los valores iniciales solo si no existe una configuración.
+- **Migración:** `2026_10_14_154200_expand_settings_value_column` amplía `settings.value` a `TEXT`, necesario para guardar listas de cierres.
+- **Pruebas/comandos y resultado:** suite dirigida `AvailabilityTest`, `AgendarCitaTest`, `ScheduleTest`, `SolicitudTest`, `HasCitasTest` y `CatalogosClinicosSeederTest`: 35 pruebas y 132 assertions pasaron.
+- **Aplicación local:** se ejecutó la migración de expansión de `settings.value` y el seeder idempotente `HorariosCitasDemoSeeder` en el entorno local.
+- **Pendientes:** validar visualmente los filtros, el calendario, el horario y la gestión de cierres con recepción.
+- **Próximo paso recomendado:** abrir `/admin/availability`, confirmar los valores (08:00–17:00 y pausa 13:00–14:00) y verificar una reserva pública y un cierre; luego decidir si se completa la verificación visual del Módulo 2 o se inicia Módulo 3 (Pacientes y expediente).
+- **Estado del trabajo:** implementado y validado automáticamente; migración y configuración demo aplicadas localmente, prueba visual manual pendiente.
+
+### 2026-10-14 — Horarios manuales agrupados por días
+
+- **Objetivo:** sustituir los rangos diarios de apertura/cierre por listas manuales de horas de inicio que pueden compartirse entre grupos de días.
+- **Decisión funcional:** el administrador selecciona uno o varios días por grupo y agrega las horas individualmente. Un día no puede aparecer en más de un grupo; un día no asignado o un grupo sin horas queda cerrado. Sábado y domingo pueden tener horarios independientes. Se conserva la duración fija de 60 minutos y los cierres excepcionales.
+- **Cambios realizados:** la pantalla de disponibilidad permite crear/eliminar grupos, asignar días y agregar/quitar horas. `ClinicAvailabilityService` aplica la lista correspondiente al día en agenda, landing, confirmación y reprogramación, y conserva compatibilidad convirtiendo al vuelo la configuración anterior. Cada grupo valida sus propias horas: permite repetir los mismos horarios entre grupos con días diferentes, pero rechaza repeticiones o traslapes dentro del grupo; también bloquea cambios incompatibles con citas futuras.
+- **Pruebas/comandos y resultado:** suite dirigida `AvailabilityTest`, `AgendarCitaTest`, `ScheduleTest`, `SolicitudTest`, `HasCitasTest` y `CatalogosClinicosSeederTest`: 40 pruebas y 149 assertions pasaron; Pint, compilación de vistas y `git diff --check` pasaron.
+- **Pendientes:** prueba visual ampliada de una reserva de sábado/domingo y de cambios de disponibilidad cuando existan citas futuras.
+- **Próximo paso recomendado:** atender incidencias operativas de agenda y avanzar con el Módulo 3.
+- **Estado del trabajo:** implementado, validado automáticamente y corroborado visualmente por el usuario.
+
+### 2026-10-14 — Duración configurable de citas
+
+- **Objetivo:** permitir configurar una duración global para cada cita, con 60 minutos como valor inicial.
+- **Decisión funcional:** duración en minutos en múltiplos de 15; rango de 15 a 1380 minutos. Las horas configuradas siguen siendo inicios manuales, no se generan automáticamente; deben dejar espacio suficiente entre sí para cubrir la duración. No se permiten citas que terminen al día siguiente.
+- **Cambios realizados:** `/admin/availability` permite ajustar la duración; validación de disponibilidad, detección de traslapes, cálculo de horarios libres, reservas públicas, confirmaciones y reprogramaciones usan el valor configurado. Guardar un cambio que invalide una cita futura muestra conflictos y no reemplaza la configuración guardada. La reserva guarda la duración y la hora final calculada.
+- **Archivos modificados:** `ClinicAvailabilityService.php`, `Availability.php`, `availability.blade.php`, `HasCitas.php`, `AgendarCita.php`, `AvailabilityTest.php`, `AgendarCitaTest.php`, `AVANCES.md`.
+- **Pruebas/comandos y resultado:** 45 pruebas y 150 assertions pasaron en `AvailabilityTest`, `AgendarCitaTest`, `ScheduleTest`, `SolicitudTest` y `HasCitasTest`; Pint, compilación de vistas Blade y `git diff --check` pasaron. Se verificaron reserva pública y reprogramación con duración de 120 minutos, rechazo de incrementos inválidos y bloqueo de cambios incompatibles con citas futuras.
+- **Decisiones tomadas (responsable/fecha):** minutos configurables en incrementos de 15, predeterminado de 60; máximo de 1380 minutos para mantener fin el mismo día (usuario/2026-10-14).
+- **Pendientes o bloqueos:** ninguno funcional conocido; prueba visual realizada por el usuario.
+- **Próximo paso recomendado:** validar visualmente el directorio `/admin/patients` y acordar la política de duplicados del Módulo 3.
+- **Estado del trabajo:** implementado, validado automáticamente y corroborado visualmente por el usuario.
+
+### 2026-10-14 — Inicio del Módulo 3: directorio y ficha de paciente
+
+- **Objetivo:** iniciar la consulta unificada de pacientes y expediente maestro, respetando la política de acceso a información clínica.
+- **Cambios realizados:** se agregó `/admin/patients`, con búsqueda por nombre completo o parcial, DPI, teléfono (acepta consulta con o sin separadores) y correo; filtro de activos/inactivos/todos, filtros avanzados por campos y por expediente relacionado, ordenamiento y paginación mediante `DataTable` + `Searchable`. Se agregó `Searchable` a `Paciente` y se hizo portable la concatenación de campos de accesores para SQLite/MariaDB. La ficha muestra datos de contacto/demográficos, estado y resumen del expediente maestro, además de historial de citas paginado. Se agregó el permiso `page.view.patients`, una página de menú y acceso de lectura para Sysadmin y Recepcionista.
+- **Alcance de esta entrega:** consulta de solo lectura; no se crean ni editan pacientes/expedientes, no se combinan registros y la ficha no expone notas clínicas ni documentos. No se requieren migraciones.
+- **Archivos modificados:** `routes/admin.php`, `PacientesAccessSeeder.php`, `CatalogosClinicosSeeder.php`, componentes y vistas `Admin/Patient/Index` y `Admin/Patient/Show`, pruebas de directorio y [PLANIFICACION.md](./PLANIFICACION.md).
+- **Pruebas/comandos y resultado:** 8 pruebas y 43 assertions pasaron inicialmente en `PatientDirectoryTest` y `CatalogosClinicosSeederTest`. Tras reportarse un error SQL en MariaDB por la concatenación del nombre completo, se corrigió el separador de argumentos `CONCAT` en `Searchable`; la suite de regresión `PatientDirectoryTest` + `SolicitudTest` pasó con 16 pruebas y 66 assertions, junto con Pint, compilación de vistas Blade y `git diff --check`.
+- **Decisiones tomadas (responsable/fecha):** listado/ficha protegidos por `page.view.patients`; acceso de lectura asignado a Recepcionista y Sysadmin (implementación/2026-10-14).
+- **Pendientes o bloqueos:** implementar la detección de coincidencias y fusión manual; hoy la landing puede generar un registro de paciente nuevo por solicitud y esta entrega no intenta unir esos registros.
+- **Próximo paso recomendado:** sugerir candidatos por DPI/teléfono/correo/nombre en flujos de alta y recepción; permitir selección manual y fusión explícita iniciada por recepción. La fusión trasladará el historial al paciente principal, conservará el origen inactivo y enlazado, pedirá revisión para elegir valores de perfil en conflicto y dejará auditoría de la operación.
+- **Estado del trabajo:** primera entrega de consulta implementada y validada automáticamente; pendiente de prueba visual.
 
 ## Plantilla para registrar una entrega
 
