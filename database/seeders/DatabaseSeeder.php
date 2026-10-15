@@ -1469,5 +1469,13 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(CatalogosClinicosSeeder::class);
+        $this->call(SucursalesDemoSeeder::class);
+        $this->call(AgendaAccessSeeder::class);
+        $this->call(CategoriasInventarioSeeder::class);
+        $this->call(EspecialidadesSeeder::class);
+        $this->call(HorariosCitasDemoSeeder::class);
+        $this->call(PacientesAccessSeeder::class);
+        $this->call(ProfesionalesDemoSeeder::class);
+        $this->call(SolicitudesAccessSeeder::class);
     }
 }

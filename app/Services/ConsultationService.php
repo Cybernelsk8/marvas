@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Auditoria;
 use App\Models\AnamnesisAcupuntura;
 use App\Models\AnamnesisGeneral;
 use App\Models\AnamnesisHomeopatica;
 use App\Models\AnamnesisQuiropraxia;
+use App\Models\Auditoria;
 use App\Models\Cita;
 use App\Models\Consulta;
 use App\Models\ExpedienteMaestro;
@@ -16,13 +16,9 @@ use Illuminate\Validation\ValidationException;
 
 class ConsultationService
 {
-    public function saveGeneralAnamnesis(
-        int $consultationId,
-        array $data,
-        array $assessmentForms = [],
-    ): AnamnesisGeneral
+    public function saveGeneralAnamnesis(int $consultationId, array $data): AnamnesisGeneral
     {
-        return DB::transaction(function () use ($consultationId, $data, $assessmentForms): AnamnesisGeneral {
+        return DB::transaction(function () use ($consultationId, $data): AnamnesisGeneral {
             $consultation = Consulta::query()
                 ->whereKey($consultationId)
                 ->lockForUpdate()
@@ -34,17 +30,39 @@ class ConsultationService
                 ]);
             }
 
-            return $this->persistGeneralAnamnesis($consultation, $data, $assessmentForms);
+            return $this->persistGeneralAnamnesis($consultation, $data);
         });
     }
 
-    public function closeConsultation(
-        int $consultationId,
-        array $anamnesisData,
-        array $assessmentForms = [],
-    ): Consulta
+    public function saveAssessmentForm(int $consultationId, string $formKey, array $data): AnamnesisGeneral
     {
-        return DB::transaction(function () use ($consultationId, $anamnesisData, $assessmentForms): Consulta {
+        return DB::transaction(function () use ($consultationId, $formKey, $data): AnamnesisGeneral {
+            $consultation = Consulta::query()
+                ->whereKey($consultationId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($consultation->estado, ['abierta', 'en_proceso'], true)) {
+                throw ValidationException::withMessages([
+                    'anamnesis' => 'Solo se puede guardar la anamnesis de una consulta abierta o en proceso.',
+                ]);
+            }
+
+            $anamnesis = $consultation->anamnesisGeneral()->lockForUpdate()->first();
+
+            if (! $anamnesis) {
+                $anamnesis = $this->persistGeneralAnamnesis($consultation, ['motivo_consulta' => null]);
+            }
+
+            $this->persistAssessmentForms($anamnesis, [$formKey => $data]);
+
+            return $anamnesis->fresh();
+        });
+    }
+
+    public function closeConsultation(int $consultationId, array $closureData): Consulta
+    {
+        return DB::transaction(function () use ($consultationId, $closureData): Consulta {
             $consultation = Consulta::query()
                 ->whereKey($consultationId)
                 ->lockForUpdate()
@@ -56,19 +74,36 @@ class ConsultationService
                 ]);
             }
 
-            if (blank($anamnesisData['motivo_consulta'] ?? null)) {
+            if (blank($closureData['motivo_consulta'] ?? null)) {
                 throw ValidationException::withMessages([
-                    'form.motivo_consulta' => 'El motivo de consulta es obligatorio para cerrar.',
+                    'closure.motivo_consulta' => 'El motivo de consulta es obligatorio para cerrar.',
                 ]);
             }
 
-            if (blank($anamnesisData['observaciones_profesional'] ?? null)) {
+            if (blank($closureData['observaciones_profesional'] ?? null)) {
                 throw ValidationException::withMessages([
-                    'form.observaciones_profesional' => 'Las observaciones finales son obligatorias para cerrar.',
+                    'closure.observaciones_profesional' => 'Las observaciones finales son obligatorias para cerrar.',
                 ]);
             }
 
-            $this->persistGeneralAnamnesis($consultation, $anamnesisData, $assessmentForms);
+            $anamnesis = $consultation->anamnesisGeneral()->lockForUpdate()->first();
+            $anamnesisData = [];
+
+            if ($anamnesis) {
+                foreach (array_diff((new AnamnesisGeneral)->getFillable(), [
+                    'consulta_id',
+                    'especialidad_id',
+                    'motivo_consulta',
+                    'observaciones_profesional',
+                ]) as $field) {
+                    $anamnesisData[$field] = $anamnesis->{$field};
+                }
+            }
+
+            $anamnesisData['motivo_consulta'] = $closureData['motivo_consulta'];
+            $anamnesisData['observaciones_profesional'] = $closureData['observaciones_profesional'];
+            $this->persistGeneralAnamnesis($consultation, $anamnesisData);
+
             $previousState = $consultation->estado;
             $consultation->estado = 'cerrada';
             $consultation->save();
@@ -102,11 +137,7 @@ class ConsultationService
         });
     }
 
-    private function persistGeneralAnamnesis(
-        Consulta $consultation,
-        array $data,
-        array $assessmentForms = [],
-    ): AnamnesisGeneral
+    private function persistGeneralAnamnesis(Consulta $consultation, array $data): AnamnesisGeneral
     {
         $anamnesis = AnamnesisGeneral::query()
             ->where('consulta_id', $consultation->id)
@@ -144,8 +175,6 @@ class ConsultationService
             'ip' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);
-
-        $this->persistAssessmentForms($anamnesis, $assessmentForms);
 
         return $anamnesis->fresh();
     }

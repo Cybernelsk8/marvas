@@ -1,3 +1,40 @@
 - Que se le recuerde a la recepcionista o persona a cargo con anticipacion llamar a los pacientes 2 o 3 dias antes.
 - Poder enviar un link a los pacientes con el formulario para llenado de datos del mismo.
 - 
+PREGUNTAS:
+ - FLUJO DE CITAS COMPLETO:
+    - Persona solicita agendar cita en landing-page
+    - recepcionista recibe o ve solicitud y envia link para terminar de llenar datos, o pregunta por telefono y confirma dia y hora
+    - recepcionista asigna sucursal, profesional, especialidad si es seguimiento
+    - recepcionista asigna evaluacion integral primera consulta anamnesis completas
+    - paciente llega a consultorio a cita programada
+    - paciente ingresa con el profesional si es seguimiento
+    - paciente ingresa con evaluador integral y alli se le asignan
+      planes, tratamientos, seguimiento, otra cita, medicina.
+    - se realiza las anamnesis y se saca tratamiento o mas examenes.
+    - paciente pasa a cancelar a caja (transferencia, efectivo, visalink)
+    - se asigna nueva cita de seguimiento a paciente.
+
+  PRIMERA VEZ
+
+    - HOMEOPATA O ACUPUNTURISTA EL PROFESIONAL CLASIFICA LA ATENCION
+    - Cuando sea primera cita quiena atiende es un homeopata
+    - evaluacion integral es realizar todas las anamnesis
+    - van a ser dos anamnesis se juntaran homeopatica y quiropactica segun archivo excel que me envie
+    - CLASIFICACION DE PACIENTE
+    - recetar un plan de tratamiento, o paquete de tratamiento
+    - AL FINALIZAR LA PRIMERA CITA HAY QUE AGENDAR LA SIGUIENTE SITA COMO SEGUIMIENTO.
+
+  SEGUIMIENTO
+    - PROFESIONAL NATUROPATIA + HOMEOPATIA
+    - PROFESIONAL QUIROPRAXIA + ACUPUNTURA + MASAJE MUSCULAR
+    - PROFESIONAL HOMEOPATIA + NATUROPATIA + IRIDIOLOGIA
+
+  
+  hacer que el sistema pueda atender en la misma fecha mismo horario diferente profesional
+  El profesional esta asignado a uno o mas especialidades
+
+  Todo las solicitudes entrantes de la landing page son primera consulta
+  los seguimientos se asignan por el personal despues de la primera consulta.
+  hacer un modulo donde se puedan asignar citas desde dentro de la plataforma que no sea la landing page.
+

@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Admin\Consultation;
 
-use App\Models\AnamnesisGeneral;
 use App\Models\Consulta;
 use App\Services\ConsultationService;
 use Flux\Flux;
@@ -33,10 +32,16 @@ class Show extends Component
         'glicemia' => '',
         'peso_kg' => '',
         'talla_cm' => '',
-        'observaciones_profesional' => '',
     ];
 
     public array $assessmentForms = [];
+
+    public array $closure = [
+        'motivo_consulta' => '',
+        'observaciones_profesional' => '',
+    ];
+
+    public ?string $activeAnamnesis = null;
 
     public function mount(Consulta $consultation): void
     {
@@ -65,6 +70,11 @@ class Show extends Component
                     ? implode(PHP_EOL, $value)
                     : (string) ($value ?? '');
             }
+
+            $this->closure = [
+                'motivo_consulta' => (string) ($anamnesis->motivo_consulta ?? ''),
+                'observaciones_profesional' => (string) ($anamnesis->observaciones_profesional ?? ''),
+            ];
         }
 
         $this->assessmentForms = $this->assessmentFormDefaults();
@@ -82,18 +92,54 @@ class Show extends Component
         }
     }
 
-    public function save(ConsultationService $consultationService): void
+    public function openAnamnesis(string $section): void
+    {
+        $this->authorize('consultations.edit');
+        abort_unless(in_array($section, ['general', 'homeopatia', 'quiropraxia', 'acupuntura'], true), 404);
+        abort_unless(in_array($this->consultation->estado, ['abierta', 'en_proceso'], true), 403);
+
+        $this->activeAnamnesis = $section;
+        $this->resetValidation();
+    }
+
+    public function backToAnamneses(): void
+    {
+        $this->activeAnamnesis = null;
+        $this->resetValidation();
+    }
+
+    public function saveGeneralAnamnesis(ConsultationService $consultationService): void
     {
         $this->authorize('consultations.edit');
 
         $anamnesis = $consultationService->saveGeneralAnamnesis(
             $this->consultation->id,
             $this->validatedAnamnesis(),
-            $this->validatedAssessmentForms(),
         );
         $this->consultation->setRelation('anamnesisGeneral', $anamnesis);
+        $this->activeAnamnesis = null;
 
-        Flux::toast(text: 'Anamnesis guardada correctamente.', variant: 'success');
+        Flux::toast(text: 'Anamnesis general guardada correctamente.', variant: 'success');
+    }
+
+    public function saveAssessment(string $formKey, ConsultationService $consultationService): void
+    {
+        $this->authorize('consultations.edit');
+        abort_unless(in_array($formKey, ['homeopatia', 'quiropraxia', 'acupuntura'], true), 404);
+
+        $anamnesis = $consultationService->saveAssessmentForm(
+            $this->consultation->id,
+            $formKey,
+            $this->validatedAssessmentForm($formKey),
+        );
+        $this->consultation->setRelation('anamnesisGeneral', $anamnesis->load([
+            'homeopatica',
+            'quiropraxia',
+            'acupuntura',
+        ]));
+        $this->activeAnamnesis = null;
+
+        Flux::toast(text: 'Evaluación guardada correctamente.', variant: 'success');
     }
 
     public function closeConsultation(ConsultationService $consultationService): void
@@ -102,8 +148,10 @@ class Show extends Component
 
         $this->consultation = $consultationService->closeConsultation(
             $this->consultation->id,
-            $this->validatedAnamnesis(closing: true),
-            $this->validatedAssessmentForms(),
+            $this->validate([
+                'closure.motivo_consulta' => ['required', 'string', 'max:10000'],
+                'closure.observaciones_profesional' => ['required', 'string', 'max:10000'],
+            ])['closure'],
         )->load([
             'expediente.paciente',
             'especialidad',
@@ -144,10 +192,43 @@ class Show extends Component
             'canReopen' => $user?->can('consultations.reopen')
                 && $this->consultation->estado === 'cerrada',
             'anamnesis' => $this->consultation->anamnesisGeneral,
+            'anamnesisSections' => $this->anamnesisSections(),
         ]);
     }
 
-    private function validatedAnamnesis(bool $closing = false): array
+    private function anamnesisSections(): array
+    {
+        $anamnesis = $this->consultation->anamnesisGeneral;
+
+        return [
+            'general' => [
+                'label' => 'Anamnesis general',
+                'description' => 'Motivo, antecedentes, historia clínica y signos vitales.',
+                'icon' => 'clipboard-document-list',
+                'saved' => filled($anamnesis?->motivo_consulta),
+            ],
+            'homeopatia' => [
+                'label' => 'Evaluación homeopática',
+                'description' => 'Síntomas locales, generales, mentales y biopatográficos.',
+                'icon' => 'sparkles',
+                'saved' => $anamnesis?->homeopatica !== null,
+            ],
+            'quiropraxia' => [
+                'label' => 'Evaluación quiropráctica',
+                'description' => 'Antecedentes y evaluación funcional musculoesquelética.',
+                'icon' => 'user',
+                'saved' => $anamnesis?->quiropraxia !== null,
+            ],
+            'acupuntura' => [
+                'label' => 'Evaluación de acupuntura',
+                'description' => 'Evaluación energética, pulsos, lengua y tratamiento.',
+                'icon' => 'adjustments-horizontal',
+                'saved' => $anamnesis?->acupuntura !== null,
+            ],
+        ];
+    }
+
+    private function validatedAnamnesis(): array
     {
         $rules = [
             'form.motivo_consulta' => ['required', 'string', 'max:10000'],
@@ -168,11 +249,6 @@ class Show extends Component
             'form.glicemia' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'form.peso_kg' => ['nullable', 'numeric', 'gt:0', 'max:999.99'],
             'form.talla_cm' => ['nullable', 'numeric', 'gt:0', 'max:999.99'],
-            'form.observaciones_profesional' => [
-                $closing ? 'required' : 'nullable',
-                'string',
-                'max:10000',
-            ],
         ];
 
         $validated = $this->validate($rules)['form'];
@@ -190,39 +266,37 @@ class Show extends Component
         return $validated;
     }
 
-    private function validatedAssessmentForms(): array
+    private function validatedAssessmentForm(string $formKey): array
     {
+        $formDefaults = $this->assessmentFormDefaults()[$formKey] ?? null;
+        abort_unless(is_array($formDefaults), 404);
+
         $rules = [];
-        foreach ($this->assessmentFormDefaults() as $formKey => $fields) {
-            foreach ($fields as $field => $default) {
-                $rules["assessmentForms.{$formKey}.{$field}"] = match (true) {
-                    is_bool($default) => ['boolean'],
-                    $field === 'semanas_gestacion' => ['nullable', 'integer', 'min:1', 'max:42'],
-                    $field === 'humedad' => ['nullable', 'in:seca,humeda,pegajosa'],
-                    in_array($field, [
-                        'calidad_sueno',
-                        'desplazamiento',
-                        'tiempo_trabajo',
-                        'recreacion',
-                    ], true) => $this->enumRules($field),
-                    str_starts_with($field, 'pulso_') => ['nullable', 'string', 'max:60'],
-                    default => ['nullable', 'string', 'max:10000'],
-                };
-            }
+        foreach ($formDefaults as $field => $default) {
+            $rules["assessmentForms.{$formKey}.{$field}"] = match (true) {
+                is_bool($default) => ['boolean'],
+                $field === 'semanas_gestacion' => ['nullable', 'integer', 'min:1', 'max:42'],
+                $field === 'humedad' => ['nullable', 'in:seca,humeda,pegajosa'],
+                in_array($field, [
+                    'calidad_sueno',
+                    'desplazamiento',
+                    'tiempo_trabajo',
+                    'recreacion',
+                ], true) => $this->enumRules($field),
+                str_starts_with($field, 'pulso_') => ['nullable', 'string', 'max:60'],
+                default => ['nullable', 'string', 'max:10000'],
+            };
         }
 
-        $validated = $this->validate($rules)['assessmentForms'] ?? [];
-        foreach ($this->assessmentFormDefaults() as $formKey => $fields) {
-            $validated[$formKey] ??= [];
-            foreach ($fields as $field => $default) {
-                $value = $validated[$formKey][$field] ?? $default;
-                if (in_array($field, $this->assessmentArrayFields('acupuntura'), true)) {
-                    $validated[$formKey][$field] = $this->linesToArray($value);
-                } elseif (is_bool($default)) {
-                    $validated[$formKey][$field] = (bool) $value;
-                } elseif ($value === '') {
-                    $validated[$formKey][$field] = null;
-                }
+        $validated = $this->validate($rules)['assessmentForms'][$formKey] ?? [];
+        foreach ($formDefaults as $field => $default) {
+            $value = $validated[$field] ?? $default;
+            if (in_array($field, $this->assessmentArrayFields($formKey), true)) {
+                $validated[$field] = $this->linesToArray($value);
+            } elseif (is_bool($default)) {
+                $validated[$field] = (bool) $value;
+            } elseif ($value === '') {
+                $validated[$field] = null;
             }
         }
 

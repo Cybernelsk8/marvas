@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Livewire;
 
-use App\Livewire\Admin\Patient\Show;
 use App\Livewire\Admin\Consultation\Show as ConsultationForm;
-use App\Models\Auditoria;
+use App\Livewire\Admin\Patient\Show;
 use App\Models\Admin\User;
 use App\Models\AnamnesisGeneral;
+use App\Models\Auditoria;
 use App\Models\Cita;
 use App\Models\Consulta;
 use App\Models\Especialidad;
@@ -150,15 +150,21 @@ class ConsultationTest extends TestCase
         $this->assertDatabaseCount('consultas', 0);
     }
 
-    public function test_authorized_user_can_save_and_update_general_anamnesis_without_writing_generated_bmi(): void
+    public function test_general_and_specialty_anamneses_are_saved_independently_without_writing_generated_bmi(): void
     {
         [$patient, $appointment] = $this->createConfirmedAppointment();
         $consultation = app(ConsultationService::class)
             ->openFromAppointment($appointment->id, $patient->id);
         $this->clinician->givePermissionTo('consultations.edit');
 
-        Livewire::actingAs($this->clinician)
+        $component = Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
+            ->assertSee('Formularios de la consulta')
+            ->assertSee('Anamnesis general')
+            ->assertSee('Evaluación homeopática')
+            ->assertSee('Evaluación quiropráctica')
+            ->assertSee('Evaluación de acupuntura')
+            ->call('openAnamnesis', 'general')
             ->set('form.motivo_consulta', 'Dolor de prueba')
             ->set('form.historia_padecimiento', 'Comenzó hace dos días')
             ->set('form.antecedentes_patologicos', "Asma\nHipertensión")
@@ -168,29 +174,44 @@ class ConsultationTest extends TestCase
             ->set('form.temperatura', '36.5')
             ->set('form.peso_kg', '70')
             ->set('form.talla_cm', '170')
-            ->set('form.observaciones_profesional', 'Observación inicial')
-            ->set('assessmentForms.homeopatia.aspecto_paciente', 'Aspecto sereno')
-            ->set('assessmentForms.homeopatia.sintomas_mentales', 'Sueño inquieto')
-            ->set('assessmentForms.quiropraxia.diagnostico', 'Sin hallazgos musculoesqueléticos')
-            ->set('assessmentForms.acupuntura.diagnostico_energetico', 'Qi equilibrado')
-            ->call('save')
+            ->call('saveGeneralAnamnesis')
             ->assertHasNoErrors()
-            ->assertSee('24.22')
-            ->assertSee('Evaluaciones del paciente')
-            ->assertSee('Evaluación homeopática')
-            ->assertSee('Evaluación quiropráctica')
-            ->assertSee('Evaluación de acupuntura');
+            ->assertSee('Guardado');
 
         $anamnesis = AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->firstOrFail();
         $this->assertSame('Dolor de prueba', $anamnesis->motivo_consulta);
         $this->assertSame(['Asma', 'Hipertensión'], $anamnesis->antecedentes_patologicos);
         $this->assertSame(['Camina diariamente', 'No fuma'], $anamnesis->habitos);
         $this->assertEquals(24.22, (float) $anamnesis->imc);
+        $this->assertDatabaseCount('anamnesis_homeopatica', 0);
+        $this->assertDatabaseCount('anamnesis_quiropraxia', 0);
+        $this->assertDatabaseCount('anamnesis_acupuntura', 0);
+
+        $component
+            ->call('openAnamnesis', 'homeopatia')
+            ->set('assessmentForms.homeopatia.aspecto_paciente', 'Aspecto sereno')
+            ->set('assessmentForms.homeopatia.sintomas_mentales', 'Sueño inquieto')
+            ->call('saveAssessment', 'homeopatia')
+            ->assertHasNoErrors();
+
         $this->assertDatabaseHas('anamnesis_homeopatica', [
             'anamnesis_id' => $anamnesis->id,
             'aspecto_paciente' => 'Aspecto sereno',
             'sintomas_mentales' => 'Sueño inquieto',
         ]);
+        $this->assertDatabaseCount('anamnesis_quiropraxia', 0);
+        $this->assertDatabaseCount('anamnesis_acupuntura', 0);
+
+        $component
+            ->call('openAnamnesis', 'quiropraxia')
+            ->set('assessmentForms.quiropraxia.diagnostico', 'Sin hallazgos musculoesqueléticos')
+            ->call('saveAssessment', 'quiropraxia')
+            ->assertHasNoErrors()
+            ->call('openAnamnesis', 'acupuntura')
+            ->set('assessmentForms.acupuntura.diagnostico_energetico', 'Qi equilibrado')
+            ->call('saveAssessment', 'acupuntura')
+            ->assertHasNoErrors()
+            ->assertSee('Formularios de la consulta');
         $this->assertDatabaseHas('anamnesis_quiropraxia', [
             'anamnesis_id' => $anamnesis->id,
             'diagnostico' => 'Sin hallazgos musculoesqueléticos',
@@ -212,8 +233,9 @@ class ConsultationTest extends TestCase
             ->assertSet('assessmentForms.homeopatia.aspecto_paciente', 'Aspecto sereno')
             ->assertSet('assessmentForms.quiropraxia.diagnostico', 'Sin hallazgos musculoesqueléticos')
             ->assertSet('assessmentForms.acupuntura.diagnostico_energetico', 'Qi equilibrado')
+            ->call('openAnamnesis', 'general')
             ->set('form.motivo_consulta', 'Dolor actualizado')
-            ->call('save')
+            ->call('saveGeneralAnamnesis')
             ->assertHasNoErrors();
 
         $this->assertSame(1, AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->count());
@@ -238,7 +260,6 @@ class ConsultationTest extends TestCase
 
         Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
-            ->set('form.motivo_consulta', 'Dolor lumbar')
             ->set('assessmentForms.quiropraxia.implantes_metales', true)
             ->set('assessmentForms.quiropraxia.embarazo', true)
             ->set('assessmentForms.quiropraxia.semanas_gestacion', '20')
@@ -246,10 +267,12 @@ class ConsultationTest extends TestCase
             ->set('assessmentForms.quiropraxia.calidad_sueno', 'moderado')
             ->set('assessmentForms.quiropraxia.desplazamiento', 'ligero')
             ->set('assessmentForms.quiropraxia.diagnostico', 'Limitación de movilidad lumbar')
-            ->call('save')
+            ->call('openAnamnesis', 'quiropraxia')
+            ->call('saveAssessment', 'quiropraxia')
             ->assertHasNoErrors();
 
         $anamnesis = AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->firstOrFail();
+        $this->assertNull($anamnesis->motivo_consulta);
         $this->assertDatabaseHas('anamnesis_quiropraxia', [
             'anamnesis_id' => $anamnesis->id,
             'implantes_metales' => true,
@@ -278,17 +301,18 @@ class ConsultationTest extends TestCase
 
         Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
-            ->set('form.motivo_consulta', 'Dolor cervical')
             ->set('assessmentForms.acupuntura.pulso_cun_der_superficial', 'Tenso')
             ->set('assessmentForms.acupuntura.humedad', 'humeda')
             ->set('assessmentForms.acupuntura.lengua_color', "Rojo\nPálido")
             ->set('assessmentForms.acupuntura.diagnostico_8_reglas', "Interior\nCalor")
             ->set('assessmentForms.acupuntura.puntos_sugeridos', "LI4\nGB20")
-            ->call('save')
+            ->call('openAnamnesis', 'acupuntura')
+            ->call('saveAssessment', 'acupuntura')
             ->assertHasNoErrors();
 
         $anamnesis = AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->firstOrFail();
         $record = $anamnesis->acupuntura;
+        $this->assertNull($anamnesis->motivo_consulta);
         $this->assertSame(['Rojo', 'Pálido'], $record->lengua_color);
         $this->assertSame(['Interior', 'Calor'], $record->diagnostico_8_reglas);
         $this->assertSame(['LI4', 'GB20'], $record->puntos_sugeridos);
@@ -310,9 +334,9 @@ class ConsultationTest extends TestCase
 
         Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
-            ->set('form.motivo_consulta', 'Dolor lumbar')
+            ->call('openAnamnesis', 'quiropraxia')
             ->set('assessmentForms.quiropraxia.calidad_sueno', 'excelente')
-            ->call('save')
+            ->call('saveAssessment', 'quiropraxia')
             ->assertHasErrors('assessmentForms.quiropraxia.calidad_sueno');
 
         $this->assertDatabaseCount('anamnesis_generales', 0);
@@ -327,9 +351,10 @@ class ConsultationTest extends TestCase
 
         Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
+            ->call('openAnamnesis', 'general')
             ->set('form.peso_kg', '0')
             ->set('form.talla_cm', '170')
-            ->call('save')
+            ->call('saveGeneralAnamnesis')
             ->assertHasErrors([
                 'form.motivo_consulta' => 'required',
                 'form.peso_kg' => 'gt',
@@ -357,7 +382,7 @@ class ConsultationTest extends TestCase
     public function test_anamnesis_route_requires_its_edit_permission(): void
     {
         [$patient, $appointment] = $this->createConfirmedAppointment();
-        $consultation = app(\App\Services\ConsultationService::class)
+        $consultation = app(ConsultationService::class)
             ->openFromAppointment($appointment->id, $patient->id);
         $viewer = User::create([
             'email' => 'consultation-viewer@example.test',
@@ -388,13 +413,18 @@ class ConsultationTest extends TestCase
         ]);
         $closer->givePermissionTo('consultations.close');
 
-        Livewire::actingAs($closer)
+        $component = Livewire::actingAs($closer)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
             ->assertSee('¿Cerrar esta consulta?')
             ->assertSee('Confirmar cierre')
-            ->set('form.motivo_consulta', 'Control clínico')
+            ->set('form.motivo_consulta', 'Borrador que no debe guardarse')
+            ->set('form.historia_padecimiento', 'Borrador clínico sin guardar')
+            ->set('assessmentForms.homeopatia.aspecto_paciente', 'Borrador especializado')
             ->call('closeConsultation')
-            ->assertHasErrors('form.observaciones_profesional');
+            ->assertHasErrors([
+                'closure.motivo_consulta',
+                'closure.observaciones_profesional',
+            ]);
 
         $this->assertDatabaseHas('consultas', [
             'id' => $consultation->id,
@@ -402,10 +432,9 @@ class ConsultationTest extends TestCase
         ]);
         $this->assertDatabaseCount('anamnesis_generales', 0);
 
-        Livewire::actingAs($closer)
-            ->test(ConsultationForm::class, ['consultation' => $consultation->fresh()])
-            ->set('form.motivo_consulta', 'Control clínico')
-            ->set('form.observaciones_profesional', 'Indicaciones y seguimiento registrados')
+        $component
+            ->set('closure.motivo_consulta', 'Control clínico')
+            ->set('closure.observaciones_profesional', 'Indicaciones y seguimiento registrados')
             ->call('closeConsultation')
             ->assertHasNoErrors()
             ->assertSet('consultation.estado', 'cerrada');
@@ -418,7 +447,9 @@ class ConsultationTest extends TestCase
             'consulta_id' => $consultation->id,
             'motivo_consulta' => 'Control clínico',
             'observaciones_profesional' => 'Indicaciones y seguimiento registrados',
+            'historia_padecimiento' => null,
         ]);
+        $this->assertDatabaseCount('anamnesis_homeopatica', 0);
 
         $transition = Auditoria::query()
             ->where('tabla_afectada', 'consultas')
@@ -483,8 +514,8 @@ class ConsultationTest extends TestCase
 
         Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
-            ->set('form.motivo_consulta', 'Control clínico')
-            ->set('form.observaciones_profesional', 'Nota final')
+            ->set('closure.motivo_consulta', 'Control clínico')
+            ->set('closure.observaciones_profesional', 'Nota final')
             ->call('closeConsultation')
             ->assertHasErrors('consultation')
             ->call('reopenConsultation')
