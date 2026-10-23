@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 
 class ProfesionalesDemoSeeder extends Seeder
 {
+    public const MBI_EVALUATOR_NAME = 'Profesional de demostración - Evaluador MBI';
+
     public function run(): void
     {
         if (! app()->environment(['local', 'testing'])) {
@@ -36,7 +38,9 @@ class ProfesionalesDemoSeeder extends Seeder
             $profesional = Profesional::updateOrCreate(
                 ['user_id' => $usuario->id],
                 [
-                    'nombre_completo' => "Profesional de demostración - {$especialidad->nombre}",
+                    'nombre_completo' => $especialidad->slug === 'evaluacion-mbi'
+                        ? self::MBI_EVALUATOR_NAME
+                        : "Profesional de demostración - {$especialidad->nombre}",
                     'cedula_profesional' => null,
                     'color_agenda_hex' => $especialidad->color_hex,
                     'activo' => true,

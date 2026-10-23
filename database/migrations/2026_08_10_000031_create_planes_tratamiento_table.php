@@ -33,10 +33,22 @@ return new class extends Migration
 
             $table->index('expediente_id', 'idx_plan_expediente');
         });
+
+        Schema::table('paquetes_paciente', function (Blueprint $table): void {
+            $table->foreign('plan_id', 'fk_paqpac_plan')
+                ->references('id')
+                ->on('planes_tratamiento')
+                ->restrictOnDelete()
+                ->restrictOnUpdate();
+        });
     }
 
     public function down(): void
     {
+        Schema::table('paquetes_paciente', function (Blueprint $table): void {
+            $table->dropForeign('fk_paqpac_plan');
+        });
+
         Schema::dropIfExists('planes_tratamiento');
     }
 };

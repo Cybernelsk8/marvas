@@ -183,14 +183,20 @@
                 @if ($sucursalConfirmacion)
                     @if ($profesionalesConfirmacion->isEmpty())
                         <flux:callout variant="warning" icon="exclamation-triangle">
-                            <flux:callout.heading>Sin profesionales disponibles</flux:callout.heading>
-                            <flux:callout.text>Asocia profesionales activos a la sede seleccionada antes de confirmar.</flux:callout.text>
+                            <flux:callout.heading>{{ $mbiEvaluatorRequired ? 'Sin Evaluador MBI configurado' : 'Sin profesionales disponibles' }}</flux:callout.heading>
+                            <flux:callout.text>
+                                {{ $mbiEvaluatorRequired
+                                    ? 'Configura un Evaluador MBI activo para esta sede en Administración de disponibilidad.'
+                                    : 'Asocia profesionales activos a la sede seleccionada antes de confirmar.' }}
+                            </flux:callout.text>
                         </flux:callout>
                     @else
-                        <flux:select label="Profesional de atención *" wire:model.live="profesionalConfirmacion"
+                        <flux:select label="{{ $mbiEvaluatorRequired ? 'Profesional de atención (Evaluador MBI) *' : 'Profesional de atención *' }}" wire:model.live="profesionalConfirmacion"
                             placeholder="Selecciona el profesional" required>
                             @foreach ($profesionalesConfirmacion as $profesional)
-                                <flux:select.option value="{{ $profesional->id }}">{{ $profesional->nombre_completo }}</flux:select.option>
+                                <flux:select.option value="{{ $profesional->id }}">
+                                    {{ $mbiEvaluatorRequired ? 'Evaluador MBI — ' : '' }}{{ $profesional->nombre_completo }}
+                                </flux:select.option>
                             @endforeach
                         </flux:select>
                         @error('profesionalConfirmacion')
@@ -429,9 +435,20 @@
     <flux:modal name="reprogramar-cita-modal" flyout @close="resetData">
         <form wire:submit="reprogramar" class="space-y-4">
             <flux:heading size="lg">Cambiar fecha de la solicitud</flux:heading>
-            <x-date-picker label="Nueva fecha" wire:model="reprogramacion.fecha"
+            <x-date-picker label="Nueva fecha" wire:model.live="reprogramacion.fecha"
                 min-date="{{ now()->format('Y-m-d') }}" />
-            <flux:input label="Nueva hora" type="time" wire:model="reprogramacion.hora" />
+            <flux:radio.group label="Horarios disponibles" wire:model="reprogramacion.hora" variant="pills">
+                @forelse ($horariosReprogramacion as $horario)
+                    <flux:radio
+                        :label="\Carbon\Carbon::parse($horario)->format('h:i a')"
+                        :value="$horario"
+                    />
+                @empty
+                    <flux:text>
+                        {{ $reprogramacion['fecha'] ? 'No hay horarios disponibles para esta fecha.' : 'Selecciona una fecha para ver los horarios disponibles.' }}
+                    </flux:text>
+                @endforelse
+            </flux:radio.group>
             @error('reprogramacion.hora')
                 <flux:error>{{ $message }}</flux:error>
             @enderror

@@ -7,6 +7,7 @@ use App\Models\Admin\Setting;
 use App\Models\Admin\User;
 use App\Models\Cita;
 use App\Models\Paciente;
+use App\Models\Sucursal;
 use App\Services\ClinicAvailabilityService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -103,6 +104,38 @@ class AvailabilityTest extends TestCase
             ->set('durationMinutes', 50)
             ->call('save')
             ->assertHasErrors('durationMinutes');
+    }
+
+    public function test_scheduler_can_assign_an_active_mbi_evaluator_to_a_branch(): void
+    {
+        $branch = Sucursal::query()->where('activa', true)->firstOrFail();
+        $evaluator = $branch->evaluadorMbi()->firstOrFail()->profesional;
+
+        Livewire::actingAs($this->scheduler)
+            ->test(Availability::class)
+            ->assertSee('Evaluador MBI por sede')
+            ->set("evaluadoresMbi.{$branch->id}", (string) $evaluator->id)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('sucursal_evaluadores_mbi', [
+            'sucursal_id' => $branch->id,
+            'profesional_id' => $evaluator->id,
+        ]);
+    }
+
+    public function test_scheduler_cannot_assign_a_professional_without_mbi_specialty_as_evaluator(): void
+    {
+        $branch = Sucursal::query()->where('activa', true)->firstOrFail();
+        $professional = $branch->profesionales()
+            ->whereDoesntHave('especialidades', fn ($query) => $query->where('slug', 'evaluacion-mbi'))
+            ->firstOrFail();
+
+        Livewire::actingAs($this->scheduler)
+            ->test(Availability::class)
+            ->set("evaluadoresMbi.{$branch->id}", (string) $professional->id)
+            ->call('save')
+            ->assertHasErrors("evaluadoresMbi.{$branch->id}");
     }
 
     public function test_default_schedule_has_manual_weekday_hours_and_weekends_are_closed(): void
@@ -312,7 +345,7 @@ class AvailabilityTest extends TestCase
         $date = today()->addDay();
 
         while ($date->isWeekend()) {
-            $date->addDay();
+            $date = $date->addDay();
         }
 
         return $date;
@@ -334,5 +367,4 @@ class AvailabilityTest extends TestCase
             'fecha_hora_fin' => $inicio->copy()->addHour(),
         ]);
     }
-
 }

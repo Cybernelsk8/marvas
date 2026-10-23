@@ -25,12 +25,16 @@ class CatalogosClinicosSeederTest extends TestCase
         $seeder->run();
         $seeder->run();
 
-        $this->assertSame(6, Especialidad::query()->count());
+        $this->assertSame(7, Especialidad::query()->count());
         $this->assertSame(6, CategoriaInventario::query()->count());
         $this->assertSame(1, Sucursal::query()->count());
-        $this->assertSame(6, Profesional::query()->count());
-        $this->assertDatabaseCount('profesional_especialidades', 6);
-        $this->assertDatabaseCount('profesional_sucursales', 6);
+        $this->assertSame(7, Profesional::query()->count());
+        $this->assertDatabaseCount('profesional_especialidades', 7);
+        $this->assertDatabaseCount('profesional_sucursales', 7);
+        $this->assertDatabaseHas('sucursal_evaluadores_mbi', [
+            'sucursal_id' => Sucursal::query()->value('id'),
+            'profesional_id' => Profesional::query()->where('nombre_completo', 'Profesional de demostración - Evaluador MBI')->value('id'),
+        ]);
         $this->assertSame(
             ClinicAvailabilityService::DEFAULT_CONFIGURATION,
             Setting::query()->where('key', ClinicAvailabilityService::SETTING_KEY)->firstOrFail()->value,
@@ -63,7 +67,7 @@ class CatalogosClinicosSeederTest extends TestCase
 
         app(CatalogosClinicosSeeder::class)->run();
 
-        $this->assertSame(6, Especialidad::query()->count());
+        $this->assertSame(7, Especialidad::query()->count());
         $this->assertSame(6, CategoriaInventario::query()->count());
         $this->assertSame(0, Sucursal::query()->count());
         $this->assertSame(0, Profesional::query()->count());

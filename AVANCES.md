@@ -4,9 +4,9 @@
 
 ## Estado general
 
-- **Última actualización:** 2026-10-14.
-- **Estado de fase:** Fase A cerrada; Módulos 2 y 3 validados visualmente. En Módulo 4 las consultas iniciadas desde citas confirmadas muestran tarjetas separadas para anamnesis general y evaluaciones de Homeopatía, Quiropraxia y Acupuntura; cada formulario se guarda independientemente. Cierre/reapertura tienen permisos; cierre presenta un modal Flux con estado de formularios y captura independiente del motivo y observaciones finales.
-- **Resumen:** Recepción puede gestionar solicitudes desde la bandeja o la agenda, asignar sede y profesional al confirmar y filtrar por periodo/estado/sede/profesional. Disponibilidad se configura con grupos de días sin duplicados, horas de inicio agregadas individualmente y duración global configurable en intervalos de 15 minutos (predeterminado: 60); las horas sí pueden repetirse entre grupos con días distintos, pero no dentro del mismo grupo. El directorio usa `DataTable` y `Searchable`; alta/edición y recepción sugieren coincidencias. Reutilizar desde solicitudes o fusionar manualmente requiere confirmación; el sistema traslada relaciones/historial en transacción, deja el origen inactivo y enlazado y audita los cambios y las decisiones sobre conflictos. Las evaluaciones se guardan independientemente por consulta con auditoría; el cierre no persiste borradores de formularios sin guardar; el IMC se calcula en base de datos; reabrir devuelve la consulta a `en_proceso`.
+- **Última actualización:** 2026-10-23.
+- **Estado de fase:** la asignación del Evaluador MBI por sede está implementada. Las citas `primera_vez` solo se confirman con el profesional MBI configurado para esa sede y la especialidad Evaluación MBI; la validación también se ejecuta en el servicio de dominio. La configuración se administra en Disponibilidad y el demo local tiene un Evaluador MBI en la sede de demostración. Migración y seed aplicados en la base local. La suite completa pasa con PHP 8.5.11: 125 pruebas y 541 assertions. Se conserva la reserva pública `primera_vez`, la anamnesis integral y el resultado del evaluador en la ficha del paciente; no se modifica el cierre de consulta y el seguimiento sigue siendo agendado únicamente por el personal.
+- **Resumen:** Recepción gestiona solicitudes desde la bandeja o la agenda, asigna sede y profesional al confirmar y filtra por periodo/estado/sede/profesional. Disponibilidad global usa duración configurable; al reprogramar se elige fecha y una hora libre, se permite el horario de la cita actual sin auto-traslape y solo se ofrecen inicios futuros. El directorio usa `DataTable` y `Searchable`; alta/edición y recepción sugieren coincidencias. Reutilizar desde solicitudes o fusionar manualmente requiere confirmación; el sistema traslada relaciones/historial en transacción, deja el origen inactivo y enlazado y audita los cambios y las decisiones sobre conflictos. Las evaluaciones integrales se guardan con auditoría; el cierre no persiste borradores de formularios sin guardar; el IMC se calcula en base de datos; reabrir devuelve la consulta a `en_proceso`.
 - **Importante:** este resumen refleja los archivos observados en el árbol de trabajo al crear la bitácora, no implica que los cambios estén confirmados en Git ni que la aplicación esté desplegada.
 
 > **Reutilización transversal:** consultar la sección “Componentes, traits, servicios y helpers reutilizables” de `PLANIFICACION.md` antes de construir tablas, calendarios, selectores, gráficos, utilidades o lógica común. En especial, estudiar el contrato de `x-data-table` + `DataTable` + `Searchable` + `HeaderMap` y los ejemplos `@interact` de Admin.
@@ -16,17 +16,17 @@
 | Módulo | Estado | Evidencia / situación actual | Próximo resultado |
 |---|---|---|---|
 | 0. Fundamentos y permisos | Parcial | Hay autenticación, permisos Spatie, áreas, roles, páginas y permisos; existen rutas admin con middleware. Falta definir permisos de cada módulo clínico/operativo. | Aprobar matriz de roles/permisos para recepción, profesionales, caja, inventario y administración. |
-| 1. Solicitudes y recepción | Implementado y validado | `App\Livewire\Solicitud` permite editar datos, asignar sede activa al confirmar, reprogramar, cancelar y generar enlaces firmados temporales del formulario de paciente. | Hacer prueba visual con usuarios reales; después decidir historial de llamadas y automatización de mensajes. |
-| 2. Agenda y disponibilidad | Implementado y validado | `admin.schedule` reutiliza `x-calendar` para vistas día/semana/mes, filtra por estado/sede/profesional y, al confirmar, asigna sede, profesional y especialidad; `/admin/availability` configura días, horas, duración y cierres. | Continuar con pruebas de uso en recepción y atender incidencias operativas. |
+| 1. Solicitudes y recepción | Implementado y validado | `App\Livewire\Solicitud` permite editar datos, asignar sede y Evaluador MBI en primera visita, reprogramar y cancelar. | Hacer prueba visual con usuarios reales; después decidir historial de llamadas y automatización de mensajes. |
+| 2. Agenda y disponibilidad | Implementado y validado | `admin.schedule` permite confirmar primera visita solo con el Evaluador MBI configurado por sede; `/admin/availability` administra esa asignación además de días, horas, duración y cierres. | Continuar con pruebas de uso en recepción y atender incidencias operativas. |
 | 3. Pacientes y expediente | Implementado; cierre de módulo pendiente | `/admin/patients` ofrece directorio/ficha y fusión manual; el expediente tiene citas y secciones clínicas, documentos/consentimientos y pagos/paquetes protegidos por permisos. El usuario confirmó visualmente las secciones. | Completar pruebas visuales de integración y cerrar el módulo con el flujo clínico inicial. |
-| 4. Consultas y evaluación | En curso | Desde la ficha se abre una consulta autorizada; hay tarjetas de estado y formularios independientes para anamnesis general, Homeopatía, Quiropraxia y Acupuntura, sin filtrar por especialidad. El cierre muestra un resumen y guarda únicamente motivo y observaciones finales; cierre/reapertura se auditan y tienen permisos. | Validar visualmente el flujo reorganizado; después construir MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados. |
+| 4. Consultas y evaluación | Implementado parcialmente; pruebas dirigidas pasan | La anamnesis general, Homeopatía y Quiropraxia/neuromusculoesquelética se presentan juntas (incisos 01–06); Acupuntura es individual. El inciso 07 se muestra en la ficha. Cierre/reapertura conservan su comportamiento y permisos. | Validar visualmente la anamnesis integral; después construir MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados. |
 | 5. Clasificación y tratamiento | Parcial en datos / pendiente en pantallas | Existen clasificación, plan terapéutico, paquete asociado y evolución en esquema/modelos. | Definir Modelo 6+ con el equipo y crear flujo de clasificación/plan/evolución. |
 | 6. Consentimientos y archivos | Parcial en datos / pendiente en pantallas | Hay plantillas/registros de consentimiento, archivos y campos de trazabilidad. | Definir política legal/de almacenamiento y crear pantallas seguras. |
 | 7. Paquetes, pagos y facturación | Parcial en datos / pendiente en pantallas | Existen paquetes clínicos/paciente, pagos y datos de facturación. | Acordar reglas financieras e implementar catálogo/registro de cobro. |
 | 8. Inventario y compras | Parcial en datos / pendiente en pantallas | Existen productos, lotes, stock por sucursal, órdenes y movimientos. | Acordar reglas de existencias y construir recepción de compra con movimientos atómicos. |
 | 9. Notificaciones y recordatorios | Parcial en datos / pendiente en pantallas | Hay tabla/modelo de notificaciones, flag de recordatorio en citas e ideas en `IDEAS.txt`; no se encontró envío operativo. | Elegir canal/proveedor y diseñar registro de intentos y seguridad de enlaces. |
 | 10. Dashboard/reportes | Pendiente | `resources/views/dashboard.blade.php` mantiene contenido placeholder. | Definir indicadores por perfil y reemplazar placeholders con datos autorizados. |
-| 11. Landing y reserva | Implementado y validado | La reserva pública valida fecha futura, revalida horarios y conflictos dentro de una transacción y crea una cita `solicitada` visible para recepción; existen pruebas para reserva exitosa y horario ocupado. | Decidir detección asistida de pacientes existentes y futura asignación de sede/profesional. |
+| 11. Landing y reserva | Implementado y validado por pruebas | La landing no presenta selector de tipo y fuerza `primera_vez`; valida fecha futura y horarios/traslapes dentro de una transacción, y crea una cita `solicitada`. El seguimiento se agenda únicamente por personal. | Decidir detección asistida de pacientes existentes y futura asignación de sede/profesional. |
 
 ## Implementado u observado en el repositorio
 
@@ -51,19 +51,22 @@
 
 ### Seeders de catálogos y demostración
 
-- `CatalogosClinicosSeeder` agrupa los seeders de especialidades, categorías de inventario, sede/profesionales demostrativos, horarios demostrativos y acceso al módulo de solicitudes.
+- `CatalogosClinicosSeeder` agrupa los seeders de especialidades, categorías de inventario, sede/profesionales demostrativos, Evaluador MBI por sede, horarios demostrativos y accesos a módulos.
 - `AdminAccessSeeder` mantiene de forma idempotente el área Gerencia, las páginas/permisos administrativos y es invocado por `DatabaseSeeder`.
 - `HorariosCitasDemoSeeder` crea en `local`/`testing` el horario inicial de lunes a viernes mediante horas individuales de 08:00 a 16:00, omitiendo 13:00 como pausa; sábado/domingo comienzan cerrados. No sobrescribe configuración existente.
 - Los catálogos de especialidad y categoría son idempotentes y corresponden a los valores del sitio público y del enum de inventario.
 - Sede, cuentas/perfiles de profesionales y horarios de demostración solo se crean en `local` y `testing`. Los usuarios llevan correos `example.test`, contraseñas aleatorias y no reciben roles.
 - Los perfiles demo se enlazan a especialidades y sede porque `profesionales.user_id` es obligatorio y único. Los horarios son datos ficticios, no un horario comercial aprobado.
+- La especialidad `evaluacion-mbi` y el seeder `EvaluadoresMbiDemoSeeder` asignan un evaluador en la sede demo solo en `local`/`testing`; la configuración operativa se mantiene por sede desde Disponibilidad.
 - `DatabaseSeeder` invoca `AdminAccessSeeder` y `CatalogosClinicosSeeder`; **no ejecutar el `DatabaseSeeder` completo en una base compartida o productiva**: conserva lógica anterior no idempotente y datos de desarrollo. Los nuevos seeders agrupados no hacen seguros los seeders preexistentes.
-- La disponibilidad ya no lee la configuración antigua `horarios_citas`; las reglas activas se almacenan en `disponibilidad_global_citas`. La migración `2026_10_14_154200_expand_settings_value_column` amplía `settings.value` a `TEXT` para guardar cierres.
+- La disponibilidad ya no lee la configuración antigua `horarios_citas`; las reglas activas se almacenan en `disponibilidad_global_citas`. `settings.value` es `TEXT` desde `2026_10_09_213107_create_settings_table.php`, incluida la capacidad de guardar cierres.
+- El 2026-10-22, seis migraciones incrementales de columnas/ajustes se consolidaron en sus `create_*`. La base local se reconstruyó con `migrate:fresh --seed`; las referencias a migraciones incrementales en entradas cronológicas anteriores describen el momento en que se introdujeron, no archivos que sigan presentes.
 
 ### Administración y plataforma
 
 - La agenda permite filtrar citas y eventos del calendario por sede y profesional, incluyendo citas que aún no tienen profesional asignado.
 - La pantalla Disponibilidad permite definir grupos de días sin solapamiento y añadir/quitar horas de inicio manualmente para cada grupo. Si un día no está asignado o no tiene horas, queda cerrado; cada cita dura 60 minutos, por lo que las horas dentro de un grupo no pueden traslaparse. Se conservan cierres excepcionales por día/intervalo y se rechazan guardados que dejen citas futuras fuera del horario.
+- La misma pantalla permite asignar por sede un profesional activo con especialidad Evaluación MBI. Confirmar o completar la asignación de una cita `primera_vez` requiere en el servidor que el profesional coincida con el asignado a la sede y que la especialidad sea `evaluacion-mbi`; la Agenda y Solicitudes filtran/etiquetan ese profesional.
 - Pantallas Livewire para administración de usuarios, detalle de usuario, áreas, páginas, permisos y roles.
 - Ajustes Livewire de perfil, apariencia y seguridad.
 - Layout interno con sidebar Flux y notificaciones toast.
@@ -118,9 +121,9 @@
 
 ## Próximos pasos recomendados
 
-1. Validar visualmente la pantalla de anamnesis, guardar/editar datos y confirmar que el IMC se actualiza.
-2. Acordar requisitos clínicos, responsabilidades y datos obligatorios para cerrar una consulta antes de implementar transiciones a `en_proceso` o `cerrada`.
-3. Continuar con formularios clínicos específicos por especialidad, manteniendo componentes separados y permisos explícitos.
+1. Validar visualmente la anamnesis integral y el selector de reprogramación en navegador.
+2. Resolver por separado la referencia `App\Models\User` que impide pasar `RegistrationTest::test_new_users_can_register`.
+3. Continuar con evaluación MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
 4. Definir historial de contacto y canal de comunicación antes de automatizar confirmaciones/recordatorios.
 
 ## Registro cronológico de sesiones/agentes
@@ -404,6 +407,33 @@
 - **Pendientes o bloqueos:** revisar visualmente las tarjetas y el modal Flux; el comando `php artisan test` del entorno no carga la extensión SQLite de PHP, por lo que se ejecutó PHPUnit directamente con las extensiones habilitadas.
 - **Próximo paso recomendado:** ejecutar pruebas dirigidas; luego el usuario puede validar visualmente el flujo y continuar con MBI, informe por sistemas y test de intoxicación.
 - **Estado del trabajo:** implementado y validado automáticamente; verificación visual pendiente.
+
+### 2026-10-23 — Autenticación y suite completa con PHP 8.5
+
+- **Objetivo:** alinear el módulo de autenticación heredado y ejecutar la suite solicitada con la versión activa de PHP.
+- **Cambios realizados:** Fortify y los tests de autenticación apuntan a `App\Models\Admin\User`; se corrigió la referencia de la factory, se incorporó `name` nullable a la migración consolidada de `users` y se ajustó el accessor `name` para usar la información del perfil cuando falta el valor. La eliminación de cuenta ahora respeta el borrado lógico. Los flags de capacidades de seguridad se exponen a Livewire, y las pruebas comparan etiquetas traducidas y consideran el soft delete. Los helpers de fechas de prueba ahora reasignan el valor devuelto al incrementar, compatible con Carbon immutable en PHP 8.5.
+- **Pruebas y validaciones:** auth/ajustes/dashboard: 31 pruebas y 79 assertions pasaron. Suite completa con PHP 8.5.11: 122 pruebas y 531 assertions pasaron en 23.2 segundos. La prueba aislada de reserva que antes se quedaba ejecutando ahora pasa en menos de un segundo. PHP lint y Pint dirigidos pasan; `git diff --check` pasa.
+- **Pendiente:** PHPStan global conserva diagnósticos ya existentes; quedan fuera de este arreglo.
+- **Estado del trabajo:** implementado y verificado con suite completa.
+
+### 2026-10-23 — Evaluador MBI por sede
+
+- **Objetivo:** dirigir las primeras visitas reservadas desde la landing a un profesional real habilitado para evaluación MBI en la sede seleccionada.
+- **Cambios realizados:** se añadió el mapeo único de evaluador por sede, una pantalla de configuración en Disponibilidad, la especialidad Evaluación MBI y el seeder demo local. Solicitudes y Agenda muestran y seleccionan el evaluador configurado para las citas `primera_vez`; el servicio valida sede, profesional y especialidad para confirmaciones y asignaciones incompletas, aunque se manipule el estado del formulario. Las citas de seguimiento conservan el flujo de asignación normal.
+- **Archivos modificados:** modelo/migración de asignación por sede; relaciones de Sucursal; Availability y su vista; Solicitud y Schedule con sus vistas; servicio de gestión de citas; seeders y pruebas.
+- **Pruebas y validaciones:** suite completa con PHP 8.5.11: 125 pruebas y 541 assertions. La migración incremental y `CatalogosClinicosSeeder` se aplicaron correctamente en el entorno local sin reinicializar la base.
+- **Pendientes:** validación visual de la pantalla de configuración y de los modales de confirmación; en nuevas sedes, primero debe existir un profesional activo asociado a la sede y con la especialidad MBI.
+- **Estado del trabajo:** implementado y verificado automáticamente; revisión visual pendiente.
+
+### 2026-10-22 — Landing, anamnesis integral y reprogramación
+
+- **Objetivo:** ejecutar el plan MARVAS para reserva pública de primera vez, formularios clínicos, reprogramación, migraciones y documentación.
+- **Cambios realizados:** la landing fuerza `primera_vez` sin selector; Solicitudes y Agenda muestran selector de fecha y horarios libres al reprogramar, excluyen la propia cita de los traslapes y solo ofrecen inicios futuros (incluida la hora actual si aún no comienza). Se integró en un formulario la anamnesis general, homeopática y quiropráctica/neuromusculoesquelética (incisos 01–06 de `recursos IA/anamnesis.xlsx`); Acupuntura sigue individual e incorpora los campos de `NUEVO.xlsx`. El inciso 07 se muestra en la ficha del paciente. No se cambió el cierre de consulta y el seguimiento se mantiene como cita agendada por personal. Se consolidaron las migraciones incrementales en `create_*`.
+- **Migración y seed:** se verificó `APP_ENV=local`, `DB_CONNECTION=mariadb` y `DB_HOST=127.0.0.1`; se ejecutó `php artisan migrate:fresh --seed` y todas las migraciones/seeders finalizaron correctamente. Esta operación reconstruyó la base de datos local autorizada.
+- **Pruebas y validaciones:** las pruebas enfocadas de Landing, Solicitudes, Agenda, Consulta y `HasCitas` pasaron: 55 tests, 275 assertions. PHP lint y Pint en los PHP modificados, `php artisan view:cache` y `git diff --check` pasaron. La compilación frontend estaba generada y disponible.
+- **Suite completa:** 122 pruebas y 531 assertions pasan con PHP 8.5.11. PHPStan global, incluso con 512 MB, reporta numerosos diagnósticos del proyecto. Pint para los archivos modificados pasa; la comprobación global de Pint reporta archivos previos fuera de este cambio.
+- **Pendiente:** revisar visualmente los formularios y la reprogramación en navegador. La carpeta de recursos IA proporcionada por el usuario quedó sin modificar.
+- **Estado del trabajo:** alcance implementado; posteriormente, la suite completa pasó con PHP 8.5.11 (122 pruebas, 531 assertions; ver entrada del 2026-10-23). Validación visual pendiente.
 
 ## Plantilla para registrar una entrega
 

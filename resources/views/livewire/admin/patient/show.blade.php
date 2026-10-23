@@ -174,6 +174,22 @@
                             · {{ str($consultation->estado)->replace('_', ' ')->ucfirst() }}
                             · Consulta {{ $consultation->numero_consulta }}
                         </p>
+                        @php($evaluador = $consultation->anamnesisGeneral?->datos_formulario['resultado_evaluador'] ?? [])
+                        @if (collect($evaluador)->contains(fn ($value) => filled($value)))
+                            <div class="mt-3 space-y-2 rounded-md bg-zinc-50 p-3 text-sm dark:bg-zinc-800">
+                                <p class="font-medium">07 · Resultado del evaluador</p>
+                                @foreach ([
+                                    'resumen_clinico' => 'Resumen clínico',
+                                    'diagnostico_diferenciales' => 'Impresión diagnóstica',
+                                    'objetivos_intervenciones_precauciones' => 'Objetivos y plan',
+                                    'plan_seguimiento' => 'Seguimiento',
+                                ] as $field => $label)
+                                    @if (filled($evaluador[$field] ?? null))
+                                        <p><strong>{{ $label }}:</strong> {{ $evaluador[$field] }}</p>
+                                    @endif
+                                @endforeach
+                            </div>
+                        @endif
                         @can('consultations.edit')
                             <flux:button
                                 class="mt-3"

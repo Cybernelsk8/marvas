@@ -7,6 +7,7 @@ use App\Models\Admin\Setting;
 use App\Models\Admin\User;
 use App\Models\Auditoria;
 use App\Models\Cita;
+use App\Models\Especialidad;
 use App\Models\Paciente;
 use App\Models\Sucursal;
 use Carbon\CarbonInterface;
@@ -230,8 +231,8 @@ class SolicitudTest extends TestCase
         $page = $this->actingAs($this->recepcionista)->get('/solicitudes')->assertOk()
             ->assertSee('wire:submit="confirmar(', false);
         $sucursal = Sucursal::query()->where('activa', true)->firstOrFail();
-        $profesional = $sucursal->profesionales()->firstOrFail();
-        $especialidad = $profesional->especialidades()->firstOrFail();
+        $profesional = $sucursal->evaluadorMbi()->firstOrFail()->profesional;
+        $especialidad = Especialidad::query()->where('slug', 'evaluacion-mbi')->firstOrFail();
         $snapshot = $this->componentSnapshot(
             $page,
             'solicitud',
@@ -271,8 +272,8 @@ class SolicitudTest extends TestCase
         Setting::query()->where('key', 'disponibilidad_global_citas')->delete();
         $cita = $this->crearSolicitud();
         $sucursal = Sucursal::query()->where('activa', true)->firstOrFail();
-        $profesional = $sucursal->profesionales()->firstOrFail();
-        $especialidad = $profesional->especialidades()->firstOrFail();
+        $profesional = $sucursal->evaluadorMbi()->firstOrFail()->profesional;
+        $especialidad = Especialidad::query()->where('slug', 'evaluacion-mbi')->firstOrFail();
         $snapshot = $this->componentSnapshot(
             $this->actingAs($this->recepcionista)->get('/solicitudes')->assertOk(),
             'solicitud',
@@ -422,6 +423,16 @@ class SolicitudTest extends TestCase
         ]);
     }
 
+    public function test_rescheduling_lists_the_request_own_slot_as_available(): void
+    {
+        $cita = $this->crearSolicitud('solicitada', $this->nextWeekday()->addWeek()->setTime(9, 0));
+
+        Livewire::actingAs($this->recepcionista)
+            ->test(Solicitud::class)
+            ->call('prepararReprogramacion', $cita->id)
+            ->assertSee('09:00 am');
+    }
+
     public function test_reception_can_cancel_a_pending_request_with_a_reason(): void
     {
         $cita = $this->crearSolicitud();
@@ -482,7 +493,7 @@ class SolicitudTest extends TestCase
         $date = today()->addDay();
 
         while ($date->isWeekend()) {
-            $date->addDay();
+            $date = $date->addDay();
         }
 
         return $date;

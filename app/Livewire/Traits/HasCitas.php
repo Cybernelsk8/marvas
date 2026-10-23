@@ -19,13 +19,17 @@ trait HasCitas
         return app(ClinicAvailabilityService::class)->recurringHours();
     }
 
-    public function getCalendarAppointments(?Carbon $desde = null, ?Carbon $hasta = null): Collection
-    {
+    public function getCalendarAppointments(
+        ?Carbon $desde = null,
+        ?Carbon $hasta = null,
+        ?int $ignoreAppointmentId = null,
+    ): Collection {
         $desde = ($desde ?? Carbon::today())->copy()->startOfDay();
         $hasta = ($hasta ?? $desde->copy()->addMonths(3))->copy()->startOfDay()->addDay();
 
         return Cita::query()
             ->whereNotIn('estado', ['cancelada', 'no_asistio'])
+            ->when($ignoreAppointmentId, fn ($query) => $query->whereKeyNot($ignoreAppointmentId))
             ->where('fecha_hora_inicio', '<', $hasta)
             ->where('fecha_hora_fin', '>', $desde)
             ->orderBy('fecha_hora_inicio')
@@ -87,6 +91,7 @@ trait HasCitas
         ?array $horariosConfigurados = null,
         ?iterable $citas = null,
         ?array $availabilityConfiguration = null,
+        ?int $ignoreAppointmentId = null,
     ): array {
         try {
             $fechaValida = Carbon::createFromFormat('!Y-m-d', $fecha);
@@ -107,7 +112,11 @@ trait HasCitas
             $horariosConfigurados = $availability->hoursForDay($fechaValida->dayOfWeekIso, $availabilityConfiguration);
         }
 
-        $citas ??= $this->getCalendarAppointments($fechaValida, $fechaValida);
+        $citas ??= $this->getCalendarAppointments($fechaValida, $fechaValida, $ignoreAppointmentId);
+        if ($ignoreAppointmentId !== null) {
+            $citas = collect($citas)
+                ->reject(fn ($cita): bool => isset($cita->id) && (int) $cita->id === $ignoreAppointmentId);
+        }
         $citasPorFecha = $this->agruparCitasPorFecha($citas);
         $durationMinutes = $availabilityConfiguration['duration_minutes'] ?? 60;
 
@@ -126,8 +135,7 @@ trait HasCitas
         iterable $citas,
         ?array $availabilityConfiguration = null,
         int $durationMinutes = 60,
-    ): array
-    {
+    ): array {
         $horarios = collect($horarios)
             ->map(fn ($horario) => Carbon::parse($horario)->format('H:i'))
             ->unique()
@@ -137,6 +145,10 @@ trait HasCitas
             ->reject(function (string $horario) use ($fecha, $citas, $availabilityConfiguration, $durationMinutes) {
                 $inicio = Carbon::parse("{$fecha} {$horario}");
                 $fin = $inicio->copy()->addMinutes($durationMinutes);
+
+                if (! $inicio->isFuture()) {
+                    return true;
+                }
 
                 if ($availabilityConfiguration !== null
                     && ! app(ClinicAvailabilityService::class)->isSlotAllowed($inicio, $durationMinutes, $availabilityConfiguration)) {

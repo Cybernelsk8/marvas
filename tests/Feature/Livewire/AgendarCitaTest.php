@@ -34,7 +34,6 @@ class AgendarCitaTest extends TestCase
         $snapshot = $this->componentSnapshot($page, 'landing-page.agendar-cita');
 
         $response = $this->updateLivewireComponent($snapshot, [
-            'tipo' => 'primera_vez',
             'nombres' => 'Paciente',
             'apellidos' => 'De prueba',
             'telefono' => '5555-1111',
@@ -57,6 +56,15 @@ class AgendarCitaTest extends TestCase
         $this->assertSame('Paciente De Prueba', Cita::query()->firstOrFail()->expediente->paciente->nombre_completo);
     }
 
+    public function test_public_booking_has_no_appointment_type_selector_or_follow_up_option(): void
+    {
+        Livewire::test(AgendarCita::class)
+            ->assertDontSee('Elige el tipo de cita')
+            ->assertDontSee('Seguimiento');
+
+        $this->assertFalse(property_exists(new AgendarCita, 'tipo'));
+    }
+
     public function test_public_booking_does_not_create_a_patient_if_the_slot_was_taken(): void
     {
         $this->assertDatabaseCount('pacientes', 0);
@@ -69,7 +77,6 @@ class AgendarCitaTest extends TestCase
         );
 
         $this->updateLivewireComponent($snapshot, [
-            'tipo' => 'primera_vez',
             'nombres' => 'Paciente',
             'apellidos' => 'De prueba',
             'telefono' => '5555-1111',
@@ -96,7 +103,6 @@ class AgendarCitaTest extends TestCase
         );
 
         Livewire::test(AgendarCita::class)
-            ->set('tipo', 'primera_vez')
             ->set('nombres', 'Paciente')
             ->set('apellidos', 'De prueba')
             ->set('telefono', '5555-1111')
@@ -126,7 +132,6 @@ class AgendarCitaTest extends TestCase
         );
 
         Livewire::test(AgendarCita::class)
-            ->set('tipo', 'primera_vez')
             ->set('nombres', 'Paciente')
             ->set('apellidos', 'Sábado')
             ->set('telefono', '5555-1111')
@@ -141,7 +146,6 @@ class AgendarCitaTest extends TestCase
         ]);
 
         Livewire::test(AgendarCita::class)
-            ->set('tipo', 'primera_vez')
             ->set('nombres', 'Paciente')
             ->set('apellidos', 'Domingo')
             ->set('telefono', '5555-2222')
@@ -170,7 +174,6 @@ class AgendarCitaTest extends TestCase
         );
 
         Livewire::test(AgendarCita::class)
-            ->set('tipo', 'primera_vez')
             ->set('nombres', 'Paciente')
             ->set('apellidos', 'Dos horas')
             ->set('telefono', '5555-3333')
@@ -209,7 +212,7 @@ class AgendarCitaTest extends TestCase
         $date = today()->addDay();
 
         while ($date->isWeekend()) {
-            $date->addDay();
+            $date = $date->addDay();
         }
 
         return $date;

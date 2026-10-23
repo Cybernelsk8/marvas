@@ -8,7 +8,9 @@ use App\Models\Especialidad;
 use App\Models\Paciente;
 use App\Models\Profesional;
 use App\Models\Sucursal;
+use App\Models\SucursalEvaluadorMbi;
 use App\Services\AppointmentManagementService;
+use App\Services\ClinicAvailabilityService;
 use App\Services\PatientMatchService;
 use App\Services\PatientMergeService;
 use App\Traits\DataTable;
@@ -51,6 +53,8 @@ class Solicitud extends Component
     public ?string $profesionalConfirmacion = null;
 
     public ?string $especialidadConfirmacion = null;
+
+    public bool $mbiEvaluatorRequired = false;
 
     public ?string $formularioUrl = null;
 
@@ -139,7 +143,29 @@ class Solicitud extends Component
             'sucursalesActivas' => Sucursal::query()->where('activa', true)->orderBy('nombre')->get(),
             'profesionalesConfirmacion' => $this->profesionalesPorSucursal((int) ($this->sucursalConfirmacion ?? 0)),
             'especialidadesConfirmacion' => $this->especialidadesPorProfesional((int) ($this->profesionalConfirmacion ?? 0)),
+            'horariosReprogramacion' => $this->reprogramacion['fecha']
+                ? $this->getAvailableHours(
+                    $this->reprogramacion['fecha'],
+                    availabilityConfiguration: app(ClinicAvailabilityService::class)->configuration(),
+                    ignoreAppointmentId: $this->solicitudId,
+                )
+                : [],
         ]);
+    }
+
+    public function updatedReprogramacionFecha(?string $fecha): void
+    {
+        if (! $fecha || ! in_array(
+            $this->reprogramacion['hora'] ?? null,
+            $this->getAvailableHours(
+                $fecha,
+                availabilityConfiguration: app(ClinicAvailabilityService::class)->configuration(),
+                ignoreAppointmentId: $this->solicitudId,
+            ),
+            true,
+        )) {
+            $this->reprogramacion['hora'] = null;
+        }
     }
 
     public function showSolicitud(int $id): void
@@ -365,6 +391,7 @@ class Solicitud extends Component
                     'no_pendiente' => 'La solicitud ya no se encuentra pendiente.',
                     'sede_no_disponible' => 'La sede seleccionada dejó de estar activa. Selecciona otra sede.',
                     'profesional_no_disponible' => 'El profesional seleccionado no está disponible para esa sede.',
+                    'evaluador_no_disponible' => 'La sede no tiene configurado ese profesional como Evaluador MBI.',
                     'especialidad_no_disponible' => 'La especialidad ya no está activa o no corresponde al profesional.',
                     default => 'El horario ya no está disponible. Reprograma la solicitud antes de confirmarla.',
                 },
@@ -374,7 +401,7 @@ class Solicitud extends Component
             return;
         }
 
-        $this->reset(['sucursalConfirmacion', 'profesionalConfirmacion', 'especialidadConfirmacion']);
+        $this->reset(['sucursalConfirmacion', 'profesionalConfirmacion', 'especialidadConfirmacion', 'mbiEvaluatorRequired']);
         Flux::modals()->close();
         Flux::toast(text: 'La cita fue confirmada correctamente.', variant: 'success');
     }
@@ -392,6 +419,7 @@ class Solicitud extends Component
         }
 
         $this->solicitudId = $cita->id;
+        $this->mbiEvaluatorRequired = $cita->tipo_cita === 'primera_vez';
         $this->sucursalConfirmacion = $cita->sucursal_id ? (string) $cita->sucursal_id : null;
         $this->profesionalConfirmacion = $cita->profesional_id ? (string) $cita->profesional_id : null;
         $this->especialidadConfirmacion = $cita->especialidad_id ? (string) $cita->especialidad_id : null;
@@ -448,9 +476,16 @@ class Solicitud extends Component
             return collect();
         }
 
+        $evaluatorId = $this->mbiEvaluatorRequired
+            ? SucursalEvaluadorMbi::query()->where('sucursal_id', $sucursalId)->value('profesional_id')
+            : null;
+
         return Profesional::query()
             ->where('activo', true)
             ->whereHas('sucursales', fn ($query) => $query->whereKey($sucursalId))
+            ->when($this->mbiEvaluatorRequired, fn ($query) => $query
+                ->whereKey($evaluatorId ?? 0)
+                ->whereHas('especialidades', fn ($specialties) => $specialties->where('slug', 'evaluacion-mbi')->where('activa', true)))
             ->orderBy('nombre_completo')
             ->get();
     }
@@ -463,6 +498,22 @@ class Solicitud extends Component
             if ($branches->count() === 1) {
                 $this->sucursalConfirmacion = (string) $branches->first()->id;
             }
+        }
+
+        if ($this->mbiEvaluatorRequired) {
+            $evaluatorId = $this->sucursalConfirmacion
+                ? SucursalEvaluadorMbi::query()->where('sucursal_id', (int) $this->sucursalConfirmacion)->value('profesional_id')
+                : null;
+            $this->profesionalConfirmacion = $evaluatorId ? (string) $evaluatorId : null;
+            $mbiSpecialtyId = Especialidad::query()
+                ->where('slug', 'evaluacion-mbi')
+                ->where('activa', true)
+                ->value('id');
+            $this->especialidadConfirmacion = $this->profesionalConfirmacion && $mbiSpecialtyId
+                ? (string) $mbiSpecialtyId
+                : null;
+
+            return;
         }
 
         if (! $this->profesionalConfirmacion && $this->sucursalConfirmacion) {
@@ -490,6 +541,7 @@ class Solicitud extends Component
 
         return Especialidad::query()
             ->where('activa', true)
+            ->when($this->mbiEvaluatorRequired, fn ($query) => $query->where('slug', 'evaluacion-mbi'))
             ->whereHas('profesionales', fn ($query) => $query->whereKey($profesionalId)->where('activo', true))
             ->orderBy('nombre')
             ->get();
@@ -606,6 +658,7 @@ class Solicitud extends Component
             'sucursalConfirmacion',
             'profesionalConfirmacion',
             'especialidadConfirmacion',
+            'mbiEvaluatorRequired',
             'reprogramacion',
             'motivoCancelacion',
             'formularioUrl',

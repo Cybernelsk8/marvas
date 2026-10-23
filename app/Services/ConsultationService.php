@@ -34,9 +34,42 @@ class ConsultationService
         });
     }
 
-    public function saveAssessmentForm(int $consultationId, string $formKey, array $data): AnamnesisGeneral
-    {
-        return DB::transaction(function () use ($consultationId, $formKey, $data): AnamnesisGeneral {
+    public function saveIntegralAnamnesis(
+        int $consultationId,
+        array $generalData,
+        array $assessments,
+        array $additionalData,
+    ): AnamnesisGeneral {
+        return DB::transaction(function () use ($consultationId, $generalData, $assessments, $additionalData): AnamnesisGeneral {
+            $consultation = Consulta::query()
+                ->whereKey($consultationId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($consultation->estado, ['abierta', 'en_proceso'], true)) {
+                throw ValidationException::withMessages([
+                    'anamnesis' => 'Solo se puede guardar la anamnesis de una consulta abierta o en proceso.',
+                ]);
+            }
+
+            $anamnesis = $this->persistGeneralAnamnesis($consultation, $generalData);
+            $this->persistAssessmentForms($anamnesis, $assessments);
+
+            foreach ($additionalData as $formKey => $data) {
+                $this->persistAdditionalAssessmentData($anamnesis, $formKey, $data);
+            }
+
+            return $anamnesis->fresh();
+        });
+    }
+
+    public function saveAssessmentForm(
+        int $consultationId,
+        string $formKey,
+        array $data,
+        array $additionalData = [],
+    ): AnamnesisGeneral {
+        return DB::transaction(function () use ($consultationId, $formKey, $data, $additionalData): AnamnesisGeneral {
             $consultation = Consulta::query()
                 ->whereKey($consultationId)
                 ->lockForUpdate()
@@ -55,6 +88,7 @@ class ConsultationService
             }
 
             $this->persistAssessmentForms($anamnesis, [$formKey => $data]);
+            $this->persistAdditionalAssessmentData($anamnesis, $formKey, $additionalData);
 
             return $anamnesis->fresh();
         });
@@ -244,6 +278,53 @@ class ConsultationService
                 'user_agent' => request()->userAgent(),
             ]);
         }
+    }
+
+    private function persistAdditionalAssessmentData(
+        AnamnesisGeneral $anamnesis,
+        string $formKey,
+        array $data,
+    ): void {
+        if (! in_array($formKey, ['homeopatia', 'quiropraxia', 'acupuntura'], true) || $data === []) {
+            return;
+        }
+
+        $formData = $anamnesis->datos_formulario ?? [];
+        $previous = $formData[$formKey] ?? [];
+        if (! is_array($previous)) {
+            $previous = [];
+        }
+
+        $changedFields = collect(array_keys($data))
+            ->filter(fn (string $field): bool => ($previous[$field] ?? null) !== $data[$field])
+            ->values()
+            ->all();
+
+        if ($changedFields === []) {
+            return;
+        }
+
+        $formData[$formKey] = array_replace($previous, $data);
+        $anamnesis->datos_formulario = $formData;
+        $anamnesis->save();
+
+        Auditoria::create([
+            'user_id' => Auth::id(),
+            'tabla_afectada' => 'anamnesis_generales',
+            'registro_id' => $anamnesis->id,
+            'accion' => 'editar',
+            'datos_anteriores' => [
+                'consulta_id' => $anamnesis->consulta_id,
+                'campos_modificados' => $changedFields,
+            ],
+            'datos_nuevos' => [
+                'consulta_id' => $anamnesis->consulta_id,
+                'formulario' => $formKey,
+                'campos_modificados' => $changedFields,
+            ],
+            'ip' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
     }
 
     private function auditTransition(

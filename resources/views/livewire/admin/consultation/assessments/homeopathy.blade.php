@@ -9,4 +9,14 @@
         <flux:textarea label="Tratamiento indicado" wire:model="assessmentForms.homeopatia.tratamiento_indicado" rows="3" />
     </div>
     <flux:textarea label="Observaciones de evaluación homeopática" wire:model="assessmentForms.homeopatia.observaciones" rows="3" />
+    <div class="grid gap-4 md:grid-cols-2">
+        @foreach ($assessmentComplementarySections['homeopatia']['fields'] as $field => $label)
+            <flux:textarea
+                label="{{ $label }}"
+                wire:model="assessmentForms.homeopatia.datos_complementarios.{{ $field }}"
+                rows="3"
+                placeholder="Anota hallazgos o escribe «No evaluado» cuando corresponda."
+            />
+        @endforeach
+    </div>
 </flux:card>

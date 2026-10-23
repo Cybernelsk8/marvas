@@ -10,6 +10,7 @@ use App\Models\Especialidad;
 use App\Models\Paciente;
 use App\Models\Profesional;
 use App\Models\Sucursal;
+use App\Services\AppointmentManagementService;
 use App\Services\ClinicAvailabilityService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -151,11 +152,11 @@ class ScheduleTest extends TestCase
 
     public function test_reception_can_confirm_an_appointment_from_the_schedule(): void
     {
-        $date = now()->addDays(2)->toDateString();
+        $date = $this->nextWeekday()->toDateString();
         $cita = $this->createAppointment('solicitada', 'Paciente para gestionar', $date.' 09:00');
         $sucursal = Sucursal::query()->firstOrFail();
-        $profesional = $sucursal->profesionales()->firstOrFail();
-        $especialidad = $profesional->especialidades()->firstOrFail();
+        $profesional = $sucursal->evaluadorMbi()->firstOrFail()->profesional;
+        $especialidad = Especialidad::query()->where('slug', 'evaluacion-mbi')->firstOrFail();
 
         Livewire::actingAs($this->receptionist)
             ->test(Schedule::class)
@@ -164,6 +165,7 @@ class ScheduleTest extends TestCase
             ->assertSee('Reprogramar')
             ->assertSee('Cancelar')
             ->call('prepareConfirmation', $cita->id)
+            ->assertSee('Evaluador MBI')
             ->set('sucursalConfirmacion', (string) $sucursal->id)
             ->set('profesionalConfirmacion', (string) $profesional->id)
             ->set('especialidadConfirmacion', (string) $especialidad->id)
@@ -205,13 +207,39 @@ class ScheduleTest extends TestCase
         ]);
     }
 
+    public function test_first_visit_confirmation_rejects_a_professional_not_assigned_as_branch_mbi_evaluator(): void
+    {
+        $date = $this->nextWeekday()->toDateString();
+        $appointment = $this->createAppointment('solicitada', 'Paciente con evaluador incorrecto', $date.' 09:00');
+        $branch = Sucursal::query()->where('activa', true)->firstOrFail();
+        $professional = $branch->profesionales()
+            ->whereDoesntHave('especialidades', fn ($query) => $query->where('slug', 'evaluacion-mbi'))
+            ->firstOrFail();
+        $specialty = $professional->especialidades()->firstOrFail();
+
+        $result = app(AppointmentManagementService::class)->confirm(
+            $appointment->id,
+            $branch->id,
+            $this->receptionist->id,
+            $professional->id,
+            $specialty->id,
+        );
+
+        $this->assertSame('evaluador_no_disponible', $result);
+        $this->assertDatabaseHas('citas', [
+            'id' => $appointment->id,
+            'estado' => 'solicitada',
+            'profesional_id' => null,
+        ]);
+    }
+
     public function test_confirmed_appointment_with_missing_assignment_can_be_completed_from_the_schedule(): void
     {
         $date = now()->addDays(2)->toDateString();
         $appointment = $this->createAppointment('confirmada', 'Paciente con asignación pendiente', $date.' 09:00');
         $branch = Sucursal::query()->where('activa', true)->firstOrFail();
-        $professional = $branch->profesionales()->firstOrFail();
-        $specialty = $professional->especialidades()->firstOrFail();
+        $professional = $branch->evaluadorMbi()->firstOrFail()->profesional;
+        $specialty = Especialidad::query()->where('slug', 'evaluacion-mbi')->firstOrFail();
 
         Livewire::actingAs($this->receptionist)
             ->test(Schedule::class)
@@ -283,6 +311,21 @@ class ScheduleTest extends TestCase
             'estado' => 'solicitada',
             'fecha_hora_inicio' => $newDate.' 10:00:00',
         ]);
+    }
+
+    public function test_rescheduling_lists_the_appointment_own_slot_as_available(): void
+    {
+        $date = $this->nextWeekday()->addWeek()->toDateString();
+        $appointment = $this->createAppointment(
+            'solicitada',
+            'Paciente horario propio',
+            $date.' 09:00',
+        );
+
+        Livewire::actingAs($this->receptionist)
+            ->test(Schedule::class)
+            ->call('prepareRescheduling', $appointment->id)
+            ->assertSee('09:00 am');
     }
 
     public function test_rescheduling_uses_the_configured_appointment_duration(): void
@@ -392,7 +435,7 @@ class ScheduleTest extends TestCase
         $date = today()->addDay();
 
         while ($date->isWeekend()) {
-            $date->addDay();
+            $date = $date->addDay();
         }
 
         return $date;

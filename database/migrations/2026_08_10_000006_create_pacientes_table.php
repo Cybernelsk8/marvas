@@ -33,6 +33,11 @@ return new class extends Migration
             $table->string('como_nos_conocio', 100)->nullable();
             $table->string('foto_path', 255)->nullable();
             $table->boolean('activo')->default(true);
+            $table->foreignId('fusionado_en_paciente_id')
+                ->nullable()
+                ->constrained('pacientes')
+                ->restrictOnDelete()
+                ->restrictOnUpdate();
             $table->timestamps();
 
             $table->unique('numero_dpi', 'uq_pacientes_dpi');

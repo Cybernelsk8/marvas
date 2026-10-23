@@ -58,4 +58,13 @@
         <flux:textarea label="Principio terapéutico" wire:model="assessmentForms.acupuntura.principio_terapeutico" rows="3" />
         <flux:textarea label="Observaciones de evaluación energética" wire:model="assessmentForms.acupuntura.observaciones" rows="3" />
     </div>
+    <div class="grid gap-4 md:grid-cols-2">
+        @foreach ($assessmentComplementarySections['acupuntura']['fields'] as $field => $label)
+            <flux:textarea
+                label="{{ $label }}"
+                wire:model="assessmentForms.acupuntura.datos_complementarios.{{ $field }}"
+                rows="3"
+            />
+        @endforeach
+    </div>
 </flux:card>

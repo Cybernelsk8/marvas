@@ -251,6 +251,60 @@ class ConsultationTest extends TestCase
         ]);
     }
 
+    public function test_integral_anamnesis_saves_sections_together_and_shows_evaluator_result_on_patient_file(): void
+    {
+        [$patient, $appointment] = $this->createConfirmedAppointment();
+        $consultation = app(ConsultationService::class)
+            ->openFromAppointment($appointment->id, $patient->id);
+        $this->clinician->givePermissionTo('consultations.edit');
+
+        Livewire::actingAs($this->clinician)
+            ->test(ConsultationForm::class, ['consultation' => $consultation])
+            ->call('openAnamnesis', 'general')
+            ->set('form.motivo_consulta', 'Dolor lumbar')
+            ->set('form.datos_formulario.consulta_actual.inicio', 'Hace dos semanas')
+            ->set('form.datos_formulario.antecedentes_habitos.tabaco', 'No fuma')
+            ->set('form.datos_formulario.revision_sistemas.neurologico', 'Sin hallazgos')
+            ->set('assessmentForms.homeopatia.sintomas_mentales', 'Sueño inquieto')
+            ->set('assessmentForms.homeopatia.datos_complementarios.sensibilidad_termica', 'Sensible al frío')
+            ->set('assessmentForms.quiropraxia.diagnostico', 'Dolor lumbar mecánico')
+            ->set('assessmentForms.quiropraxia.datos_complementarios.alerta_deficit_neurologico', 'Ausente')
+            ->set('form.datos_formulario.resultado_evaluador.resumen_clinico', 'Síntomas y hallazgos documentados')
+            ->set('form.datos_formulario.resultado_evaluador.diagnostico_diferenciales', 'Hipótesis clínica')
+            ->set('form.datos_formulario.resultado_evaluador.plan_seguimiento', 'Reevaluar en seguimiento')
+            ->call('saveIntegralAnamnesis')
+            ->assertHasNoErrors()
+            ->assertSee('Formularios de la consulta');
+
+        $anamnesis = AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->firstOrFail();
+        $this->assertSame('Hace dos semanas', $anamnesis->datos_formulario['consulta_actual']['inicio']);
+        $this->assertSame('No fuma', $anamnesis->datos_formulario['antecedentes_habitos']['tabaco']);
+        $this->assertSame('Sin hallazgos', $anamnesis->datos_formulario['revision_sistemas']['neurologico']);
+        $this->assertSame(
+            'Sensible al frío',
+            $anamnesis->datos_formulario['homeopatia']['sensibilidad_termica'],
+        );
+        $this->assertSame(
+            'Ausente',
+            $anamnesis->datos_formulario['quiropraxia']['alerta_deficit_neurologico'],
+        );
+        $this->assertDatabaseHas('anamnesis_homeopatica', [
+            'anamnesis_id' => $anamnesis->id,
+            'sintomas_mentales' => 'Sueño inquieto',
+        ]);
+        $this->assertDatabaseHas('anamnesis_quiropraxia', [
+            'anamnesis_id' => $anamnesis->id,
+            'diagnostico' => 'Dolor lumbar mecánico',
+        ]);
+
+        Livewire::actingAs($this->clinician)
+            ->test(Show::class, ['patient' => $patient])
+            ->assertSee('07 · Resultado del evaluador')
+            ->assertSee('Síntomas y hallazgos documentados')
+            ->assertSee('Hipótesis clínica')
+            ->assertSee('Reevaluar en seguimiento');
+    }
+
     public function test_chiropractic_anamnesis_persists_boolean_enum_and_optional_details(): void
     {
         [$patient, $appointment] = $this->createConfirmedAppointment('homeopatia');

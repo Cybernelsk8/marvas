@@ -19,7 +19,7 @@ return new class extends Migration
                 ->constrained('especialidades')
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
-            $table->text('motivo_consulta');
+            $table->text('motivo_consulta')->nullable();
             $table->text('historia_padecimiento')->nullable();
             $table->json('antecedentes_patologicos')->nullable();
             $table->text('antecedentes_quirurgicos')->nullable();

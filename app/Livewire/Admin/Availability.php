@@ -2,7 +2,10 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\Admin\Setting;
+use App\Models\Especialidad;
+use App\Models\Profesional;
+use App\Models\Sucursal;
+use App\Models\SucursalEvaluadorMbi;
 use App\Services\ClinicAvailabilityService;
 use Carbon\Carbon;
 use Flux\Flux;
@@ -22,6 +25,8 @@ class Availability extends Component
 
     public array $conflicts = [];
 
+    public array $evaluadoresMbi = [];
+
     public function mount(): void
     {
         $this->authorize('page.view.schedule');
@@ -30,6 +35,14 @@ class Availability extends Component
         $this->groups = array_values($configuration['groups']);
         $this->durationMinutes = $configuration['duration_minutes'];
         $this->closures = array_values($configuration['closures']);
+        $this->evaluadoresMbi = Sucursal::query()
+            ->where('activa', true)
+            ->orderBy('id')
+            ->get(['id'])
+            ->mapWithKeys(fn (Sucursal $branch): array => [
+                (string) $branch->id => $branch->evaluadorMbi()->value('profesional_id'),
+            ])
+            ->all();
     }
 
     public function addGroup(): void
@@ -82,6 +95,20 @@ class Availability extends Component
                 6 => 'Sábado',
                 7 => 'Domingo',
             ],
+            'sucursalesEvaluadoresMbi' => Sucursal::query()
+                ->where('activa', true)
+                ->orderBy('nombre')
+                ->get()
+                ->map(fn (Sucursal $branch): array => [
+                    'sucursal' => $branch,
+                    'profesionales' => $branch->profesionales()
+                        ->where('profesionales.activo', true)
+                        ->whereHas('especialidades', fn ($query) => $query
+                            ->where('especialidades.slug', 'evaluacion-mbi')
+                            ->where('especialidades.activa', true))
+                        ->orderBy('nombre_completo')
+                        ->get(['profesionales.id', 'profesionales.nombre_completo']),
+                ]),
         ]);
     }
 
@@ -127,7 +154,60 @@ class Availability extends Component
             'closures.*.start_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'closures.*.end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'closures.*.reason' => ['nullable', 'string', 'max:255'],
+            'evaluadoresMbi' => ['required', 'array'],
+            'evaluadoresMbi.*' => ['nullable', 'integer', 'exists:profesionales,id'],
         ]);
+
+        $activeBranchIds = Sucursal::query()
+            ->where('activa', true)
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn (int $id): string => (string) $id)
+            ->all();
+        $mappingBranchIds = array_map('strval', array_keys($validated['evaluadoresMbi']));
+        sort($activeBranchIds);
+        sort($mappingBranchIds);
+
+        if ($activeBranchIds !== $mappingBranchIds) {
+            $this->addError('evaluadoresMbi', 'La lista de sedes activas cambió. Actualiza la pantalla e inténtalo nuevamente.');
+
+            return;
+        }
+
+        $mbiSpecialty = Especialidad::query()
+            ->where('slug', 'evaluacion-mbi')
+            ->where('activa', true)
+            ->first();
+
+        if (! $mbiSpecialty) {
+            $this->addError('evaluadoresMbi', 'No existe una especialidad activa de Evaluación MBI.');
+
+            return;
+        }
+
+        foreach ($validated['evaluadoresMbi'] as $branchId => $professionalId) {
+            if ($professionalId === null || $professionalId === '') {
+                $validated['evaluadoresMbi'][$branchId] = null;
+
+                continue;
+            }
+
+            $eligible = Profesional::query()
+                ->whereKey((int) $professionalId)
+                ->where('activo', true)
+                ->whereHas('sucursales', fn ($query) => $query->whereKey((int) $branchId))
+                ->whereHas('especialidades', fn ($query) => $query->whereKey($mbiSpecialty->id))
+                ->exists();
+
+            if (! $eligible) {
+                $this->addError(
+                    "evaluadoresMbi.{$branchId}",
+                    'Selecciona un profesional activo de esta sede con especialidad Evaluación MBI.',
+                );
+
+                return;
+            }
+        }
 
         $assignedDays = [];
         foreach ($validated['groups'] as $groupIndex => $group) {
@@ -195,7 +275,7 @@ class Availability extends Component
         ];
 
         $this->conflicts = [];
-        $result = DB::transaction(function () use ($configuration): array {
+        $result = DB::transaction(function () use ($configuration, $validated): array {
             $setting = app(ClinicAvailabilityService::class)->lockSetting();
             $conflicts = app(ClinicAvailabilityService::class)->appointmentsConflictingWith($configuration);
 
@@ -216,6 +296,19 @@ class Availability extends Component
                 'description' => 'Horarios globales agrupados por días y cierres para las reservas de la clínica.',
             ])->save();
 
+            foreach ($validated['evaluadoresMbi'] as $branchId => $professionalId) {
+                if ($professionalId === null) {
+                    SucursalEvaluadorMbi::query()->where('sucursal_id', (int) $branchId)->delete();
+
+                    continue;
+                }
+
+                SucursalEvaluadorMbi::query()->updateOrCreate(
+                    ['sucursal_id' => (int) $branchId],
+                    ['profesional_id' => (int) $professionalId],
+                );
+            }
+
             return ['saved' => true, 'conflicts' => []];
         });
 
@@ -229,7 +322,8 @@ class Availability extends Component
         $this->groups = $configuration['groups'];
         $this->durationMinutes = $configuration['duration_minutes'];
         $this->closures = $configuration['closures'];
+        $this->evaluadoresMbi = $validated['evaluadoresMbi'];
         $this->resetValidation();
-        Flux::toast(text: 'La disponibilidad global se guardó correctamente.', variant: 'success');
+        Flux::toast(text: 'La disponibilidad y los evaluadores MBI por sede se guardaron correctamente.', variant: 'success');
     }
 }

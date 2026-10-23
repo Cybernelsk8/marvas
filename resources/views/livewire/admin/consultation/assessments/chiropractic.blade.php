@@ -63,4 +63,19 @@
         <flux:textarea label="Plan inicial de seguimiento" wire:model="assessmentForms.quiropraxia.plan_seguimiento_inicial" rows="3" />
     </div>
     <flux:textarea label="Observaciones de evaluación quiropráctica" wire:model="assessmentForms.quiropraxia.observaciones" rows="3" />
+    <flux:heading size="sm">{{ $assessmentComplementarySections['quiropraxia']['label'] }}</flux:heading>
+    <flux:text class="text-sm">
+        Registra hallazgos objetivos, lateralidad y resultado. En las señales de alarma indica presencia, ausencia o «No evaluado»;
+        si hay una señal de alarma, documenta la valoración y referencia antes de manipular.
+    </flux:text>
+    <div class="grid gap-4 md:grid-cols-2">
+        @foreach ($assessmentComplementarySections['quiropraxia']['fields'] as $field => $label)
+            <flux:textarea
+                label="{{ $label }}"
+                wire:model="assessmentForms.quiropraxia.datos_complementarios.{{ $field }}"
+                rows="3"
+                placeholder="Hallazgo / Sin hallazgos / No evaluado"
+            />
+        @endforeach
+    </div>
 </flux:card>

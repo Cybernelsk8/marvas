@@ -5,7 +5,6 @@ namespace App\Models\Admin;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Models\ArchivoClinico;
-use App\Models\Admin\Area;
 use App\Models\Auditoria;
 use App\Models\Cita;
 use App\Models\ClasificacionPaciente;
@@ -15,12 +14,15 @@ use App\Models\OrdenCompra;
 use App\Models\Pago;
 use App\Models\Profesional;
 use App\Traits\Searchable;
-use Database\Factories\UserFactory;
+use Database\Factories\Admin\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Appends;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -29,10 +31,6 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
-
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property int $id
@@ -47,14 +45,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['email', 'password', 'area_id'])]
+#[Fillable(['name', 'email', 'password', 'area_id'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 #[Appends(['nombre_corto'])]
 
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable, Searchable, HasRoles, SoftDeletes;
+    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, Searchable, SoftDeletes, TwoFactorAuthenticatable;
 
     public const DEFAULTPASS = 'password';
 
@@ -71,7 +69,6 @@ class User extends Authenticatable implements PasskeyUser
         ];
     }
 
-
     /**
      * Get the user's initials
      */
@@ -80,7 +77,7 @@ class User extends Authenticatable implements PasskeyUser
         $initials = Str::initials($this->information?->nombre_corto, true);
 
         return Str::length($initials) > 1
-            ? Str::substr($initials, 0, 1) . Str::substr($initials, -1)
+            ? Str::substr($initials, 0, 1).Str::substr($initials, -1)
             : $initials;
     }
 
@@ -132,7 +129,7 @@ class User extends Authenticatable implements PasskeyUser
     public function getMenuAttribute()
     {
         $allowedPermissions = $this->getAllPermissions()
-            ->filter(fn($permission) => Str::startsWith($permission->name, 'page.view'))
+            ->filter(fn ($permission) => Str::startsWith($permission->name, 'page.view'))
             ->pluck('name')
             ->toArray();
 
@@ -157,7 +154,7 @@ class User extends Authenticatable implements PasskeyUser
                 $menu->push($page->parent);
             }
 
-            if (!$page->parent) {
+            if (! $page->parent) {
                 $menu->push($page);
             }
         }
@@ -188,6 +185,11 @@ class User extends Authenticatable implements PasskeyUser
     public function information(): HasOne
     {
         return $this->hasOne(UserInformation::class);
+    }
+
+    public function getNameAttribute(?string $value): string
+    {
+        return $value ?? $this->information?->nombre_completo ?? '';
     }
 
     public function getNombreCortoAttribute()

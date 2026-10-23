@@ -13,6 +13,7 @@ class CatalogosClinicosSeeder extends Seeder
             CategoriasInventarioSeeder::class,
             SucursalesDemoSeeder::class,
             ProfesionalesDemoSeeder::class,
+            EvaluadoresMbiDemoSeeder::class,
             HorariosCitasDemoSeeder::class,
             SolicitudesAccessSeeder::class,
             AgendaAccessSeeder::class,

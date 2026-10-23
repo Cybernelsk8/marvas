@@ -30,13 +30,10 @@ class Security extends Component
 
     public string $password_confirmation = '';
 
-    #[Locked]
     public bool $canManageTwoFactor;
 
-    #[Locked]
     public bool $twoFactorEnabled;
 
-    #[Locked]
     public bool $requiresConfirmation;
 
     #[Locked]
@@ -52,7 +49,6 @@ class Security extends Component
     #[Validate('required|string|size:6', onUpdate: false)]
     public string $code = '';
 
-    #[Locked]
     public bool $canManagePasskeys;
 
     /**
@@ -90,6 +86,11 @@ class Security extends Component
         if ($this->canManagePasskeys) {
             $this->loadPasskeys();
         }
+    }
+
+    public function render()
+    {
+        return view('livewire.settings.security');
     }
 
     /**

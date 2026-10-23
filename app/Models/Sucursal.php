@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Sucursal extends Model
 {
@@ -33,6 +34,11 @@ class Sucursal extends Model
     {
         return $this->belongsToMany(Profesional::class, 'profesional_sucursales')
             ->withPivot('es_principal');
+    }
+
+    public function evaluadorMbi(): HasOne
+    {
+        return $this->hasOne(SucursalEvaluadorMbi::class);
     }
 
     public function citas(): HasMany

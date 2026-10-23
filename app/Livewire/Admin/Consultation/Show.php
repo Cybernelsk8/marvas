@@ -32,6 +32,7 @@ class Show extends Component
         'glicemia' => '',
         'peso_kg' => '',
         'talla_cm' => '',
+        'datos_formulario' => [],
     ];
 
     public array $assessmentForms = [];
@@ -62,9 +63,10 @@ class Show extends Component
         ]);
 
         $anamnesis = $this->consultation->anamnesisGeneral;
+        $this->form['datos_formulario'] = $this->integralFormDefaults();
 
         if ($anamnesis) {
-            foreach (array_keys($this->form) as $field) {
+            foreach (array_diff(array_keys($this->form), ['datos_formulario']) as $field) {
                 $value = $anamnesis->{$field};
                 $this->form[$field] = is_array($value)
                     ? implode(PHP_EOL, $value)
@@ -75,15 +77,34 @@ class Show extends Component
                 'motivo_consulta' => (string) ($anamnesis->motivo_consulta ?? ''),
                 'observaciones_profesional' => (string) ($anamnesis->observaciones_profesional ?? ''),
             ];
+
+            foreach ($this->form['datos_formulario'] as $section => $fields) {
+                foreach ($fields as $field => $default) {
+                    $this->form['datos_formulario'][$section][$field] = (string) (
+                        $anamnesis->datos_formulario[$section][$field] ?? $default
+                    );
+                }
+            }
         }
 
         $this->assessmentForms = $this->assessmentFormDefaults();
+        $storedComplementaryData = $anamnesis?->datos_formulario ?? [];
         foreach ([
             'homeopatia' => $anamnesis?->homeopatica,
             'quiropraxia' => $anamnesis?->quiropraxia,
             'acupuntura' => $anamnesis?->acupuntura,
         ] as $formKey => $record) {
             foreach ($this->assessmentForms[$formKey] as $field => $default) {
+                if ($field === 'datos_complementarios') {
+                    foreach ($default as $complementaryField => $complementaryDefault) {
+                        $this->assessmentForms[$formKey][$field][$complementaryField] = (string) (
+                            $storedComplementaryData[$formKey][$complementaryField] ?? $complementaryDefault
+                        );
+                    }
+
+                    continue;
+                }
+
                 $value = $record?->{$field};
                 $this->assessmentForms[$formKey][$field] = is_array($value)
                     ? implode(PHP_EOL, $value)
@@ -122,15 +143,51 @@ class Show extends Component
         Flux::toast(text: 'Anamnesis general guardada correctamente.', variant: 'success');
     }
 
+    public function saveIntegralAnamnesis(ConsultationService $consultationService): void
+    {
+        $this->authorize('consultations.edit');
+
+        $homeopatia = $this->validatedAssessmentForm('homeopatia');
+        $quiropraxia = $this->validatedAssessmentForm('quiropraxia');
+        $additionalData = [
+            'homeopatia' => $homeopatia['datos_complementarios'],
+            'quiropraxia' => $quiropraxia['datos_complementarios'],
+        ];
+        unset($homeopatia['datos_complementarios'], $quiropraxia['datos_complementarios']);
+
+        $anamnesis = $consultationService->saveIntegralAnamnesis(
+            $this->consultation->id,
+            $this->validatedAnamnesis(),
+            [
+                'homeopatia' => $homeopatia,
+                'quiropraxia' => $quiropraxia,
+            ],
+            $additionalData,
+        );
+        $this->consultation->setRelation('anamnesisGeneral', $anamnesis->load([
+            'homeopatica',
+            'quiropraxia',
+            'acupuntura',
+        ]));
+        $this->activeAnamnesis = null;
+
+        Flux::toast(text: 'Anamnesis integral guardada correctamente.', variant: 'success');
+    }
+
     public function saveAssessment(string $formKey, ConsultationService $consultationService): void
     {
         $this->authorize('consultations.edit');
         abort_unless(in_array($formKey, ['homeopatia', 'quiropraxia', 'acupuntura'], true), 404);
 
+        $formData = $this->validatedAssessmentForm($formKey);
+        $complementaryData = $formData['datos_complementarios'];
+        unset($formData['datos_complementarios']);
+
         $anamnesis = $consultationService->saveAssessmentForm(
             $this->consultation->id,
             $formKey,
-            $this->validatedAssessmentForm($formKey),
+            $formData,
+            $complementaryData,
         );
         $this->consultation->setRelation('anamnesisGeneral', $anamnesis->load([
             'homeopatica',
@@ -193,7 +250,176 @@ class Show extends Component
                 && $this->consultation->estado === 'cerrada',
             'anamnesis' => $this->consultation->anamnesisGeneral,
             'anamnesisSections' => $this->anamnesisSections(),
+            'integralFormSections' => $this->integralFormSections(),
+            'assessmentComplementarySections' => $this->assessmentComplementarySections(),
         ]);
+    }
+
+    private function integralFormSections(): array
+    {
+        return [
+            'consulta_actual' => [
+                'label' => '02 Consulta actual',
+                'fields' => [
+                    'inicio' => 'Inicio / fecha o tiempo de evolución',
+                    'forma_inicio' => 'Forma de inicio',
+                    'frecuencia' => 'Frecuencia',
+                    'evolucion' => 'Evolución',
+                    'intensidad_zona_momento' => 'Intensidad (0–10), zona y momento',
+                    'hormigueo_adormecimiento' => 'Hormigueo o adormecimiento',
+                    'debilidad_extremidad_lado' => 'Debilidad: extremidad y lado',
+                    'irradiacion' => 'Irradiación y región',
+                    'localizacion_caracteristicas' => 'Localización, tipo, horario, duración y patrón',
+                    'agravantes_alivio_tratamientos' => 'Agravantes, alivio, tratamientos previos y respuesta',
+                ],
+            ],
+            'antecedentes_habitos' => [
+                'label' => '03 Antecedentes y hábitos',
+                'fields' => [
+                    'enfermedades_cronicas_previas' => 'Enfermedades crónicas y previas',
+                    'cirugias_hospitalizaciones' => 'Cirugías y hospitalizaciones: tipo, motivo y fecha',
+                    'traumatismos_fracturas' => 'Traumatismos y fracturas: región y fecha',
+                    'implantes_protesis' => 'Implantes metálicos o prótesis: tipo y localización',
+                    'embarazo' => 'Embarazo posible: semanas y fecha de última menstruación, si aplica',
+                    'antecedentes_familiares' => 'Antecedentes familiares: enfermedad, parentesco y tratamiento',
+                    'tabaco' => 'Tabaco: cantidad y frecuencia',
+                    'alcohol' => 'Alcohol: cantidad y frecuencia',
+                    'cafe' => 'Café: tazas por día',
+                    'otras_sustancias' => 'Otras sustancias: tipo y frecuencia',
+                    'dieta_apetito' => 'Dieta y apetito: patrón y cambios',
+                    'hidratacion' => 'Hidratación',
+                    'actividad_fisica' => 'Actividad física: tipo y veces por semana',
+                    'sueno' => 'Sueño: horas y calidad',
+                    'estres' => 'Estrés: nivel y factores asociados',
+                    'condiciones_laborales' => 'Condiciones laborales y ergonomía',
+                ],
+            ],
+            'revision_sistemas' => [
+                'label' => '04 Revisión por sistemas y examen general',
+                'fields' => [
+                    'piel_anexos' => 'Piel y anexos',
+                    'cabeza_cuello' => 'Cabeza y cuello',
+                    'ojos' => 'Ojos',
+                    'oidos_equilibrio' => 'Oídos y equilibrio',
+                    'nariz_senos' => 'Nariz y senos',
+                    'boca_garganta' => 'Boca y garganta',
+                    'mamas' => 'Mamas, si corresponde',
+                    'respiratorio' => 'Respiratorio',
+                    'cardiovascular' => 'Cardiovascular',
+                    'gastrointestinal' => 'Gastrointestinal',
+                    'oseo_muscular' => 'Óseo-muscular',
+                    'urinario' => 'Urinario',
+                    'reproductor_masculino' => 'Reproductor masculino, si corresponde',
+                    'reproductor_femenino' => 'Reproductor femenino, si corresponde',
+                    'neurologico' => 'Neurológico',
+                    'examenes_complementarios' => 'Exámenes complementarios aportados y resultados relevantes',
+                ],
+            ],
+            'resultado_evaluador' => [
+                'label' => '07 Resultado del evaluador: impresión clínica y plan',
+                'fields' => [
+                    'resumen_clinico' => 'Resumen de síntomas, hallazgos objetivos y valoración diferenciada',
+                    'diagnostico_diferenciales' => 'Diagnóstico documentado, hipótesis clínica y diagnósticos diferenciales',
+                    'objetivos_intervenciones_precauciones' => 'Objetivos, intervenciones previstas, precauciones, consentimiento y referencia',
+                    'plan_seguimiento' => 'Plan de seguimiento, reevaluación y evolución',
+                ],
+            ],
+        ];
+    }
+
+    private function assessmentComplementarySections(): array
+    {
+        return [
+            'homeopatia' => [
+                'label' => '05 Complemento homeopático',
+                'fields' => [
+                    'patrones_sueno_suenos' => 'Patrones de sueño y sueños',
+                    'sensibilidad_termica' => 'Sensibilidad térmica',
+                    'sed_apetito' => 'Sed y apetito',
+                    'preferencias_aversiones' => 'Preferencias y aversiones',
+                ],
+            ],
+            'quiropraxia' => [
+                'label' => '06 Evaluación quiropráctica y neuromusculoesquelética',
+                'fields' => [
+                    'cefalea_recurrente' => 'Cefalea recurrente: localización, frecuencia y asociación cervical',
+                    'lentes_contacto' => 'Uso de lentes de contacto: tiempo y motivo',
+                    'alteraciones_equilibrio' => 'Alteraciones del equilibrio: vértigo, inestabilidad y caídas',
+                    'ortodoncia_protesis_dental' => 'Ortodoncia o prótesis dental: tipo y fecha',
+                    'atm_bruxismo' => 'ATM o bruxismo: dolor, chasquido, bloqueo y apertura',
+                    'infecciones_garganta' => 'Infecciones de garganta recurrentes: frecuencia y antecedentes',
+                    'zumbido_oido' => 'Zumbido de oído: lateralidad e inicio',
+                    'paralisis_facial' => 'Parálisis facial previa: lado, fecha y secuelas',
+                    'dolor_ciatico' => 'Dolor ciático: lado, trayecto y parestesias',
+                    'adormecimiento_corporal' => 'Adormecimiento corporal: zona, distribución y progresión',
+                    'problemas_dermatologicos' => 'Problemas dermatológicos: localización',
+                    'cervicalgia' => 'Cervicalgia: irradiación, rigidez e intensidad',
+                    'dorsalgia' => 'Dorsalgia: localización, respiración y postura',
+                    'lumbalgia' => 'Lumbalgia: irradiación, postura y carga',
+                    'dolor_sacroiliaco_pelvico' => 'Dolor sacroilíaco o pélvico: lateralidad y marcha',
+                    'dolor_hombros_brazos_manos' => 'Dolor de hombros, brazos o manos: lado y movimiento',
+                    'dolor_cadera_rodilla_pies' => 'Dolor de cadera, rodilla o pies: lado y marcha',
+                    'dolor_nocturno_reposo' => 'Dolor nocturno o en reposo: despertares y progresión',
+                    'mapa_dolor' => 'Mapa del dolor: región, lateralidad, irradiación, inicio, intensidad EVA y características',
+                    'postura_cabeza' => 'Postura: posición de cabeza',
+                    'postura_hombros' => 'Postura: alineación de hombros',
+                    'curvaturas_vertebrales' => 'Curvaturas vertebrales: cifosis, lordosis y región',
+                    'alineacion_tronco' => 'Alineación del tronco',
+                    'alineacion_pelvica' => 'Alineación pélvica',
+                    'marcha_apoyo_plantar' => 'Marcha y apoyo plantar',
+                    'equilibrio' => 'Equilibrio: prueba realizada y estabilidad',
+                    'movilidad_cervical' => 'Movilidad cervical',
+                    'movilidad_dorsal' => 'Movilidad dorsal',
+                    'movilidad_lumbar' => 'Movilidad lumbar',
+                    'movilidad_extremidades' => 'Movilidad de extremidades: articulación, lado y movimiento',
+                    'palpacion_muscular' => 'Palpación muscular: zona, sensibilidad y espasmo',
+                    'fuerza_muscular' => 'Fuerza muscular segmentaria (0–5): lado, resultado y detalle',
+                    'sensibilidad_dermatomas' => 'Sensibilidad por dermatomas: lado, resultado y detalle',
+                    'reflejos_osteotendinosos' => 'Reflejos osteotendinosos: lado, resultado y detalle',
+                    'prueba_lasegue' => 'Elevación de pierna recta (Lasègue): lado, resultado y detalle',
+                    'prueba_slump' => 'Prueba de Slump: lado, resultado y detalle',
+                    'prueba_spurling' => 'Spurling o provocación cervical: lado, resultado y detalle',
+                    'pruebas_sacroiliacas' => 'Pruebas sacroilíacas: lado, resultado y detalle',
+                    'pruebas_hombro_cadera' => 'Pruebas de hombro o cadera: lado, resultado y detalle',
+                    'otras_pruebas' => 'Otras pruebas: resultados, interpretación y limitaciones de exploración',
+                    'alerta_deficit_neurologico' => 'Alarma: déficit neurológico nuevo o progresivo',
+                    'alerta_esfinteres' => 'Alarma: alteración de esfínteres o anestesia en silla de montar',
+                    'alerta_trauma' => 'Alarma: trauma importante o sospecha de fractura',
+                    'alerta_fiebre_infeccion' => 'Alarma: fiebre o sospecha de infección espinal',
+                    'alerta_cancer' => 'Alarma: cáncer conocido con dolor nuevo inexplicado',
+                    'alerta_osteoporosis' => 'Alarma: osteoporosis severa o fragilidad ósea',
+                    'alerta_anticoagulacion' => 'Alarma: anticoagulación o sangrado relevante',
+                    'alerta_vascular_cervical' => 'Alarma: síntomas vasculares cervicales',
+                    'alerta_cirugia_inestabilidad' => 'Alarma: cirugía reciente o inestabilidad conocida',
+                    'decision_seguridad' => 'Decisión: manipulación indicada, diferida o contraindicada; motivo y referencia',
+                ],
+            ],
+            'acupuntura' => [
+                'label' => 'Complemento de acupuntura individual',
+                'fields' => [
+                    'movimiento_lengua' => 'Movimiento de la lengua: normal, rígida, temblorosa, débil o desviada',
+                    'protocolo' => 'Protocolo de acupuntura',
+                ],
+            ],
+        ];
+    }
+
+    private function integralFormDefaults(): array
+    {
+        $defaults = [];
+
+        foreach ($this->integralFormSections() as $section => $definition) {
+            $defaults[$section] = array_fill_keys(array_keys($definition['fields']), '');
+        }
+
+        return $defaults;
+    }
+
+    private function assessmentComplementaryDefaults(string $formKey): array
+    {
+        $fields = $this->assessmentComplementarySections()[$formKey]['fields'] ?? [];
+
+        return array_fill_keys(array_keys($fields), '');
     }
 
     private function anamnesisSections(): array
@@ -202,10 +428,12 @@ class Show extends Component
 
         return [
             'general' => [
-                'label' => 'Anamnesis general',
-                'description' => 'Motivo, antecedentes, historia clínica y signos vitales.',
+                'label' => 'Anamnesis integral',
+                'description' => 'Anamnesis general, Evaluación homeopática y Evaluación quiropráctica/neuromusculoesquelética.',
                 'icon' => 'clipboard-document-list',
-                'saved' => filled($anamnesis?->motivo_consulta),
+                'saved' => filled($anamnesis?->motivo_consulta)
+                    || $anamnesis?->homeopatica !== null
+                    || $anamnesis?->quiropraxia !== null,
             ],
             'homeopatia' => [
                 'label' => 'Evaluación homeopática',
@@ -250,6 +478,11 @@ class Show extends Component
             'form.peso_kg' => ['nullable', 'numeric', 'gt:0', 'max:999.99'],
             'form.talla_cm' => ['nullable', 'numeric', 'gt:0', 'max:999.99'],
         ];
+        foreach ($this->integralFormSections() as $section => $definition) {
+            foreach (array_keys($definition['fields']) as $field) {
+                $rules["form.datos_formulario.{$section}.{$field}"] = ['nullable', 'string', 'max:10000'];
+            }
+        }
 
         $validated = $this->validate($rules)['form'];
 
@@ -263,6 +496,12 @@ class Show extends Component
             }
         }
 
+        foreach ($validated['datos_formulario'] as $section => $fields) {
+            foreach ($fields as $field => $value) {
+                $validated['datos_formulario'][$section][$field] = $value === '' ? null : $value;
+            }
+        }
+
         return $validated;
     }
 
@@ -273,6 +512,18 @@ class Show extends Component
 
         $rules = [];
         foreach ($formDefaults as $field => $default) {
+            if ($field === 'datos_complementarios') {
+                foreach ($default as $complementaryField => $complementaryValue) {
+                    $rules["assessmentForms.{$formKey}.datos_complementarios.{$complementaryField}"] = [
+                        'nullable',
+                        'string',
+                        'max:10000',
+                    ];
+                }
+
+                continue;
+            }
+
             $rules["assessmentForms.{$formKey}.{$field}"] = match (true) {
                 is_bool($default) => ['boolean'],
                 $field === 'semanas_gestacion' => ['nullable', 'integer', 'min:1', 'max:42'],
@@ -290,6 +541,17 @@ class Show extends Component
 
         $validated = $this->validate($rules)['assessmentForms'][$formKey] ?? [];
         foreach ($formDefaults as $field => $default) {
+            if ($field === 'datos_complementarios') {
+                $complementaryData = $validated[$field] ?? [];
+                foreach ($default as $complementaryField => $complementaryDefault) {
+                    $value = $complementaryData[$complementaryField] ?? $complementaryDefault;
+                    $complementaryData[$complementaryField] = $value === '' ? null : $value;
+                }
+                $validated[$field] = $complementaryData;
+
+                continue;
+            }
+
             $value = $validated[$field] ?? $default;
             if (in_array($field, $this->assessmentArrayFields($formKey), true)) {
                 $validated[$field] = $this->linesToArray($value);
@@ -306,15 +568,18 @@ class Show extends Component
     private function assessmentFormDefaults(): array
     {
         return [
-            'homeopatia' => array_fill_keys([
-                'aspecto_paciente',
-                'sintomas_locales_generales',
-                'sintomas_mentales',
-                'sintomas_biopatograficos',
-                'diagnostico_posible',
-                'tratamiento_indicado',
-                'observaciones',
-            ], ''),
+            'homeopatia' => [
+                ...array_fill_keys([
+                    'aspecto_paciente',
+                    'sintomas_locales_generales',
+                    'sintomas_mentales',
+                    'sintomas_biopatograficos',
+                    'diagnostico_posible',
+                    'tratamiento_indicado',
+                    'observaciones',
+                ], ''),
+                'datos_complementarios' => $this->assessmentComplementaryDefaults('homeopatia'),
+            ],
             'quiropraxia' => [
                 ...array_fill_keys([
                     'cirugias',
@@ -340,6 +605,7 @@ class Show extends Component
                 'desplazamiento' => '',
                 'tiempo_trabajo' => '',
                 'recreacion' => '',
+                'datos_complementarios' => $this->assessmentComplementaryDefaults('quiropraxia'),
             ],
             'acupuntura' => [
                 ...array_fill_keys([
@@ -361,6 +627,7 @@ class Show extends Component
                     'observaciones',
                 ], ''),
                 ...array_fill_keys($this->assessmentArrayFields('acupuntura'), ''),
+                'datos_complementarios' => $this->assessmentComplementaryDefaults('acupuntura'),
             ],
         ];
     }

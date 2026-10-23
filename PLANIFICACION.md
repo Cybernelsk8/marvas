@@ -40,15 +40,17 @@ La base de datos ya contempla en gran parte esta cadena:
 - Tratamiento y seguimiento: `planes_tratamiento`, `paquetes_clinicos`, `paquetes_paciente`, `evolucion_clinica`.
 - Soporte y administración: consentimientos, archivos, pagos, productos/lotes/stock, órdenes de compra, movimientos, notificaciones y auditoría.
 
-### Estado inicial conocido
+### Estado actual (2026-10-23)
 
 - **Landing y contenidos de servicios — existente:** portada y páginas públicas de terapias en `resources/views/landing-page`.
-- **Formulario público — existente/parcial:** `App\Livewire\LandingPage\AgendarCita` y `resources/views/livewire/landing-page/agendar-cita.blade.php` recopilan tipo, nombre, teléfono, correo, motivo y fecha/hora; crean paciente, expediente y cita. La disponibilidad usa `HasCitas`.
-- **Solicitudes de recepción — parcial:** `App\Livewire\Solicitud` y `resources/views/livewire/solicitud.blade.php` listan citas como tarjetas, tienen filtros y modal de datos del paciente. En el estado revisado, `store()` está vacío y confirmar/reprogramar no tienen acciones conectadas.
+- **Formulario público — implementado:** `App\Livewire\LandingPage\AgendarCita` siempre registra la cita como `primera_vez`; no ofrece selector de tipo. La disponibilidad compartida solo presenta horas futuras, incluidas las horas de la franja actual cuando su inicio aún no pasó.
+- **Solicitudes y agenda — implementadas:** recepción puede reprogramar eligiendo una fecha y una hora libre. La disponibilidad permite la cita que se está reprogramando sin contarla como conflicto; seguimiento continúa siendo una acción agendada por el personal.
+- **Evaluación MBI inicial — implementada:** Disponibilidad administra un profesional Evaluador MBI por sede. Las citas `primera_vez` solo se confirman o completan con ese profesional y la especialidad `evaluacion-mbi`, validado también en el servicio; los seguimientos mantienen la asignación normal.
+- **Anamnesis — implementada parcialmente:** la consulta ofrece una anamnesis integrada general, homeopática y quiropráctica/neuromusculoesquelética con los incisos 01–06 del recurso `recursos IA/anamnesis.xlsx`; la evaluación de acupuntura del recurso `NUEVO.xlsx` permanece individual. El resultado del evaluador (inciso 07) se presenta en la ficha del paciente. El cierre de consulta conserva su comportamiento acordado.
 - **Administración de usuarios y acceso — existente/parcial:** hay pantallas Livewire para usuarios, roles, permisos, áreas y páginas, además de ajustes de cuenta. Revisar su integración con permisos por pantalla al agregar nuevas áreas.
 - **Dashboard — esqueleto:** `resources/views/dashboard.blade.php` contiene placeholders y elementos de interfaz de muestra, no un panel clínico operativo.
-- **Dominio clínico y administrativo — mayormente definido en esquema/modelos:** hay migraciones y modelos; no se encontraron pantallas Livewire de expediente, consultas, tratamientos, pagos o inventario en la estructura revisada.
-- **Pruebas — cobertura parcial:** existen pruebas generales de autenticación/perfil y pruebas unitarias de disponibilidad en `tests/Unit/Livewire/HasCitasTest.php`. Añadir pruebas de comportamiento de cada flujo nuevo.
+- **Migraciones — consolidadas y verificadas:** los cambios incrementales de esquema se incorporaron en sus migraciones `create_*`; `migrate:fresh --seed` terminó correctamente en la base MariaDB local el 2026-10-22. Este comando es destructivo y solo debe repetirse en una base local autorizada.
+- **Pruebas — suite completa validada:** 125 pruebas y 541 assertions pasan con PHP 8.5.11, incluidas las pruebas de asignación MBI por sede; la nueva migración y el seeder de catálogos se aplicaron en la base local. La validación visual sigue pendiente.
 
 ### Componentes, traits, servicios y helpers reutilizables
 
@@ -98,7 +100,7 @@ El filtrado se compone de varias piezas; consultar todas antes de alterar una:
 | `Searchable` | `app/Traits/Searchable.php` | Scope Eloquent `filterAdvance`; búsquedas en columnas, relaciones y accessors, filtros tipados y ordenamiento. Requiere headers que describan campos permitidos y relaciones existentes. |
 | `Interact` | `app/Traits/Interact.php` | Navegación entre pasos y toggles de navegación en componentes Livewire. El componente consumidor debe definir `steps`; validar las reglas por paso sobrescribiendo `validateCurrentStep()`. Actualmente ese método base no implementa validación por sí mismo. Usarlo solo para flujos realmente secuenciales. |
 | `Charts` | `app/Traits/Charts.php` | Builders para tipos de gráficos que devuelven el servicio `Chart`; usar junto con `<x-chart>` cuando se necesiten indicadores. Elegir una forma de chart existente antes de construir opciones manualmente. |
-| `HasCitas` | `app/Livewire/Traits/HasCitas.php` | Horarios configurados, consulta de citas, eventos de calendario, fechas completas y franjas disponibles. Lo usa `AgendarCita`; antes de reutilizarlo en agenda interna, validar su alcance actual: disponibilidad global, duración fija de 60 minutos y exclusión de estados cancelado/no asistió. La revalidación/transacción de guardado es responsabilidad del flujo que crea/modifica la cita. |
+| `HasCitas` | `app/Livewire/Traits/HasCitas.php` | Horarios configurados, consulta de citas, eventos de calendario, fechas completas y franjas disponibles. La disponibilidad es global y usa la duración configurada; solo ofrece inicios futuros y permite excluir la cita actual durante una reprogramación. La revalidación/transacción de guardado sigue siendo responsabilidad del flujo que crea/modifica la cita. |
 
 #### Servicios de aplicación existentes
 
@@ -134,7 +136,7 @@ El archivo global también revela que los formatos y locale de `config/datatable
 
 ### Riesgos e inconsistencias a resolver al implementar
 
-1. La cita pública actualmente puede quedar en estado `agendada` por el valor predeterminado de la migración, mientras que la pantalla de solicitudes filtra inicialmente por `solicitada`. Acordar y aplicar una sola transición coherente: solicitud pública `solicitada` → recepción `confirmada` (o cancelada/reprogramada).
+1. **Resuelto:** la cita pública se registra como `solicitada`; recepción confirma, reprograma o cancela mediante las acciones administrativas.
 2. El formulario público crea un paciente y expediente en cada envío. Antes de confirmar, recepción debe poder detectar posibles duplicados; no fusionar expedientes automáticamente solo por coincidencia de nombre.
 3. `HasCitas` calcula disponibilidad global y no separa por profesional ni sucursal. Para conservar el flujo actual, el MVP debe indicar con claridad si la agenda es compartida; la reserva por profesional/sede requiere modelar y filtrar esos recursos.
 4. Revisar la consistencia de los valores enum, filtros, rutas y estados antes de añadir pantallas. Por ejemplo, el filtro de tipo de cita debe usar `primera_vez`, no una etiqueta textual como valor de base de datos.
@@ -174,7 +176,7 @@ El archivo global también revela que los formatos y locale de `config/datatable
 
 - Lista paginada con búsqueda y filtros por estado, tipo, fecha solicitada y rango de fechas.
 - Tarjeta/fila con nombre y contacto, fecha/hora pedida, tipo de cita, motivo, fecha de entrada, estado y datos faltantes.
-- Acciones condicionadas por estado: abrir/editar datos, marcar contacto realizado, proponer/cambiar fecha, confirmar y cancelar.
+- Acciones condicionadas por estado: abrir/editar datos, marcar contacto realizado, proponer/cambiar fecha con selector de fecha y horas disponibles, confirmar y cancelar.
 - Diferenciar visualmente solicitudes nuevas, pendientes de contacto y resueltas.
 - Ofrecer navegación a la ficha del paciente/expediente cuando exista.
 
@@ -202,7 +204,7 @@ El archivo global también revela que los formatos y locale de `config/datatable
 4. Diseñar detección de posibles duplicados y la decisión manual de vincular o conservar un paciente nuevo.
 5. Añadir el registro de contacto y su historial con persistencia explícita, si se aprueba como parte del alcance.
 6. Implementar confirmación y cancelación con transacción, autorización, validación de estado y auditoría.
-7. Implementar reprogramación revisando solapamientos dentro de transacción y conservando el estado anterior/evento.
+7. **Implementado:** reprogramar mediante selector de fecha y lista de horas libres; excluir la propia cita del cálculo de traslapes y volver a validar la fecha y la disponibilidad al guardar.
 8. Revisar filtros, etiquetas, paginación, carga móvil y estados vacíos.
 9. Completar pruebas de regresión de la reserva pública y de esta bandeja.
 
@@ -279,15 +281,15 @@ El archivo global también revela que los formatos y locale de `config/datatable
 2. **Implementado (2026-10-14):** transiciones `abierta`/`en_proceso` → `cerrada` y `cerrada` → `en_proceso` dentro de transacciones con auditoría. Cancelación queda fuera de este flujo.
 3. **Implementado parcialmente (2026-10-14):** crear una consulta desde una cita confirmada en la ficha del paciente. Requiere `consultations.create` y sede, profesional y especialidad asignados. Recepción asigna estos tres valores al confirmar desde la agenda o solicitudes; modalidad walk-in pendiente.
 4. **Implementado parcialmente (2026-10-14):** crear dentro de transacción y bloquear el expediente antes de `Consulta::siguienteNumero()`, serializando la numeración por expediente/especialidad. Se previene duplicar consultas por cita y se audita la apertura.
-5. **Implementado (2026-10-14):** la pantalla presenta tarjetas independientes para anamnesis general, Homeopatía, Quiropraxia y Acupuntura. Cada tarjeta indica si su formulario está guardado o pendiente; al abrirla, muestra solo ese formulario y permite guardarlo sin modificar los demás. Guardar una evaluación especializada puede crear el registro padre con motivo nullable, sin exigir primero la anamnesis general. Se conserva la autorización `consultations.edit`, auditoría sin valores clínicos, casts JSON y `imc` calculado por base de datos.
-6. **Implementado (2026-10-14):** cierre explícito desde modal Flux con resumen del estado de los cuatro formularios y captura obligatoria de motivo y observaciones finales. Cerrar no persiste borradores de formularios sin guardar; conserva los datos clínicos que ya se hubieran guardado y registra la transición. Los permisos `consultations.close` y `consultations.reopen` son independientes.
-7. **Implementado parcialmente (2026-10-14):** formularios de evaluación Homeopatía, Quiropraxia y Acupuntura disponibles para cualquier paciente, independientemente de la especialidad de la consulta, y persistidos en sus tablas relacionadas a la anamnesis general. Pendiente definir catálogos de opciones para los campos JSON de Acupuntura si se requieren.
-8. Implementar evaluación integral MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
-9. Validar adjuntos, límites de tamaño/MIME, almacenamiento privado y permisos de descarga.
-10. **Implementado parcialmente (2026-10-14):** guardar/actualizar anamnesis general y cada evaluación con consulta bloqueada dentro de transacción; cerrar/reabrir con validaciones acordadas y transiciones auditadas.
-11. Añadir pruebas para guardado independiente, relaciones, cálculos, numeración concurrente y autorización.
+5. **Implementación previa (2026-10-14), sustituida el 2026-10-22:** inicialmente había tarjetas separadas para cada formulario; la experiencia actual integra general, Homeopatía y Quiropraxia en una anamnesis común y mantiene Acupuntura individual. Se conservan la autorización `consultations.edit`, la auditoría sin valores clínicos, los casts JSON y el IMC calculado por base de datos.
+6. **Comportamiento preservado:** el cierre continúa separado del guardado de anamnesis; conserva sus requisitos, permisos, auditoría y tratamiento de borradores.
+7. **Implementado (2026-10-22):** anamnesis integral en un único formulario para los incisos 01–06 del recurso `recursos IA/anamnesis.xlsx` (general, homeopática y quiropráctica/neuromusculoesquelética), con captura de contexto, antecedentes, revisión de sistemas y evaluación. Acupuntura permanece en un formulario individual con campos complementarios del recurso `NUEVO.xlsx`. Los datos complementarios se guardan con auditoría.
+8. **Implementado (2026-10-22):** el resultado del evaluador, inciso 07, queda visible en la ficha del paciente a partir de los datos de cada consulta.
+9. Implementar evaluación integral MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
+10. Validar adjuntos, límites de tamaño/MIME, almacenamiento privado y permisos de descarga.
+11. Añadir pruebas para relaciones, cálculos, numeración concurrente y autorización.
 
-**Aceptación:** el profesional autorizado puede documentar una consulta sin alterar citas o consultas previas; la numeración se mantiene por expediente y especialidad; campos generados y datos clínicos se guardan correctamente. La captura independiente de anamnesis general y de cada evaluación se representa con tarjetas de estado y formularios separados. El cierre exige motivo y observaciones finales, resume el estado de los formularios y no guarda borradores ajenos al cierre. Las pruebas deben comprobar el aislamiento de guardados y del cierre. Falta validar visualmente este flujo reorganizado.
+**Aceptación:** el profesional autorizado puede documentar una consulta sin alterar citas o consultas previas; la numeración se mantiene por expediente y especialidad; campos generados y datos clínicos se guardan correctamente. Los incisos 01–06 se capturan en la anamnesis integral, acupuntura mantiene su formulario individual y el resultado 07 aparece en la ficha del paciente. El cierre conserva su comportamiento y las pruebas comprueban el guardado integral y la visualización del evaluador.
 
 ### Módulo 5 — Clasificación, planes terapéuticos y evolución
 
@@ -433,10 +435,11 @@ El archivo global también revela que los formatos y locale de `config/datatable
 1. Revisar textos, nombres consistentes de terapias (incluida la variante actual “iridiología/iridología”), accesibilidad y enlaces.
 2. Alinear validaciones visuales y de servidor, estados de carga/éxito/error y privacidad de datos.
 3. Hacer que la reserva cree una solicitud con estado `solicitada` y conserve el mensaje original.
-4. Mostrar únicamente disponibilidad real según las reglas compartidas con la agenda.
-5. Añadir pruebas de envío válido, validación, horario vencido/ocupado y falla transaccional.
+4. **Implementado (2026-10-22):** forzar el tipo `primera_vez` en la reserva pública, sin selector. El seguimiento se agenda únicamente desde los flujos del personal.
+5. Mostrar únicamente disponibilidad real según las reglas compartidas con la agenda.
+6. Añadir pruebas de envío válido, validación, horario vencido/ocupado y falla transaccional.
 
-**Aceptación:** el visitante entiende que envió una solicitud (no que ya tiene cita confirmada), recibe respuesta clara y la solicitud llega a recepción.
+**Aceptación:** el visitante entiende que envió una solicitud (no que ya tiene cita confirmada), siempre solicita una cita `primera_vez`, recibe respuesta clara y la solicitud llega a recepción.
 
 ## 5. Orden sugerido de entrega
 

@@ -46,6 +46,12 @@ class EspecialidadesSeeder extends Seeder
                 'descripcion' => 'Evaluación de iridología.',
                 'color_hex' => '#0891B2',
             ],
+            [
+                'nombre' => 'Evaluación MBI',
+                'slug' => 'evaluacion-mbi',
+                'descripcion' => 'Evaluación MBI inicial realizada por el evaluador de la sede.',
+                'color_hex' => '#0F766E',
+            ],
         ];
 
         foreach ($especialidades as $especialidad) {

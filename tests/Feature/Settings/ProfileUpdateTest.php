@@ -3,7 +3,7 @@
 namespace Tests\Feature\Settings;
 
 use App\Livewire\Settings\Profile;
-use App\Models\User;
+use App\Models\Admin\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -69,7 +69,7 @@ class ProfileUpdateTest extends TestCase
             ->assertHasNoErrors()
             ->assertRedirect('/');
 
-        $this->assertNull($user->fresh());
+        $this->assertSoftDeleted($user);
         $this->assertFalse(auth()->check());
     }
 

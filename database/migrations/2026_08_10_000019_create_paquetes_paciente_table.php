@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Schema;
 // Nota: plan_id referencia planes_tratamiento, tabla que se crea más adelante
 // (depende de clasificacion_paciente -> evaluacion_integral_mbi -> consultas ->
 // citas -> paquetes_paciente). Para evitar la referencia circular, la columna
-// se crea aquí sin FK y la constraint se agrega en una migración posterior
-// (2026_08_10_000031_add_foreign_key_plan_id_to_paquetes_paciente_table.php).
+// se crea aquí sin FK; la constraint se agrega cuando se crea
+// planes_tratamiento, después de que ambas tablas existen.
 return new class extends Migration
 {
     public function up(): void

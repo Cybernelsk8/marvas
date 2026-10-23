@@ -7,6 +7,7 @@ use App\Models\Cita;
 use App\Models\Especialidad;
 use App\Models\Profesional;
 use App\Models\Sucursal;
+use App\Models\SucursalEvaluadorMbi;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -33,7 +34,12 @@ class AppointmentManagementService
                 return 'no_pendiente';
             }
 
-            $assignmentResult = $this->validateAssignment($sucursalId, $profesionalId, $especialidadId);
+            $assignmentResult = $this->validateAssignment(
+                $sucursalId,
+                $profesionalId,
+                $especialidadId,
+                $cita->tipo_cita === 'primera_vez',
+            );
 
             if ($assignmentResult !== 'asignacion_valida') {
                 return $assignmentResult;
@@ -81,7 +87,12 @@ class AppointmentManagementService
                 return 'no_asignable';
             }
 
-            $assignmentResult = $this->validateAssignment($sucursalId, $profesionalId, $especialidadId);
+            $assignmentResult = $this->validateAssignment(
+                $sucursalId,
+                $profesionalId,
+                $especialidadId,
+                $cita->tipo_cita === 'primera_vez',
+            );
 
             if ($assignmentResult !== 'asignacion_valida') {
                 return $assignmentResult;
@@ -120,10 +131,33 @@ class AppointmentManagementService
         });
     }
 
-    private function validateAssignment(int $sucursalId, int $profesionalId, int $especialidadId): string
-    {
+    private function validateAssignment(
+        int $sucursalId,
+        int $profesionalId,
+        int $especialidadId,
+        bool $requiresMbiEvaluator,
+    ): string {
         if (! Especialidad::query()->whereKey($especialidadId)->where('activa', true)->exists()) {
             return 'especialidad_no_disponible';
+        }
+
+        if ($requiresMbiEvaluator) {
+            $mbiSpecialty = Especialidad::query()
+                ->where('slug', 'evaluacion-mbi')
+                ->where('activa', true)
+                ->first();
+            $isAssignedEvaluator = SucursalEvaluadorMbi::query()
+                ->where('sucursal_id', $sucursalId)
+                ->where('profesional_id', $profesionalId)
+                ->exists();
+
+            if (! $isAssignedEvaluator) {
+                return 'evaluador_no_disponible';
+            }
+
+            if (! $mbiSpecialty || $especialidadId !== $mbiSpecialty->id) {
+                return 'especialidad_no_disponible';
+            }
         }
 
         $professionalAvailableAtBranch = Profesional::query()

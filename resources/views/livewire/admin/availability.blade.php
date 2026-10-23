@@ -197,10 +197,52 @@
             @endforelse
         </flux:card>
 
+        <flux:card class="space-y-5">
+            <div>
+                <flux:heading size="lg">Evaluador MBI por sede</flux:heading>
+                <flux:text class="mt-1">
+                    Asigna un profesional activo de cada sede con especialidad Evaluación MBI. Se utilizará para confirmar citas de primera vez.
+                </flux:text>
+            </div>
+
+            @forelse ($sucursalesEvaluadoresMbi as $item)
+                @php($branchId = (string) $item['sucursal']->id)
+                <div wire:key="mbi-evaluator-{{ $branchId }}" class="grid gap-3 sm:grid-cols-2 sm:items-end">
+                    <flux:text class="font-medium">{{ $item['sucursal']->nombre }}</flux:text>
+                    <flux:select
+                        label="Profesional evaluador"
+                        wire:model="evaluadoresMbi.{{ $branchId }}"
+                        placeholder="Sin evaluador asignado"
+                        :disabled="!auth()->user()->can('schedule.edit')"
+                    >
+                        <flux:select.option value="">Sin evaluador asignado</flux:select.option>
+                        @foreach ($item['profesionales'] as $profesional)
+                            <flux:select.option value="{{ $profesional->id }}">
+                                {{ $profesional->nombre_completo }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    @if ($item['profesionales']->isEmpty())
+                        <flux:text class="text-amber-700 dark:text-amber-300 sm:col-start-2">
+                            Asocia un profesional activo a esta sede y a la especialidad Evaluación MBI para poder asignarlo.
+                        </flux:text>
+                    @endif
+                    @error("evaluadoresMbi.$branchId")
+                        <flux:error class="sm:col-start-2">{{ $message }}</flux:error>
+                    @enderror
+                </div>
+            @empty
+                <flux:text>No hay sedes activas para configurar.</flux:text>
+            @endforelse
+            @error('evaluadoresMbi')
+                <flux:error>{{ $message }}</flux:error>
+            @enderror
+        </flux:card>
+
         @can('schedule.edit')
             <div class="flex justify-end">
                 <flux:button type="submit" variant="primary" icon="check" wire:loading.attr="disabled">
-                    Guardar disponibilidad
+                    Guardar configuración
                 </flux:button>
             </div>
         @endcan

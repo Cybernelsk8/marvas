@@ -2,30 +2,8 @@
     <flux:card>
         <form
             wire:submit.prevent="store"
-            class="grid xl:grid-cols-3 gap-4 text-cyan-950"
+            class="grid xl:grid-cols-2 gap-4 text-cyan-950"
         >
-            <div>
-                <flux:radio.group
-                    label="Elige el tipo de cita *"
-                    variant="cards"
-                    class="flex-col"
-                    wire:model="tipo"
-                    required
-                >
-                    <flux:radio
-                        value="primera_vez"
-                        label="Primer consulta"
-                        description="Primera cita para diagnostico y evaluación"
-                        class="cursor-pointer"
-                    />
-                    <flux:radio
-                        value="seguimiento"
-                        label="Seguimiento"
-                        description="Cita para seguimiento de tratamiento"
-                        class="cursor-pointer"
-                    />
-                </flux:radio.group>
-            </div>
             <div class="space-y-4">
                 <x-calendar
                     wire:key="cita-fecha"

@@ -54,7 +54,7 @@ class Show extends Component
             ? [
                 'consultations' => Consulta::query()
                     ->where('expediente_id', $expedientId)
-                    ->with(['especialidad', 'profesional'])
+                    ->with(['especialidad', 'profesional', 'anamnesisGeneral'])
                     ->orderByDesc('fecha_hora')
                     ->limit(20)
                     ->get(),

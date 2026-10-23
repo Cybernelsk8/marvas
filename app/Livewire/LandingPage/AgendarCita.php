@@ -15,8 +15,6 @@ class AgendarCita extends Component
 {
     use HasCitas;
 
-    public ?string $tipo = null;
-
     public ?string $nombres = null;
 
     public ?string $apellidos = null;
@@ -30,7 +28,6 @@ class AgendarCita extends Component
     public function rules(): array
     {
         return [
-            'tipo' => 'required|in:primera_vez,seguimiento',
             'nombres' => 'required|string|max:100|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$/u',
             'apellidos' => 'required|string|max:150|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$/u',
             'telefono' => 'required|regex:/^\d{4}-\d{4}$/',
@@ -96,7 +93,6 @@ class AgendarCita extends Component
             if (Cita::existeTraslapeGlobal($inicio, $fin)) {
                 return 'horario_ocupado';
             }
-
             $paciente = Paciente::create([
                 'nombres' => ucwords(mb_strtolower($datos['nombres'])),
                 'apellidos' => ucwords(mb_strtolower($datos['apellidos'])),
@@ -106,7 +102,7 @@ class AgendarCita extends Component
 
             $expediente = $paciente->expediente()->create();
             $expediente->citas()->create([
-                'tipo_cita' => $datos['tipo'],
+                'tipo_cita' => 'primera_vez',
                 'estado' => 'solicitada',
                 'fecha_hora_inicio' => $inicio,
                 'fecha_hora_fin' => $fin,
@@ -141,7 +137,6 @@ class AgendarCita extends Component
     private function resetData(): void
     {
         $this->reset([
-            'tipo',
             'nombres',
             'apellidos',
             'email',

@@ -61,6 +61,7 @@
             </div>
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($anamnesisSections as $key => $section)
+                    @if (in_array($key, ['general', 'acupuntura'], true))
                     <flux:card wire:key="anamnesis-section-{{ $key }}" class="flex flex-col gap-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -81,15 +82,31 @@
                             </flux:button>
                         </div>
                     </flux:card>
+                    @endif
                 @endforeach
             </div>
         </div>
     @elseif ($activeAnamnesis === 'general')
-        <form wire:submit="saveGeneralAnamnesis" class="space-y-6">
+        <form wire:submit="saveIntegralAnamnesis" class="space-y-6">
             <div class="flex items-center justify-between gap-3">
-                <flux:heading size="lg">Anamnesis general</flux:heading>
+                <flux:heading size="lg">Anamnesis integral</flux:heading>
                 <flux:button type="button" variant="ghost" wire:click="backToAnamneses">Volver a formularios</flux:button>
             </div>
+            <flux:card class="space-y-3">
+                <flux:heading size="lg">01 Identificación</flux:heading>
+                <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                    <div><dt class="text-zinc-500">Expediente</dt><dd>{{ $consultation->expediente->id }}</dd></div>
+                    <div><dt class="text-zinc-500">Paciente</dt><dd>{{ $consultation->expediente->paciente->nombre_completo }}</dd></div>
+                    <div><dt class="text-zinc-500">Fecha de consulta</dt><dd>{{ $consultation->fecha_hora->format('d/m/Y H:i') }}</dd></div>
+                    <div><dt class="text-zinc-500">Nacimiento / edad</dt><dd>{{ $consultation->expediente->paciente->fecha_nacimiento?->format('d/m/Y') ?: 'No registrada' }}{{ $consultation->expediente->paciente->fecha_nacimiento ? ' / '.$consultation->expediente->paciente->fecha_nacimiento->age.' años' : '' }}</dd></div>
+                    <div><dt class="text-zinc-500">Sexo / estado civil</dt><dd>{{ $consultation->expediente->paciente->sexo ?: 'No registrado' }} / {{ $consultation->expediente->paciente->estado_civil ?: 'No registrado' }}</dd></div>
+                    <div><dt class="text-zinc-500">DPI</dt><dd>{{ $consultation->expediente->paciente->numero_dpi ?: 'No registrado' }}</dd></div>
+                    <div><dt class="text-zinc-500">Dirección</dt><dd>{{ $consultation->expediente->paciente->direccion ?: 'No registrada' }}</dd></div>
+                    <div><dt class="text-zinc-500">Teléfono / emergencia</dt><dd>{{ $consultation->expediente->paciente->telefono ?: 'No registrado' }} / {{ $consultation->expediente->paciente->telefono_emergencia ?: 'No registrado' }}</dd></div>
+                    <div><dt class="text-zinc-500">Ocupación / religión</dt><dd>{{ $consultation->expediente->paciente->ocupacion ?: 'No registrada' }} / {{ $consultation->expediente->paciente->religion ?: 'No registrada' }}</dd></div>
+                    <div><dt class="text-zinc-500">Terapeuta responsable</dt><dd>{{ $consultation->profesional->nombre_completo }}</dd></div>
+                </dl>
+            </flux:card>
             <flux:card class="space-y-5">
                 <flux:textarea label="Motivo de consulta *" wire:model="form.motivo_consulta" rows="3" required />
                 @error('form.motivo_consulta') <flux:error>{{ $message }}</flux:error> @enderror
@@ -123,13 +140,30 @@
                     </div>
                 </div>
             </flux:card>
+            @include('livewire.admin.consultation.assessments.homeopathy')
+            @include('livewire.admin.consultation.assessments.chiropractic')
+            @foreach ($integralFormSections as $section => $definition)
+                <flux:card wire:key="integral-section-{{ $section }}" class="space-y-5">
+                    <flux:heading size="lg">{{ $definition['label'] }}</flux:heading>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        @foreach ($definition['fields'] as $field => $label)
+                            <flux:textarea
+                                label="{{ $label }}"
+                                wire:model="form.datos_formulario.{{ $section }}.{{ $field }}"
+                                rows="3"
+                                placeholder="Anota hallazgos o escribe «No evaluado» cuando corresponda."
+                            />
+                        @endforeach
+                    </div>
+                </flux:card>
+            @endforeach
             @error('anamnesis')
                 <flux:callout variant="danger" icon="exclamation-triangle">
                     <flux:callout.text>{{ $message }}</flux:callout.text>
                 </flux:callout>
             @enderror
             <div class="flex justify-end">
-                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar anamnesis general</flux:button>
+                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar anamnesis integral</flux:button>
             </div>
         </form>
     @else
