@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Livewire\Traits\HasCitas;
 use App\Models\Cita;
 use App\Models\Especialidad;
+use App\Models\Paciente;
 use App\Models\Profesional;
 use App\Models\Sucursal;
 use App\Models\SucursalEvaluadorMbi;
@@ -53,6 +54,24 @@ class Schedule extends Component
 
     public string $motivoCancelacion = '';
 
+    public string $bookingPatientSearch = '';
+
+    public ?string $bookingPatientId = null;
+
+    public string $bookingType = 'primera_vez';
+
+    public ?string $bookingDate = null;
+
+    public ?string $bookingTime = null;
+
+    public ?string $bookingBranchId = null;
+
+    public ?string $bookingProfessionalId = null;
+
+    public ?string $bookingSpecialtyId = null;
+
+    public string $bookingNotes = '';
+
     public function mount(): void
     {
         $this->authorize('page.view.schedule');
@@ -76,7 +95,211 @@ class Schedule extends Component
                     ignoreAppointmentId: $this->appointmentActionId,
                 )
                 : [],
+            'bookingPatients' => $this->bookingPatients(),
+            'selectedBookingPatient' => $this->bookingPatientId
+                ? Paciente::query()
+                    ->where('activo', true)
+                    ->whereNull('fusionado_en_paciente_id')
+                    ->whereHas('expediente')
+                    ->find($this->bookingPatientId)
+                : null,
+            'bookingProfessionals' => $this->bookingProfessionals(),
+            'bookingSpecialties' => $this->bookingSpecialties(),
+            'bookingHours' => $this->bookingDate
+                ? $this->getAvailableHours($this->bookingDate)
+                : [],
         ]);
+    }
+
+    public function prepareBooking(): void
+    {
+        $this->authorize('appointments.create');
+        $this->resetBookingForm();
+        $this->bookingDate = Carbon::parse($this->selectedDate)->isFuture()
+            ? $this->selectedDate
+            : today()->toDateString();
+        Flux::modal('agenda-crear-cita-modal')->show();
+    }
+
+    public function selectBookingPatient(int $id): void
+    {
+        $this->authorize('appointments.create');
+        $patient = Paciente::query()
+            ->where('activo', true)
+            ->whereNull('fusionado_en_paciente_id')
+            ->whereHas('expediente')
+            ->findOrFail($id);
+        $this->bookingPatientId = (string) $patient->id;
+        $this->bookingPatientSearch = $patient->nombre_completo;
+    }
+
+    public function changeBookingPatient(): void
+    {
+        $this->authorize('appointments.create');
+        $this->bookingPatientId = null;
+        $this->bookingPatientSearch = '';
+    }
+
+    public function updatedBookingType(): void
+    {
+        $this->authorize('appointments.create');
+        $this->bookingProfessionalId = null;
+        $this->bookingSpecialtyId = null;
+        if ($this->bookingType === 'primera_vez') {
+            $this->bookingProfessionalId = null;
+        }
+    }
+
+    public function updatedBookingBranchId(): void
+    {
+        $this->authorize('appointments.create');
+        $this->bookingProfessionalId = null;
+        $this->bookingSpecialtyId = null;
+    }
+
+    public function updatedBookingProfessionalId(): void
+    {
+        $this->authorize('appointments.create');
+        $this->bookingSpecialtyId = null;
+    }
+
+    public function updatedBookingDate(?string $date): void
+    {
+        $this->authorize('appointments.create');
+        $this->bookingTime = null;
+        if ($date !== null && $date !== '') {
+            validator(['bookingDate' => $date], ['bookingDate' => ['required', 'date_format:Y-m-d']])->validate();
+        }
+    }
+
+    public function createDirectAppointment(): void
+    {
+        $this->authorize('appointments.create');
+        $validated = $this->validate([
+            'bookingPatientId' => [
+                'required',
+                'integer',
+                Rule::exists('pacientes', 'id')->where('activo', true)->whereNull('fusionado_en_paciente_id'),
+            ],
+            'bookingType' => ['required', Rule::in(['primera_vez', 'seguimiento', 'control', 'evaluacion_integral', 'procedimiento'])],
+            'bookingDate' => ['required', 'date_format:Y-m-d'],
+            'bookingTime' => ['required', 'date_format:H:i'],
+            'bookingBranchId' => ['required', 'integer', Rule::exists('sucursales', 'id')->where('activa', true)],
+            'bookingProfessionalId' => ['required', 'integer', Rule::exists('profesionales', 'id')->where('activo', true)],
+            'bookingSpecialtyId' => ['required', 'integer', Rule::exists('especialidades', 'id')->where('activa', true)],
+            'bookingNotes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $start = Carbon::createFromFormat('!Y-m-d H:i', "{$validated['bookingDate']} {$validated['bookingTime']}");
+        $result = app(AppointmentManagementService::class)->createDirect(
+            (int) $validated['bookingPatientId'],
+            (int) $validated['bookingBranchId'],
+            (int) Auth::id(),
+            (int) $validated['bookingProfessionalId'],
+            (int) $validated['bookingSpecialtyId'],
+            $validated['bookingType'],
+            $start,
+            $validated['bookingNotes'] ?: null,
+        );
+
+        if ($result !== 'confirmada') {
+            $message = match ($result) {
+                'paciente_no_disponible' => 'El paciente debe estar activo y contar con expediente.',
+                'sede_no_disponible' => 'La sede seleccionada ya no está disponible.',
+                'profesional_no_disponible' => 'El profesional no está activo o no atiende en esta sede.',
+                'especialidad_no_disponible' => 'La especialidad no está activa o no corresponde al profesional.',
+                'evaluador_no_disponible' => 'La sede no tiene un Evaluador MBI disponible para primera visita.',
+                'tipo_no_disponible' => 'El tipo de cita seleccionado no está disponible.',
+                default => 'El horario seleccionado ya no está disponible.',
+            };
+            $this->addError('bookingTime', $message);
+
+            return;
+        }
+
+        $this->resetBookingForm();
+        Flux::modal('agenda-crear-cita-modal')->close();
+        unset($this->appointments);
+        Flux::toast(text: 'Cita creada y confirmada.', variant: 'success');
+    }
+
+    public function resetBookingForm(): void
+    {
+        $this->reset([
+            'bookingPatientSearch',
+            'bookingPatientId',
+            'bookingType',
+            'bookingDate',
+            'bookingTime',
+            'bookingBranchId',
+            'bookingProfessionalId',
+            'bookingSpecialtyId',
+            'bookingNotes',
+        ]);
+        $this->bookingType = 'primera_vez';
+        $this->resetValidation();
+    }
+
+    private function bookingPatients(): Collection
+    {
+        $search = trim($this->bookingPatientSearch);
+        if (mb_strlen($search) < 2 || $this->bookingPatientId) {
+            return new Collection;
+        }
+
+        return Paciente::query()
+            ->where('activo', true)
+            ->whereNull('fusionado_en_paciente_id')
+            ->whereHas('expediente')
+            ->where(function (Builder $query) use ($search): void {
+                $query->where('nombres', 'like', "%{$search}%")
+                    ->orWhere('apellidos', 'like', "%{$search}%")
+                    ->orWhere('numero_dpi', 'like', "%{$search}%")
+                    ->orWhere('telefono', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->orderBy('nombres')
+            ->limit(10)
+            ->get(['id', 'nombres', 'apellidos', 'numero_dpi']);
+    }
+
+    private function bookingProfessionals(): SupportCollection
+    {
+        if (! $this->bookingBranchId) {
+            return collect();
+        }
+
+        $query = Profesional::query()
+            ->where('activo', true)
+            ->whereHas('sucursales', fn ($builder) => $builder->whereKey($this->bookingBranchId));
+
+        if ($this->bookingType === 'primera_vez') {
+            $evaluatorId = SucursalEvaluadorMbi::query()
+                ->where('sucursal_id', $this->bookingBranchId)
+                ->value('profesional_id');
+            $query->whereKey($evaluatorId ?? 0)
+                ->whereHas('especialidades', fn ($builder) => $builder
+                    ->where('slug', 'evaluacion-mbi')
+                    ->where('activa', true));
+        }
+
+        return $query->orderBy('nombre_completo')->get();
+    }
+
+    private function bookingSpecialties(): SupportCollection
+    {
+        if (! $this->bookingProfessionalId) {
+            return collect();
+        }
+
+        return Especialidad::query()
+            ->where('activa', true)
+            ->when($this->bookingType === 'primera_vez', fn ($query) => $query->where('slug', 'evaluacion-mbi'))
+            ->whereHas('profesionales', fn ($query) => $query
+                ->whereKey($this->bookingProfessionalId)
+                ->where('activo', true))
+            ->orderBy('nombre')
+            ->get();
     }
 
     public function updatedReprogramacionFecha(?string $fecha): void

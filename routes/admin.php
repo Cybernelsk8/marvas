@@ -3,6 +3,9 @@
 use App\Livewire\Admin\Areas;
 use App\Livewire\Admin\Availability;
 use App\Livewire\Admin\Consultation\Show as ConsultationShow;
+use App\Livewire\Admin\Clinical\Branches;
+use App\Livewire\Admin\Clinical\Professionals;
+use App\Livewire\Admin\Clinical\Specialties;
 use App\Livewire\Admin\Pages;
 use App\Livewire\Admin\Patient\Index as PatientIndex;
 use App\Livewire\Admin\Patient\Show as PatientShow;
@@ -44,6 +47,18 @@ Route::livewire('availability', Availability::class)
 Route::livewire('schedule', Schedule::class)
     ->middleware(['can:page.view.schedule'])
     ->name('admin.schedule');
+
+Route::livewire('branches', Branches::class)
+    ->middleware(['can:page.view.branches'])
+    ->name('admin.branches');
+
+Route::livewire('specialties', Specialties::class)
+    ->middleware(['can:page.view.specialties'])
+    ->name('admin.specialties');
+
+Route::livewire('professionals', Professionals::class)
+    ->middleware(['can:page.view.professionals'])
+    ->name('admin.professionals');
 
 Route::livewire('patients', PatientIndex::class)
     ->middleware(['can:page.view.patients'])

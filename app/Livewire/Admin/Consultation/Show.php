@@ -37,6 +37,17 @@ class Show extends Component
 
     public array $assessmentForms = [];
 
+    public array $mbiForm = [
+        'integracion_clinica' => '',
+        'sistemas_comprometidos' => '',
+        'hallazgos_principales' => '',
+        'objetivo_terapeutico' => '',
+        'observaciones_generales' => '',
+        'especialidad_principal' => '',
+        'especialidades_complementarias' => '',
+        'modelo_6plus_seleccion' => '',
+    ];
+
     public array $closure = [
         'motivo_consulta' => '',
         'observaciones_profesional' => '',
@@ -60,7 +71,17 @@ class Show extends Component
             'anamnesisGeneral.homeopatica',
             'anamnesisGeneral.quiropraxia',
             'anamnesisGeneral.acupuntura',
+            'evaluacionIntegral',
         ]);
+
+        if ($this->consultation->evaluacionIntegral) {
+            foreach ($this->mbiForm as $field => $default) {
+                $value = $this->consultation->evaluacionIntegral->{$field};
+                $this->mbiForm[$field] = is_array($value)
+                    ? implode(PHP_EOL, $value)
+                    : (string) ($value ?? $default);
+            }
+        }
 
         $anamnesis = $this->consultation->anamnesisGeneral;
         $this->form['datos_formulario'] = $this->integralFormDefaults();
@@ -116,7 +137,7 @@ class Show extends Component
     public function openAnamnesis(string $section): void
     {
         $this->authorize('consultations.edit');
-        abort_unless(in_array($section, ['general', 'homeopatia', 'quiropraxia', 'acupuntura'], true), 404);
+        abort_unless(in_array($section, ['general', 'homeopatia', 'quiropraxia', 'acupuntura', 'mbi'], true), 404);
         abort_unless(in_array($this->consultation->estado, ['abierta', 'en_proceso'], true), 403);
 
         $this->activeAnamnesis = $section;
@@ -199,6 +220,38 @@ class Show extends Component
         Flux::toast(text: 'Evaluación guardada correctamente.', variant: 'success');
     }
 
+    public function saveMbiEvaluation(ConsultationService $consultationService): void
+    {
+        $this->authorize('consultations.edit');
+
+        $data = $this->validate([
+            'mbiForm.integracion_clinica' => ['nullable', 'string', 'max:10000'],
+            'mbiForm.sistemas_comprometidos' => ['nullable', 'string', 'max:5000'],
+            'mbiForm.hallazgos_principales' => ['nullable', 'string', 'max:10000'],
+            'mbiForm.objetivo_terapeutico' => ['nullable', 'string', 'max:10000'],
+            'mbiForm.observaciones_generales' => ['nullable', 'string', 'max:10000'],
+            'mbiForm.especialidad_principal' => ['nullable', 'string', 'max:100'],
+            'mbiForm.especialidades_complementarias' => ['nullable', 'string', 'max:5000'],
+            'mbiForm.modelo_6plus_seleccion' => ['nullable', 'string', 'max:5000'],
+        ])['mbiForm'];
+
+        foreach (['sistemas_comprometidos', 'especialidades_complementarias', 'modelo_6plus_seleccion'] as $field) {
+            $data[$field] = $this->linesToArray($data[$field] ?? null);
+        }
+
+        foreach ($data as $field => $value) {
+            if (! in_array($field, ['sistemas_comprometidos', 'especialidades_complementarias', 'modelo_6plus_seleccion'], true)) {
+                $data[$field] = $value === '' ? null : $value;
+            }
+        }
+
+        $evaluation = $consultationService->saveMbiEvaluation($this->consultation->id, $data);
+        $this->consultation->setRelation('evaluacionIntegral', $evaluation);
+        $this->activeAnamnesis = null;
+
+        Flux::toast(text: 'Evaluación integral MBI guardada correctamente.', variant: 'success');
+    }
+
     public function closeConsultation(ConsultationService $consultationService): void
     {
         $this->authorize('consultations.close');
@@ -249,6 +302,7 @@ class Show extends Component
             'canReopen' => $user?->can('consultations.reopen')
                 && $this->consultation->estado === 'cerrada',
             'anamnesis' => $this->consultation->anamnesisGeneral,
+            'mbiEvaluation' => $this->consultation->evaluacionIntegral,
             'anamnesisSections' => $this->anamnesisSections(),
             'integralFormSections' => $this->integralFormSections(),
             'assessmentComplementarySections' => $this->assessmentComplementarySections(),
@@ -434,6 +488,12 @@ class Show extends Component
                 'saved' => filled($anamnesis?->motivo_consulta)
                     || $anamnesis?->homeopatica !== null
                     || $anamnesis?->quiropraxia !== null,
+            ],
+            'mbi' => [
+                'label' => 'Evaluación integral MBI',
+                'description' => 'Integración clínica, sistemas comprometidos y orientación terapéutica.',
+                'icon' => 'clipboard-document-check',
+                'saved' => $this->consultation->evaluacionIntegral !== null,
             ],
             'homeopatia' => [
                 'label' => 'Evaluación homeopática',

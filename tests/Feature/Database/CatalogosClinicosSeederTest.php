@@ -41,7 +41,7 @@ class CatalogosClinicosSeederTest extends TestCase
         );
         $this->assertSame('child', Page::query()->where('label', 'Solicitudes')->value('type'));
         $this->assertSame(
-            ['page.view.patients', 'page.view.requests', 'page.view.schedule', 'patients.create', 'patients.edit', 'patients.merge', 'requests.cancel', 'requests.confirm', 'requests.edit', 'requests.reschedule'],
+            ['appointments.create', 'page.view.patients', 'page.view.requests', 'page.view.schedule', 'patients.create', 'patients.edit', 'patients.merge', 'requests.cancel', 'requests.confirm', 'requests.edit', 'requests.reschedule'],
             Role::findByName('Recepcionista')->permissions->pluck('name')->sort()->values()->all(),
         );
         $this->assertDatabaseHas('permissions', ['name' => 'patients.clinical.view', 'guard_name' => 'web']);

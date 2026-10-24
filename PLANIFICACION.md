@@ -25,7 +25,7 @@ El sitio público presenta el Modelo 6+ y terapias como homeopatía, naturopatí
 - La implementación actual usa Laravel 13, Livewire y Flux. Para pantallas internas se priorizarán componentes Livewire de página completa bajo `app/Livewire` y sus vistas en `resources/views/livewire`. Las rutas administrativas se agrupan bajo `/admin` con autenticación.
 - El proyecto solo tiene `App\Http\Controllers\Controller` como controlador convencional visible en esta revisión. No crear controladores por costumbre: una pantalla interactiva debe seguir el patrón Livewire existente. Usar controladores solo cuando una integración o respuesta HTTP específica lo justifique.
 - Las tablas clínicas contienen información sensible. Aplicar autorización en servidor, validación, registro de auditoría cuando corresponda y mínima exposición de datos.
-
+- **Convenciones obligatorias para toda IA/persona:** (1) cada CRUD usa `Searchable`, `<x-data-table>` y `@interact` al estilo de `Livewire/Admin/Pages.php`; (2) todo permiso nuevo (páginas y acciones) se agrega en `database/seeders/PermissionsAccessSeeder.php`. Detalle en la sección 6.
 ## 3. Arquitectura funcional observada
 
 ### Cadena de datos prevista
@@ -232,8 +232,9 @@ El archivo global también revela que los formatos y locale de `config/datatable
 5. **Implementado:** calendario Flux/Livewire de recepción con vistas día/semana/mes, filtros por estado y sede (incluyendo citas sin sede), y detalle con la sede relacionada. Las sedes inactivas se conservan como opción de filtro para consultar citas históricas.
 6. **Implementado:** acciones directas en agenda para confirmar, completar asignaciones incompletas de citas confirmadas, reprogramar y cancelar; `AppointmentManagementService` comparte reglas transaccionales con Solicitudes.
 7. Completar las reglas de disponibilidad y probar límites de intervalos, citas de duración distinta, cancelaciones, turnos que cruzan medianoche si se permiten y concurrencia.
+8. **Implementado (2026-10-24):** permitir que recepción cree desde la agenda citas para pacientes activos con expediente. La operación asigna tipo, sede, profesional y especialidad, registra al usuario que agenda y crea el estado `confirmada`; primera visita requiere el Evaluador MBI de la sede. El servidor vuelve a validar disponibilidad global, duración, asignaciones y traslapes dentro de una transacción.
 
-**Aceptación:** todos los puntos de entrada aplican la misma regla, muestran el estado actual y no pueden reservar el mismo recurso en horarios traslapados.
+**Aceptación:** todos los puntos de entrada aplican la misma regla, muestran el estado actual y no pueden reservar el horario global ni el mismo recurso en horarios traslapados.
 
 ### Módulo 3 — Pacientes y expediente maestro
 
@@ -285,11 +286,12 @@ El archivo global también revela que los formatos y locale de `config/datatable
 6. **Comportamiento preservado:** el cierre continúa separado del guardado de anamnesis; conserva sus requisitos, permisos, auditoría y tratamiento de borradores.
 7. **Implementado (2026-10-22):** anamnesis integral en un único formulario para los incisos 01–06 del recurso `recursos IA/anamnesis.xlsx` (general, homeopática y quiropráctica/neuromusculoesquelética), con captura de contexto, antecedentes, revisión de sistemas y evaluación. Acupuntura permanece en un formulario individual con campos complementarios del recurso `NUEVO.xlsx`. Los datos complementarios se guardan con auditoría.
 8. **Implementado (2026-10-22):** el resultado del evaluador, inciso 07, queda visible en la ficha del paciente a partir de los datos de cada consulta.
-9. Implementar evaluación integral MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
-10. Validar adjuntos, límites de tamaño/MIME, almacenamiento privado y permisos de descarga.
-11. Añadir pruebas para relaciones, cálculos, numeración concurrente y autorización.
+9. **Implementado (2026-10-24):** evaluación integral MBI independiente por consulta, con integración clínica, sistemas comprometidos, hallazgos, objetivo terapéutico, observaciones, especialidades y selección del Modelo 6+. Los campos se guardan en `evaluacion_integral_mbi`, con auditoría y permiso `consultations.edit`; las listas se capturan por líneas y se guardan como JSON. La selección de especialidades y Modelo 6+ permanece como texto libre hasta que el equipo clínico defina sus catálogos.
+10. Implementar informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
+11. Validar adjuntos, límites de tamaño/MIME, almacenamiento privado y permisos de descarga.
+12. Añadir pruebas para relaciones, cálculos, numeración concurrente y autorización.
 
-**Aceptación:** el profesional autorizado puede documentar una consulta sin alterar citas o consultas previas; la numeración se mantiene por expediente y especialidad; campos generados y datos clínicos se guardan correctamente. Los incisos 01–06 se capturan en la anamnesis integral, acupuntura mantiene su formulario individual y el resultado 07 aparece en la ficha del paciente. El cierre conserva su comportamiento y las pruebas comprueban el guardado integral y la visualización del evaluador.
+**Aceptación:** el profesional autorizado puede documentar una consulta sin alterar citas o consultas previas; la numeración se mantiene por expediente y especialidad; campos generados y datos clínicos se guardan correctamente. Los incisos 01–06 se capturan en la anamnesis integral, acupuntura mantiene su formulario individual, el resultado del evaluador y la evaluación MBI aparecen en la ficha del paciente. El cierre conserva su comportamiento y las pruebas comprueban el guardado integral, MBI y la visualización del evaluador.
 
 ### Módulo 5 — Clasificación, planes terapéuticos y evolución
 
@@ -441,10 +443,27 @@ El archivo global también revela que los formatos y locale de `config/datatable
 
 **Aceptación:** el visitante entiende que envió una solicitud (no que ya tiene cita confirmada), siempre solicita una cita `primera_vez`, recibe respuesta clara y la solicitud llega a recepción.
 
+### Módulo 12 — Catálogos clínicos administrativos
+
+**Objetivo:** permitir que Sysadmin mantenga sedes, especialidades y perfiles profesionales sin alterar la gestión de cuentas, roles y permisos.
+
+**Base existente:** modelos `Sucursal`, `Especialidad` y `Profesional`; relaciones profesionales-sedes/especialidades con indicador principal; cuentas y permisos Spatie.
+
+**Trabajo y reglas:**
+
+1. **Implementado (2026-10-24):** CRUD Livewire para crear/editar y activar/desactivar sedes y especialidades. No se eliminan físicamente registros históricos; `slug` de especialidad es único.
+2. **Implementado (2026-10-24):** creación/edición de profesionales enlazando una cuenta existente sin perfil, con al menos una sede y especialidad y una asignación principal para cada relación.
+3. La cuenta, su rol y sus permisos se crean/asignan desde la administración de usuarios por Sysadmin, nunca desde el CRUD profesional.
+4. Las páginas administrativas están protegidas por permisos; Sysadmin obtiene acceso a catálogos y Recepción/Sysadmin pueden crear citas internas desde la agenda.
+5. La creación de una cita directamente concertada por Recepción queda `confirmada`; primera visita requiere el Evaluador MBI configurado por sede.
+6. **Implementado (2026-10-24):** los tres CRUD siguen el patrón de `Admin/Pages`: trait `DataTable`, `<x-data-table>` con `@interact`, y trait `Searchable` (`filterAdvance`) en `Sucursal`, `Especialidad` y `Profesional`. Se mantiene activar/desactivar en lugar de eliminar.
+
+**Aceptación:** solo Sysadmin puede modificar los catálogos; las relaciones principales y las reglas de asignación son válidas, los historiales se conservan al desactivar, y la cita interna queda confirmada únicamente tras validación transaccional de paciente, recursos y horario.
+
 ## 5. Orden sugerido de entrega
 
 1. **Fase A — cerrar ciclo mínimo de cita:** Módulo 0 (permisos mínimos), Módulo 1 y Módulo 11. Entregar reserva → bandeja → llamada/edición → confirmación.
-2. **Fase B — agenda segura:** Módulo 2. Resolver disponibilidad global o por profesional/sucursal antes de habilitar reprogramación completa.
+2. **Fase B — agenda segura y operación diaria:** Módulos 2 y 12. La disponibilidad global se conserva; reservas internas y cambios de asignación se validan en el servidor.
 3. **Fase C — identidad e historia clínica:** Módulos 3 y 4.
 4. **Fase D — decisiones terapéuticas:** Módulo 5.
 5. **Fase E — operación clínica segura:** Módulo 6.
@@ -468,6 +487,8 @@ No iniciar módulos de fase posterior si falta su contrato de datos o permisos; 
 - Mantener los cambios dentro del módulo asignado; comunicar antes de tocar un archivo compartido (rutas, modelos base, layouts, permisos, migraciones centrales).
 - No modificar código ajeno o cambios locales no relacionados.
 - Reutilizar modelos, relaciones, componentes, traits, filtros, permisos y convenciones existentes.
+- **Regla obligatoria de CRUD:** todo CRUD nuevo o modificado debe seguir el patrón de `app/Livewire/Admin/Pages.php`: trait `App\Traits\DataTable` en el componente (`$headers`, `rows()` computada con `filterAdvance`), vista con el componente `<x-data-table>` y la directiva `@interact` para columnas personalizadas y acciones, y trait `App\Traits\Searchable` en los modelos listados. No crear tablas HTML manuales ni paginación propia.
+- **Regla obligatoria de permisos:** todo permiso nuevo (ver página `page.view.*` o acción) debe registrarse en `database/seeders/PermissionsAccessSeeder.php` (constantes `PAGE_PERMISSIONS`, `ACTION_PERMISSIONS` y `ROLE_PERMISSIONS`), que `DatabaseSeeder` invoca. No crear permisos fuera de los seeders ni dispersarlos en componentes o migraciones. Las páginas de menú se registran en el seeder de acceso del módulo y su permiso en `PermissionsAccessSeeder`. Los permisos antes dispersos en `AdminAccessSeeder`, `AgendaAccessSeeder`, `SolicitudesAccessSeeder`, `PacientesAccessSeeder` y `ClinicalCatalogAccessSeeder` ya fueron trasladados allí (incluida la asignación a Recepcionista y Sysadmin); esos seeders solo registran páginas de menú.
 - Añadir pruebas de comportamiento junto con la función, no como tarea indefinida posterior.
 - Tratar la documentación como coordinación, no como sustituto de pruebas ni evidencia de implementación.
 

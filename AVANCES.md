@@ -4,8 +4,8 @@
 
 ## Estado general
 
-- **Última actualización:** 2026-10-23.
-- **Estado de fase:** la asignación del Evaluador MBI por sede está implementada. Las citas `primera_vez` solo se confirman con el profesional MBI configurado para esa sede y la especialidad Evaluación MBI; la validación también se ejecuta en el servicio de dominio. La configuración se administra en Disponibilidad y el demo local tiene un Evaluador MBI en la sede de demostración. Migración y seed aplicados en la base local. La suite completa pasa con PHP 8.5.11: 125 pruebas y 541 assertions. Se conserva la reserva pública `primera_vez`, la anamnesis integral y el resultado del evaluador en la ficha del paciente; no se modifica el cierre de consulta y el seguimiento sigue siendo agendado únicamente por el personal.
+- **Última actualización:** 2026-10-24.
+- **Estado de fase:** además de las funciones clínicas y del Evaluador MBI por sede ya descritas, se implementaron CRUD administrativos para sedes, especialidades y profesionales, así como la creación de citas desde Agenda. La cita interna requiere paciente activo con expediente, se revalida en transacción y queda `confirmada`; primera visita exige al Evaluador MBI de la sede. Sysadmin gestiona los catálogos y las cuentas/roles; Recepción y Sysadmin pueden crear citas. Las pruebas enfocadas de catálogos, agenda y seeder pasaron: 27 pruebas y 112 assertions.
 - **Resumen:** Recepción gestiona solicitudes desde la bandeja o la agenda, asigna sede y profesional al confirmar y filtra por periodo/estado/sede/profesional. Disponibilidad global usa duración configurable; al reprogramar se elige fecha y una hora libre, se permite el horario de la cita actual sin auto-traslape y solo se ofrecen inicios futuros. El directorio usa `DataTable` y `Searchable`; alta/edición y recepción sugieren coincidencias. Reutilizar desde solicitudes o fusionar manualmente requiere confirmación; el sistema traslada relaciones/historial en transacción, deja el origen inactivo y enlazado y audita los cambios y las decisiones sobre conflictos. Las evaluaciones integrales se guardan con auditoría; el cierre no persiste borradores de formularios sin guardar; el IMC se calcula en base de datos; reabrir devuelve la consulta a `en_proceso`.
 - **Importante:** este resumen refleja los archivos observados en el árbol de trabajo al crear la bitácora, no implica que los cambios estén confirmados en Git ni que la aplicación esté desplegada.
 
@@ -15,11 +15,11 @@
 
 | Módulo | Estado | Evidencia / situación actual | Próximo resultado |
 |---|---|---|---|
-| 0. Fundamentos y permisos | Parcial | Hay autenticación, permisos Spatie, áreas, roles, páginas y permisos; existen rutas admin con middleware. Falta definir permisos de cada módulo clínico/operativo. | Aprobar matriz de roles/permisos para recepción, profesionales, caja, inventario y administración. |
+| 0. Fundamentos y permisos | Parcial | Hay autenticación y permisos Spatie. Los catálogos clínicos quedan restringidos a Sysadmin; Recepción y Sysadmin tienen el permiso de crear citas directas desde Agenda. | Aprobar matriz de roles/permisos restante para profesionales, caja e inventario. |
 | 1. Solicitudes y recepción | Implementado y validado | `App\Livewire\Solicitud` permite editar datos, asignar sede y Evaluador MBI en primera visita, reprogramar y cancelar. | Hacer prueba visual con usuarios reales; después decidir historial de llamadas y automatización de mensajes. |
-| 2. Agenda y disponibilidad | Implementado y validado | `admin.schedule` permite confirmar primera visita solo con el Evaluador MBI configurado por sede; `/admin/availability` administra esa asignación además de días, horas, duración y cierres. | Continuar con pruebas de uso en recepción y atender incidencias operativas. |
+| 2. Agenda y disponibilidad | Implementado y validado automáticamente | `admin.schedule` permite confirmar solicitudes y citas directas. Recepción crea citas confirmadas desde la agenda; el servicio revalida horario global, expediente y asignaciones en transacción. Primera visita requiere Evaluador MBI configurado por sede. | Hacer prueba visual en recepción y atender incidencias operativas. |
 | 3. Pacientes y expediente | Implementado; cierre de módulo pendiente | `/admin/patients` ofrece directorio/ficha y fusión manual; el expediente tiene citas y secciones clínicas, documentos/consentimientos y pagos/paquetes protegidos por permisos. El usuario confirmó visualmente las secciones. | Completar pruebas visuales de integración y cerrar el módulo con el flujo clínico inicial. |
-| 4. Consultas y evaluación | Implementado parcialmente; pruebas dirigidas pasan | La anamnesis general, Homeopatía y Quiropraxia/neuromusculoesquelética se presentan juntas (incisos 01–06); Acupuntura es individual. El inciso 07 se muestra en la ficha. Cierre/reapertura conservan su comportamiento y permisos. | Validar visualmente la anamnesis integral; después construir MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados. |
+| 4. Consultas y evaluación | Implementado parcialmente; pruebas dirigidas pasan | La anamnesis integral guarda los incisos 01–06; Acupuntura es individual; el resultado del evaluador y la evaluación MBI se muestran en la ficha. MBI se edita por consulta, guarda listas JSON y audita nombres de campos sin registrar valores clínicos. Cierre/reapertura conservan permisos y comportamiento. | Construir informe por sistemas, test de intoxicación y mapas corporales como componentes separados; definir catálogos clínicos del Modelo 6+ antes de restringir esas selecciones. |
 | 5. Clasificación y tratamiento | Parcial en datos / pendiente en pantallas | Existen clasificación, plan terapéutico, paquete asociado y evolución en esquema/modelos. | Definir Modelo 6+ con el equipo y crear flujo de clasificación/plan/evolución. |
 | 6. Consentimientos y archivos | Parcial en datos / pendiente en pantallas | Hay plantillas/registros de consentimiento, archivos y campos de trazabilidad. | Definir política legal/de almacenamiento y crear pantallas seguras. |
 | 7. Paquetes, pagos y facturación | Parcial en datos / pendiente en pantallas | Existen paquetes clínicos/paciente, pagos y datos de facturación. | Acordar reglas financieras e implementar catálogo/registro de cobro. |
@@ -27,6 +27,7 @@
 | 9. Notificaciones y recordatorios | Parcial en datos / pendiente en pantallas | Hay tabla/modelo de notificaciones, flag de recordatorio en citas e ideas en `IDEAS.txt`; no se encontró envío operativo. | Elegir canal/proveedor y diseñar registro de intentos y seguridad de enlaces. |
 | 10. Dashboard/reportes | Pendiente | `resources/views/dashboard.blade.php` mantiene contenido placeholder. | Definir indicadores por perfil y reemplazar placeholders con datos autorizados. |
 | 11. Landing y reserva | Implementado y validado por pruebas | La landing no presenta selector de tipo y fuerza `primera_vez`; valida fecha futura y horarios/traslapes dentro de una transacción, y crea una cita `solicitada`. El seguimiento se agenda únicamente por personal. | Decidir detección asistida de pacientes existentes y futura asignación de sede/profesional. |
+| 12. Catálogos clínicos administrativos | Implementado y validado automáticamente | Hay páginas Livewire de sedes, especialidades y profesionales. Se conservan historiales al desactivar; profesionales enlazan una cuenta ya existente y sincronizan sede/especialidad principal. Sysadmin gestiona el catálogo y la cuenta/rol fuera del CRUD. | Validar visualmente con Sysadmin. |
 
 ## Implementado u observado en el repositorio
 
@@ -82,6 +83,7 @@
 1. **Módulo 4:** validar visualmente cierre y reapertura; definir los formularios clínicos que seguirán.
 2. **Asignaciones:** la confirmación desde agenda/solicitudes asigna sede, profesional y especialidad; si ya hay citas confirmadas con asignación incompleta, la agenda ofrece «Completar asignación» sin cambiar su estado.
 3. **Contacto y recordatorios:** faltan historial de contacto y envío automatizado por un canal aprobado.
+4. **Operación administrativa:** verificar visualmente los tres CRUD y el modal de cita interna con usuarios autorizados.
 
 ## Pruebas y verificaciones conocidas
 
@@ -94,6 +96,7 @@
 | Apertura inicial de consultas | `ConsultationTest`, `PatientDirectoryTest` y `CatalogosClinicosSeederTest` | Pasaron en esta entrega: 20 pruebas y 134 assertions; Pint y `git diff --check` pasaron. |
 | Asignación al confirmar citas | `ScheduleTest` y `SolicitudTest` | Pasaron tras resolver la selección de opciones únicas: 28 pruebas y 123 assertions. |
 | Ficha de pacientes y aislamiento de secciones | `PatientDirectoryTest` y `CatalogosClinicosSeederTest` | Pasaron en la entrega anterior: 16 pruebas y 118 assertions; Pint, caché de vistas Blade y `git diff --check` también pasaron. El usuario confirmó verificación visual. |
+| Catálogos, cita directa y regresión de agenda/seeders | `tests/Feature/Livewire/ClinicalCatalogsTest.php`, `ScheduleTest.php`, `tests/Feature/Database/CatalogosClinicosSeederTest.php` | Pasaron: 27 pruebas y 112 assertions; Pint, PHP lint, caché de vistas y `git diff --check` también pasaron. |
 
 ## Decisiones de negocio
 
@@ -108,6 +111,7 @@
 | Historial de llamadas y resultados de contacto | Pendiente: decidir campos/eventos a conservar. | Por definir | — |
 | Canal de confirmaciones y recordatorios | Pendiente: correo, SMS, WhatsApp u otro; revisar consentimiento/costo/proveedor. | Por definir | — |
 | Modelo 6+ y reglas de clasificación | Pendiente de validación clínica. | Por definir | — |
+| Cuenta de profesional y reserva interna | Sysadmin crea la cuenta, asigna rol/permisos y luego la vincula al perfil profesional. La cita concertada directamente por recepción queda `confirmada`. | Usuario | 2026-10-24 |
 | Pagos, devoluciones y reglas fiscales | Pendiente de validación administrativa/contable. | Por definir | — |
 | Lotes, caducidad, FEFO y transferencias | Pendiente de validación operativa. | Por definir | — |
 
@@ -117,13 +121,13 @@
 
 | Tarea | Agente/persona | Módulo | Alcance/archivos reservados | Estado | Dependencias |
 |---|---|---|---|---|---|
-| — | — | — | Ninguna tarea registrada al crear esta bitácora. | — | — |
+| — | — | — | Ninguna tarea activa registrada. | — | — |
 
 ## Próximos pasos recomendados
 
-1. Validar visualmente la anamnesis integral y el selector de reprogramación en navegador.
-2. Resolver por separado la referencia `App\Models\User` que impide pasar `RegistrationTest::test_new_users_can_register`.
-3. Continuar con evaluación MBI, informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
+1. Terminar la validación automatizada y probar visualmente los CRUD y el modal de cita interna con usuarios autorizados.
+2. Implementar informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
+3. Definir con el equipo clínico catálogos de sistemas y la selección operativa del Modelo 6+.
 4. Definir historial de contacto y canal de comunicación antes de automatizar confirmaciones/recordatorios.
 
 ## Registro cronológico de sesiones/agentes
@@ -435,7 +439,58 @@
 - **Pendiente:** revisar visualmente los formularios y la reprogramación en navegador. La carpeta de recursos IA proporcionada por el usuario quedó sin modificar.
 - **Estado del trabajo:** alcance implementado; posteriormente, la suite completa pasó con PHP 8.5.11 (122 pruebas, 531 assertions; ver entrada del 2026-10-23). Validación visual pendiente.
 
-## Plantilla para registrar una entrega
+### 2026-10-24 — Captura de evaluación integral MBI
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** implementar la evaluación MBI prevista en el Módulo 4 usando el esquema existente.
+- **Cambios realizados:** se añadió una sección independiente en la pantalla de consulta para crear/editar la evaluación MBI. Captura integración clínica, sistemas comprometidos, hallazgos, objetivo terapéutico, observaciones, especialidad principal y complementaria y selección Modelo 6+. Las listas se introducen por líneas y se guardan como JSON; no se inventaron catálogos de Modelo 6+, que quedan pendientes de definición clínica. El guardado bloquea la consulta dentro de una transacción, solo permite estados abierta/en proceso y audita nombres de campos sin incluir valores clínicos. La ficha del paciente muestra el resumen MBI bajo el permiso clínico existente.
+- **Archivos modificados:** `app/Livewire/Admin/Consultation/Show.php`, `app/Services/ConsultationService.php`, `app/Livewire/Admin/Patient/Show.php`, `resources/views/livewire/admin/consultation/show.blade.php`, `resources/views/livewire/admin/consultation/assessments/mbi.blade.php`, `resources/views/livewire/admin/patient/show.blade.php`, `tests/Feature/Livewire/ConsultationTest.php`, `PLANIFICACION.md` y `AVANCES.md`.
+- **Pruebas/comandos y resultado:** `php -d extension=sqlite3 -d extension=pdo_sqlite vendor\bin\phpunit tests\Feature\Livewire\ConsultationTest.php`: 17 pruebas y 144 assertions pasaron. También pasaron Pint en los PHP modificados, `php artisan view:cache`, PHP lint y `git diff --check`. `php artisan test` no pudo arrancar por falta del controlador PDO SQLite en la configuración CLI normal; PHPUnit se ejecutó con las extensiones disponibles habilitadas para ese proceso.
+- **Decisiones tomadas (responsable/fecha):** mantener temporalmente como texto libre las listas de especialidad complementaria y selección Modelo 6+ hasta acordar catálogos clínicos (implementación/2026-10-24).
+- **Pendientes o bloqueos:** definir catálogos del Modelo 6+ y completar informe por sistemas, test de intoxicación y mapas corporales.
+- **Próximo paso recomendado:** implementar el informe por sistemas como componente de consulta independiente.
+- **Estado del trabajo:** implementado y validado automáticamente; la revisión visual de la anamnesis integral ya fue confirmada por el usuario.
+
+### 2026-10-24 — Catálogos administrativos y creación de cita interna
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** entregar administración de sedes, especialidades y profesionales, además de un punto autenticado de creación de citas concertadas por recepción.
+- **Cambios realizados:** se añadieron páginas CRUD Livewire para sedes/especialidades con activación/desactivación y especialidad con `slug` único; profesionales vinculan cuentas existentes sin crear usuarios ni modificar roles, con asignaciones principales a sedes y especialidades. Se añadieron páginas/rutas y permisos restringidos a Sysadmin. La Agenda incluye creación directa para pacientes activos con expediente; una transacción revalida sede, profesional, especialidad, primera visita MBI, disponibilidad global, duración y traslape, registra el usuario y audita la cita, que se crea `confirmada`. Recepción y Sysadmin reciben `appointments.create`.
+- **Archivos modificados:** `app/Livewire/Admin/Clinical/Branches.php`, `Specialties.php`, `Professionals.php`, `app/Livewire/Admin/Schedule.php`, `app/Models/Profesional.php`, `app/Services/AppointmentManagementService.php`, vistas Livewire de catálogos y agenda, `routes/admin.php`, `database/seeders/ClinicalCatalogAccessSeeder.php`, `AgendaAccessSeeder.php`, `CatalogosClinicosSeeder.php`, `tests/Feature/Livewire/ClinicalCatalogsTest.php`, `tests/Feature/Database/CatalogosClinicosSeederTest.php`, `PLANIFICACION.md` y `AVANCES.md`.
+- **Pruebas/comandos y resultado:** `php -d extension=sqlite3 -d extension=pdo_sqlite vendor\bin\phpunit tests\Feature\Livewire\ClinicalCatalogsTest.php tests\Feature\Livewire\ScheduleTest.php tests\Feature\Database\CatalogosClinicosSeederTest.php`: 27 pruebas y 112 assertions pasaron. Pint dirigido, PHP lint, `php artisan view:cache` y `git diff --check` pasaron.
+- **Decisiones tomadas (responsable/fecha):** Sysadmin administra cuentas, roles y permisos y vincula la cuenta al profesional; las citas concertadas directamente por Recepción se guardan como `confirmada` (usuario/2026-10-24).
+- **Pendientes o bloqueos:** realizar verificación visual de los formularios con perfiles reales.
+- **Próximo paso recomendado:** cerrar pruebas dirigidas, verificar UX/permisos en navegador y luego implementar informe por sistemas, test de intoxicación y mapas corporales.
+- **Estado del trabajo:** completo y validado automáticamente; revisión visual pendiente.
+
+### 2026-10-24 — CRUD de catálogos al patrón DataTable/Searchable
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** alinear sedes, especialidades y profesionales con la forma de trabajo de `Admin/Pages`.
+- **Cambios realizados:** los tres componentes usan el trait `DataTable` (`$headers`, `rows()` computada con `filterAdvance`, orden inicial por nombre) y sus vistas usan `<x-data-table>` con `@interact` (estado y menú de acciones). `Sucursal`, `Especialidad` y `Profesional` usan `Searchable`; búsqueda por nombre/slug/dirección/cédula/correo de la cuenta. Las columnas de sedes y especialidades del profesional se excluyen de búsqueda/orden. Se conserva activar/desactivar (sin soft delete ni borrado físico).
+- **Archivos modificados:** componentes y vistas en `Admin/Clinical`, los tres modelos, `tests/Feature/Livewire/ClinicalCatalogsTest.php`, `PLANIFICACION.md` y `AVANCES.md`.
+- **Pruebas/comandos y resultado:** ClinicalCatalogsTest + ScheduleTest + CatalogosClinicosSeederTest: 27 pruebas, 117 assertions pasaron; Pint y `view:cache` OK.
+- **Decisiones tomadas (responsable/fecha):** seguir el patrón de `Pages` (usuario/2026-10-24).
+- **Pendientes o bloqueos:** verificación visual en navegador.
+- **Próximo paso recomendado:** informe por sistemas, test de intoxicación y mapas corporales.
+- **Estado del trabajo:** completo y validado automáticamente.
+
+### 2026-10-24 — Convenciones de CRUD y permisos en el plan
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** dejar por escrito reglas para futuras IA.
+- **Cambios realizados:** se añadieron a `PLANIFICACION.md` (secciones 2 y 6) la regla de CRUD (`Searchable` + `<x-data-table>` + `@interact`, estilo `Pages`) y la regla de permisos. Se creó `database/seeders/PermissionsAccessSeeder.php` (idempotente, constantes `PAGE_PERMISSIONS`, `ACTION_PERMISSIONS`, `ROLE_PERMISSIONS`; Sysadmin recibe todo) y se registra al final de `DatabaseSeeder`. Los permisos anteriores se quedan en sus seeders.
+- **Decisiones tomadas (responsable/fecha):** usuario/2026-10-24.
+- **Estado del trabajo:** completo.
+
+### 2026-10-24 — Permisos compilados en PermissionsAccessSeeder
+
+- **Agente/persona:** Copilot.
+- **Cambios realizados:** los 47 permisos (11 de página y 36 de acción) y la asignación al rol Recepcionista pasaron de `AdminAccessSeeder`, `AgendaAccessSeeder`, `SolicitudesAccessSeeder`, `PacientesAccessSeeder` y `ClinicalCatalogAccessSeeder` a `PermissionsAccessSeeder`, que además da todo a Sysadmin si el rol existe. Esos seeders llaman al central (excepto Admin, que lo llama `DatabaseSeeder` antes de crear el rol Sysadmin) y solo registran páginas del menú. `AdminAccessSeederTest` se ajustó.
+- **Pruebas:** suite completa 135 pruebas, 595 assertions OK; Pint OK.
+- **Estado del trabajo:** completo.
+
+## Plantilla para registrar una entrega para registrar una entrega
 
 Copiar al final del registro cronológico y completar al terminar cada tarea:
 

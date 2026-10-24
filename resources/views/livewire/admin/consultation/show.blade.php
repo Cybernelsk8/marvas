@@ -61,7 +61,7 @@
             </div>
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($anamnesisSections as $key => $section)
-                    @if (in_array($key, ['general', 'acupuntura'], true))
+                    @if (in_array($key, ['general', 'acupuntura', 'mbi'], true))
                     <flux:card wire:key="anamnesis-section-{{ $key }}" class="flex flex-col gap-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -164,6 +164,24 @@
             @enderror
             <div class="flex justify-end">
                 <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar anamnesis integral</flux:button>
+            </div>
+        </form>
+    @elseif ($activeAnamnesis === 'mbi')
+        <form wire:submit="saveMbiEvaluation" class="space-y-6">
+            <div class="flex items-center justify-between gap-3">
+                <flux:heading size="lg">Evaluación integral MBI</flux:heading>
+                <flux:button type="button" variant="ghost" wire:click="backToAnamneses">Volver a formularios</flux:button>
+            </div>
+            @include('livewire.admin.consultation.assessments.mbi')
+            @error('mbi')
+                <flux:callout variant="danger" icon="exclamation-triangle">
+                    <flux:callout.text>{{ $message }}</flux:callout.text>
+                </flux:callout>
+            @enderror
+            <div class="flex justify-end">
+                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">
+                    Guardar evaluación MBI
+                </flux:button>
             </div>
         </form>
     @else

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Auditoria;
 use App\Models\Cita;
 use App\Models\Especialidad;
+use App\Models\Paciente;
 use App\Models\Profesional;
 use App\Models\Sucursal;
 use App\Models\SucursalEvaluadorMbi;
@@ -13,6 +14,109 @@ use Illuminate\Support\Facades\DB;
 
 class AppointmentManagementService
 {
+    public function createDirect(
+        int $pacienteId,
+        int $sucursalId,
+        int $userId,
+        int $profesionalId,
+        int $especialidadId,
+        string $tipoCita,
+        CarbonInterface $inicio,
+        ?string $notasRecepcion = null,
+    ): string {
+        if (! in_array($tipoCita, ['primera_vez', 'seguimiento', 'control', 'evaluacion_integral', 'procedimiento'], true)) {
+            return 'tipo_no_disponible';
+        }
+
+        return DB::transaction(function () use (
+            $pacienteId,
+            $sucursalId,
+            $userId,
+            $profesionalId,
+            $especialidadId,
+            $tipoCita,
+            $inicio,
+            $notasRecepcion,
+        ): string {
+            $sucursalActiva = Sucursal::query()
+                ->whereKey($sucursalId)
+                ->where('activa', true)
+                ->lockForUpdate()
+                ->first(['id']);
+
+            if (! $sucursalActiva) {
+                return 'sede_no_disponible';
+            }
+
+            $patient = Paciente::query()
+                ->whereKey($pacienteId)
+                ->where('activo', true)
+                ->whereNull('fusionado_en_paciente_id')
+                ->lockForUpdate()
+                ->first();
+            $expediente = $patient?->expediente()->lockForUpdate()->first();
+
+            if (! $expediente) {
+                return 'paciente_no_disponible';
+            }
+
+            $configuration = app(ClinicAvailabilityService::class)->configuration(lockForUpdate: true);
+            $duration = (int) $configuration['duration_minutes'];
+            $end = $inicio->copy()->addMinutes($duration);
+            $assignmentResult = $this->validateAssignment(
+                $sucursalId,
+                $profesionalId,
+                $especialidadId,
+                $tipoCita === 'primera_vez',
+            );
+
+            if ($assignmentResult !== 'asignacion_valida') {
+                return $assignmentResult;
+            }
+
+            $availability = app(ClinicAvailabilityService::class);
+            if (! $inicio->isFuture()
+                || ! $availability->isSlotAllowed($inicio, $duration, $configuration)
+                || Cita::existeTraslapeGlobal($inicio, $end)) {
+                return 'no_disponible';
+            }
+
+            $appointment = $expediente->citas()->create([
+                'sucursal_id' => $sucursalId,
+                'profesional_id' => $profesionalId,
+                'especialidad_id' => $especialidadId,
+                'agendada_por' => $userId,
+                'fecha_hora_inicio' => $inicio,
+                'fecha_hora_fin' => $end,
+                'duracion_minutos' => $duration,
+                'tipo_cita' => $tipoCita,
+                'estado' => 'confirmada',
+                'notas_recepcion' => filled($notasRecepcion) ? trim($notasRecepcion) : null,
+            ]);
+
+            Auditoria::create([
+                'user_id' => $userId,
+                'tabla_afectada' => 'citas',
+                'registro_id' => $appointment->id,
+                'accion' => 'crear',
+                'datos_anteriores' => null,
+                'datos_nuevos' => [
+                    'expediente_id' => $expediente->id,
+                    'sucursal_id' => $sucursalId,
+                    'profesional_id' => $profesionalId,
+                    'especialidad_id' => $especialidadId,
+                    'fecha_hora_inicio' => $inicio->format('Y-m-d H:i:s'),
+                    'tipo_cita' => $tipoCita,
+                    'estado' => 'confirmada',
+                ],
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            return 'confirmada';
+        });
+    }
+
     public function confirm(int $citaId, int $sucursalId, int $userId, int $profesionalId, int $especialidadId): string
     {
         return DB::transaction(function () use ($citaId, $sucursalId, $userId, $profesionalId, $especialidadId): string {

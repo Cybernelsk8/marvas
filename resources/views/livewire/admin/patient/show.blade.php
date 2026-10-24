@@ -190,6 +190,32 @@
                                 @endforeach
                             </div>
                         @endif
+                        @php($mbi = $consultation->evaluacionIntegral)
+                        @if ($mbi)
+                            <div class="mt-3 space-y-2 rounded-md bg-zinc-50 p-3 text-sm dark:bg-zinc-800">
+                                <p class="font-medium">Evaluación integral MBI</p>
+                                @foreach ([
+                                    'integracion_clinica' => 'Integración clínica',
+                                    'hallazgos_principales' => 'Hallazgos principales',
+                                    'objetivo_terapeutico' => 'Objetivo terapéutico',
+                                    'especialidad_principal' => 'Especialidad principal',
+                                    'observaciones_generales' => 'Observaciones',
+                                ] as $field => $label)
+                                    @if (filled($mbi->{$field}))
+                                        <p><strong>{{ $label }}:</strong> {{ $mbi->{$field} }}</p>
+                                    @endif
+                                @endforeach
+                                @if ($mbi->sistemas_comprometidos)
+                                    <p><strong>Sistemas comprometidos:</strong> {{ implode(', ', $mbi->sistemas_comprometidos) }}</p>
+                                @endif
+                                @if ($mbi->especialidades_complementarias)
+                                    <p><strong>Especialidades complementarias:</strong> {{ implode(', ', $mbi->especialidades_complementarias) }}</p>
+                                @endif
+                                @if ($mbi->modelo_6plus_seleccion)
+                                    <p><strong>Selección Modelo 6+:</strong> {{ implode(', ', $mbi->modelo_6plus_seleccion) }}</p>
+                                @endif
+                            </div>
+                        @endif
                         @can('consultations.edit')
                             <flux:button
                                 class="mt-3"

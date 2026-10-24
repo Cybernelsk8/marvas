@@ -3,38 +3,13 @@
 namespace Database\Seeders;
 
 use App\Models\Admin\Page;
-use App\Models\Admin\Permission;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 
 class PacientesAccessSeeder extends Seeder
 {
     public function run(): void
     {
-        $permissionNames = [
-            'page.view.patients',
-            'patients.create',
-            'patients.edit',
-            'patients.merge',
-        ];
-        $sectionPermissions = [
-            'patients.clinical.view',
-            'patients.documents.view',
-            'patients.billing.view',
-        ];
-        $consultationPermissions = [
-            'consultations.create',
-            'consultations.edit',
-            'consultations.close',
-            'consultations.reopen',
-        ];
-
-        foreach ([...$permissionNames, ...$sectionPermissions, ...$consultationPermissions] as $permissionName) {
-            Permission::firstOrCreate([
-                'name' => $permissionName,
-                'guard_name' => 'web',
-            ]);
-        }
+        $this->call(PermissionsAccessSeeder::class);
 
         $parent = Page::withTrashed()->firstOrNew(['label' => 'Pacientes']);
         $parent->fill([
@@ -63,10 +38,5 @@ class PacientesAccessSeeder extends Seeder
             $page->restore();
         }
         $page->save();
-
-        Role::query()
-            ->whereIn('name', ['Sysadmin', 'Recepcionista'])
-            ->get()
-            ->each(fn (Role $role) => $role->givePermissionTo($permissionNames));
     }
 }

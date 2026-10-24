@@ -3,28 +3,13 @@
 namespace Database\Seeders;
 
 use App\Models\Admin\Page;
-use App\Models\Admin\Permission;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 
 class SolicitudesAccessSeeder extends Seeder
 {
     public function run(): void
     {
-        $permissionNames = [
-            'page.view.requests',
-            'requests.edit',
-            'requests.confirm',
-            'requests.reschedule',
-            'requests.cancel',
-        ];
-
-        foreach ($permissionNames as $permissionName) {
-            Permission::firstOrCreate([
-                'name' => $permissionName,
-                'guard_name' => 'web',
-            ]);
-        }
+        $this->call(PermissionsAccessSeeder::class);
 
         $parent = Page::withTrashed()->firstOrNew(['label' => 'Recepción']);
         $parent->fill([
@@ -53,16 +38,5 @@ class SolicitudesAccessSeeder extends Seeder
             $page->restore();
         }
         $page->save();
-
-        $recepcionista = Role::firstOrCreate([
-            'name' => 'Recepcionista',
-            'guard_name' => 'web',
-        ]);
-        $recepcionista->givePermissionTo($permissionNames);
-
-        Role::query()
-            ->where('name', 'Sysadmin')
-            ->first()
-            ?->givePermissionTo('page.view.requests');
     }
 }

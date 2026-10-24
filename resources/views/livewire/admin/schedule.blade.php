@@ -23,6 +23,11 @@
             <flux:button variant="{{ $viewMode === 'month' ? 'primary' : 'ghost' }}" wire:click="setViewMode('month')">
                 Mes</flux:button>
         </flux:button.group>
+        @can('appointments.create')
+                <flux:button variant="primary" icon="plus" wire:click="prepareBooking">
+                    Nueva cita
+                </flux:button>
+        @endcan
     </div>
 
     <div class="grid gap-6 {{ $viewMode === 'month' ? 'lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]' : '' }}">
@@ -182,6 +187,107 @@
             </div>
         </flux:card>
     </div>
+
+    <flux:modal name="agenda-crear-cita-modal" class="max-w-2xl">
+        <form wire:submit="createDirectAppointment" class="space-y-5">
+            <flux:heading size="lg">Crear cita confirmada</flux:heading>
+            <flux:text>Esta cita se registrará como confirmada por recepción y ocupará el horario global de la clínica.</flux:text>
+
+            @if ($selectedBookingPatient)
+                <div class="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                    <div>
+                        <flux:text class="font-medium">{{ $selectedBookingPatient->nombre_completo }}</flux:text>
+                        <flux:text>{{ $selectedBookingPatient->numero_dpi ?: 'Sin DPI' }}</flux:text>
+                    </div>
+                    <flux:button type="button" size="sm" variant="ghost" wire:click="changeBookingPatient">
+                        Cambiar paciente
+                    </flux:button>
+                </div>
+            @else
+                <flux:input label="Buscar paciente *" placeholder="Nombre, DPI, teléfono o correo"
+                    wire:model.live.debounce.300ms="bookingPatientSearch" />
+                <flux:error name="bookingPatientId" />
+                @if (mb_strlen(trim($bookingPatientSearch)) >= 2)
+                    <div class="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
+                        @forelse ($bookingPatients as $patient)
+                            <button type="button"
+                                class="flex w-full items-center justify-between rounded-md p-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                wire:key="booking-patient-{{ $patient->id }}"
+                                wire:click="selectBookingPatient({{ $patient->id }})">
+                                <span>{{ $patient->nombre_completo }}</span>
+                                <span class="text-sm text-zinc-500">{{ $patient->numero_dpi ?: 'Sin DPI' }}</span>
+                            </button>
+                        @empty
+                            <flux:text class="p-2">No hay pacientes activos con expediente que coincidan.</flux:text>
+                        @endforelse
+                    </div>
+                @endif
+            @endif
+
+            <flux:select label="Tipo de cita *" wire:model.live="bookingType">
+                <flux:select.option value="primera_vez">Primera visita (Evaluador MBI)</flux:select.option>
+                <flux:select.option value="seguimiento">Seguimiento</flux:select.option>
+                <flux:select.option value="control">Control</flux:select.option>
+                <flux:select.option value="evaluacion_integral">Evaluación integral</flux:select.option>
+                <flux:select.option value="procedimiento">Procedimiento</flux:select.option>
+            </flux:select>
+            @error('bookingType') <flux:error>{{ $message }}</flux:error> @enderror
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <flux:input label="Fecha *" type="date" min="{{ today()->toDateString() }}" wire:model.live="bookingDate" />
+                <flux:select label="Hora disponible *" wire:model.live="bookingTime">
+                    <flux:select.option value="">Selecciona una hora</flux:select.option>
+                    @foreach ($bookingHours as $hour)
+                        <flux:select.option value="{{ $hour }}">{{ \Carbon\Carbon::parse($hour)->format('h:i a') }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            </div>
+            @error('bookingDate') <flux:error>{{ $message }}</flux:error> @enderror
+            @error('bookingTime') <flux:error>{{ $message }}</flux:error> @enderror
+            @if ($bookingDate && $bookingHours === [])
+                <flux:text>No hay horarios disponibles para la fecha seleccionada.</flux:text>
+            @endif
+
+            <flux:select label="Sede *" wire:model.live="bookingBranchId">
+                <flux:select.option value="">Selecciona una sede</flux:select.option>
+                @foreach ($sucursales->where('activa', true) as $sucursal)
+                    <flux:select.option value="{{ $sucursal->id }}">{{ $sucursal->nombre }}</flux:select.option>
+                @endforeach
+            </flux:select>
+            @error('bookingBranchId') <flux:error>{{ $message }}</flux:error> @enderror
+            @if ($bookingType === 'primera_vez' && $bookingBranchId && $bookingProfessionals->isEmpty())
+                <flux:callout variant="warning">
+                    <flux:callout.text>Esta sede no tiene un Evaluador MBI activo asignado. Configura uno antes de reservar una primera visita.</flux:callout.text>
+                </flux:callout>
+            @endif
+            <flux:select label="{{ $bookingType === 'primera_vez' ? 'Evaluador MBI *' : 'Profesional *' }}"
+                wire:model.live="bookingProfessionalId" :disabled="$bookingProfessionals->isEmpty()">
+                <flux:select.option value="">Selecciona un profesional</flux:select.option>
+                @foreach ($bookingProfessionals as $professional)
+                    <flux:select.option value="{{ $professional->id }}">{{ $professional->nombre_completo }}</flux:select.option>
+                @endforeach
+            </flux:select>
+            @error('bookingProfessionalId') <flux:error>{{ $message }}</flux:error> @enderror
+            <flux:select label="Especialidad *" wire:model.live="bookingSpecialtyId" :disabled="$bookingSpecialties->isEmpty()">
+                <flux:select.option value="">Selecciona una especialidad</flux:select.option>
+                @foreach ($bookingSpecialties as $specialty)
+                    <flux:select.option value="{{ $specialty->id }}">{{ $specialty->nombre }}</flux:select.option>
+                @endforeach
+            </flux:select>
+            @error('bookingSpecialtyId') <flux:error>{{ $message }}</flux:error> @enderror
+
+            <flux:textarea label="Notas de recepción" wire:model="bookingNotes" />
+            @error('bookingNotes') <flux:error>{{ $message }}</flux:error> @enderror
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button type="button" variant="ghost">Cancelar</flux:button>
+                </flux:modal.close>
+                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">
+                    Crear cita confirmada
+                </flux:button>
+            </div>
+        </form>
+    </flux:modal>
 
     <flux:modal name="agenda-confirmar-cita-modal" class="max-w-lg">
         <form wire:submit="confirmAppointment" class="space-y-4">

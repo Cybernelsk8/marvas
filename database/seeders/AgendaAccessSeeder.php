@@ -3,20 +3,13 @@
 namespace Database\Seeders;
 
 use App\Models\Admin\Page;
-use App\Models\Admin\Permission;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 
 class AgendaAccessSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach (['page.view.schedule', 'schedule.edit'] as $permissionName) {
-            Permission::firstOrCreate([
-                'name' => $permissionName,
-                'guard_name' => 'web',
-            ]);
-        }
+        $this->call(PermissionsAccessSeeder::class);
 
         $parent = Page::withTrashed()->firstOrNew(['label' => 'Agenda']);
         $parent->fill([
@@ -59,15 +52,5 @@ class AgendaAccessSeeder extends Seeder
             $availabilityPage->restore();
         }
         $availabilityPage->save();
-
-        Role::query()
-            ->where('name', 'Sysadmin')
-            ->first()
-            ?->givePermissionTo(['page.view.schedule', 'schedule.edit']);
-
-        Role::query()
-            ->where('name', 'Recepcionista')
-            ->first()
-            ?->givePermissionTo('page.view.schedule');
     }
 }

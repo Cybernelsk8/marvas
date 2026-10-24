@@ -18,6 +18,7 @@ class CatalogosClinicosSeeder extends Seeder
             SolicitudesAccessSeeder::class,
             AgendaAccessSeeder::class,
             PacientesAccessSeeder::class,
+            ClinicalCatalogAccessSeeder::class,
         ]);
     }
 }

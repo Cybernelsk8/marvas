@@ -10,6 +10,7 @@ use App\Models\Auditoria;
 use App\Models\Cita;
 use App\Models\Consulta;
 use App\Models\Especialidad;
+use App\Models\EvaluacionIntegralMbi;
 use App\Models\Paciente;
 use App\Models\Profesional;
 use App\Models\Sucursal;
@@ -303,6 +304,99 @@ class ConsultationTest extends TestCase
             ->assertSee('Síntomas y hallazgos documentados')
             ->assertSee('Hipótesis clínica')
             ->assertSee('Reevaluar en seguimiento');
+    }
+
+    public function test_mbi_evaluation_saves_lists_and_fields_with_audited_changes(): void
+    {
+        [$patient, $appointment] = $this->createConfirmedAppointment();
+        $consultation = app(ConsultationService::class)
+            ->openFromAppointment($appointment->id, $patient->id);
+        $this->clinician->givePermissionTo('consultations.edit');
+
+        $component = Livewire::actingAs($this->clinician)
+            ->test(ConsultationForm::class, ['consultation' => $consultation])
+            ->assertSee('Evaluación integral MBI')
+            ->call('openAnamnesis', 'mbi')
+            ->assertSee('Sistemas comprometidos (uno por línea)')
+            ->set('mbiForm.integracion_clinica', 'Integración de hallazgos clínicos')
+            ->set('mbiForm.sistemas_comprometidos', "Digestivo\nNeurológico")
+            ->set('mbiForm.hallazgos_principales', 'Hallazgos documentados')
+            ->set('mbiForm.objetivo_terapeutico', 'Objetivo de evaluación')
+            ->set('mbiForm.especialidad_principal', 'Naturopatía')
+            ->set('mbiForm.especialidades_complementarias', "Homeopatía\nQuiropraxia")
+            ->set('mbiForm.modelo_6plus_seleccion', "Área 1\nÁrea 2")
+            ->set('mbiForm.observaciones_generales', 'Observación administrativa de prueba')
+            ->call('saveMbiEvaluation')
+            ->assertHasNoErrors()
+            ->assertSee('Guardado');
+
+        $evaluation = EvaluacionIntegralMbi::query()
+            ->where('consulta_id', $consultation->id)
+            ->firstOrFail();
+        $this->assertSame('Integración de hallazgos clínicos', $evaluation->integracion_clinica);
+        $this->assertSame(['Digestivo', 'Neurológico'], $evaluation->sistemas_comprometidos);
+        $this->assertSame(['Homeopatía', 'Quiropraxia'], $evaluation->especialidades_complementarias);
+        $this->assertSame(['Área 1', 'Área 2'], $evaluation->modelo_6plus_seleccion);
+
+        $audit = Auditoria::query()
+            ->where('tabla_afectada', 'evaluacion_integral_mbi')
+            ->where('registro_id', $evaluation->id)
+            ->firstOrFail();
+        $this->assertSame('crear', $audit->accion);
+        $this->assertContains('integracion_clinica', $audit->datos_nuevos['campos_modificados']);
+        $this->assertStringNotContainsString('Integración de hallazgos', json_encode($audit->toArray()));
+
+        $component
+            ->call('openAnamnesis', 'mbi')
+            ->assertSet('mbiForm.sistemas_comprometidos', "Digestivo\nNeurológico")
+            ->set('mbiForm.integracion_clinica', 'Integración actualizada')
+            ->call('saveMbiEvaluation')
+            ->assertHasNoErrors();
+
+        $this->assertSame(
+            1,
+            EvaluacionIntegralMbi::query()->where('consulta_id', $consultation->id)->count(),
+        );
+        Livewire::actingAs($this->clinician)
+            ->test(ConsultationForm::class, ['consultation' => $consultation->fresh()])
+            ->call('openAnamnesis', 'mbi')
+            ->assertSet('mbiForm.integracion_clinica', 'Integración actualizada')
+            ->assertSet('mbiForm.especialidades_complementarias', implode(PHP_EOL, ['Homeopatía', 'Quiropraxia']));
+
+        Livewire::actingAs($this->clinician)
+            ->test(Show::class, ['patient' => $patient])
+            ->assertSee('Evaluación integral MBI')
+            ->assertSee('Integración actualizada')
+            ->assertSee('Digestivo, Neurológico');
+
+        $this->assertDatabaseHas('evaluacion_integral_mbi', [
+            'consulta_id' => $consultation->id,
+            'integracion_clinica' => 'Integración actualizada',
+        ]);
+        $this->assertDatabaseHas('auditoria', [
+            'tabla_afectada' => 'evaluacion_integral_mbi',
+            'registro_id' => $evaluation->id,
+            'accion' => 'editar',
+            'user_id' => $this->clinician->id,
+        ]);
+    }
+
+    public function test_mbi_evaluation_cannot_be_saved_for_a_closed_consultation(): void
+    {
+        [$patient, $appointment] = $this->createConfirmedAppointment();
+        $consultation = app(ConsultationService::class)
+            ->openFromAppointment($appointment->id, $patient->id);
+        $consultation->update(['estado' => 'cerrada']);
+        $this->clinician->givePermissionTo('consultations.edit');
+
+        Livewire::actingAs($this->clinician)
+            ->test(ConsultationForm::class, ['consultation' => $consultation])
+            ->set('mbiForm.integracion_clinica', 'No debe persistir')
+            ->call('saveMbiEvaluation')
+            ->assertHasErrors('mbi');
+
+        $this->assertDatabaseCount('evaluacion_integral_mbi', 0);
+        $this->assertDatabaseCount('auditoria', 1);
     }
 
     public function test_chiropractic_anamnesis_persists_boolean_enum_and_optional_details(): void

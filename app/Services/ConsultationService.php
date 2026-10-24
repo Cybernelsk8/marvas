@@ -9,6 +9,7 @@ use App\Models\AnamnesisQuiropraxia;
 use App\Models\Auditoria;
 use App\Models\Cita;
 use App\Models\Consulta;
+use App\Models\EvaluacionIntegralMbi;
 use App\Models\ExpedienteMaestro;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,56 @@ use Illuminate\Validation\ValidationException;
 
 class ConsultationService
 {
+    public function saveMbiEvaluation(int $consultationId, array $data): EvaluacionIntegralMbi
+    {
+        return DB::transaction(function () use ($consultationId, $data): EvaluacionIntegralMbi {
+            $consultation = Consulta::query()
+                ->whereKey($consultationId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($consultation->estado, ['abierta', 'en_proceso'], true)) {
+                throw ValidationException::withMessages([
+                    'mbi' => 'Solo se puede guardar la evaluación MBI de una consulta abierta o en proceso.',
+                ]);
+            }
+
+            $evaluation = EvaluacionIntegralMbi::query()
+                ->where('consulta_id', $consultation->id)
+                ->lockForUpdate()
+                ->first();
+            $isNew = $evaluation === null;
+            $evaluation ??= new EvaluacionIntegralMbi(['consulta_id' => $consultation->id]);
+            $evaluation->fill($data);
+            $evaluation->consulta_id = $consultation->id;
+            $evaluation->save();
+
+            $changedFields = collect(array_keys($data))
+                ->filter(fn (string $field): bool => $isNew || $evaluation->wasChanged($field))
+                ->values()
+                ->all();
+
+            Auditoria::create([
+                'user_id' => Auth::id(),
+                'tabla_afectada' => 'evaluacion_integral_mbi',
+                'registro_id' => $evaluation->id,
+                'accion' => $isNew ? 'crear' : 'editar',
+                'datos_anteriores' => $isNew ? null : [
+                    'consulta_id' => $consultation->id,
+                    'campos_modificados' => $changedFields,
+                ],
+                'datos_nuevos' => [
+                    'consulta_id' => $consultation->id,
+                    'campos_modificados' => $changedFields,
+                ],
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            return $evaluation->fresh();
+        });
+    }
+
     public function saveGeneralAnamnesis(int $consultationId, array $data): AnamnesisGeneral
     {
         return DB::transaction(function () use ($consultationId, $data): AnamnesisGeneral {

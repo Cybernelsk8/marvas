@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Admin\Area;
 use App\Models\Admin\Page;
-use App\Models\Admin\Permission;
 use Illuminate\Database\Seeder;
 
 class AdminAccessSeeder extends Seeder
@@ -72,40 +71,6 @@ class AdminAccessSeeder extends Seeder
                 $page->restore();
             }
             $page->save();
-        }
-
-        $permissionNames = [
-            'users.list',
-            'users.store',
-            'users.edit',
-            'users.disabled',
-            'users.reset.password',
-            'users.restore',
-            'users.assign.permissions',
-            'pages.list',
-            'pages.store',
-            'pages.edit',
-            'pages.disabled',
-            'roles.list',
-            'roles.store',
-            'roles.edit',
-            'roles.delete',
-            'permissions.list',
-            'permissions.store',
-            'permissions.edit',
-            'permissions.delete',
-            'page.view.admin',
-            'page.view.users',
-            'page.view.pages',
-            'page.view.roles',
-            'page.view.permissions',
-        ];
-
-        foreach ($permissionNames as $permissionName) {
-            Permission::firstOrCreate([
-                'name' => $permissionName,
-                'guard_name' => 'web',
-            ]);
         }
     }
 }
