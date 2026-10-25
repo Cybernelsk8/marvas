@@ -23,6 +23,9 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * Componente Livewire que muestra y administra la agenda, sus citas y solicitudes pendientes.
+ */
 #[Title('Agenda')]
 class Schedule extends Component
 {
@@ -72,6 +75,14 @@ class Schedule extends Component
 
     public string $bookingNotes = '';
 
+    /**
+     * Livewire lo ejecuta al montar el componente.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al montar el componente; autoriza el acceso y fija la fecha inicial en hoy.
+    //   Ejemplo: al abrir Agenda, `mount()` establece `selectedDate` en hoy.
+    //   Resultado: se muestra la agenda del día actual.
     public function mount(): void
     {
         $this->authorize('page.view.schedule');
@@ -79,6 +90,14 @@ class Schedule extends Component
         $this->selectedDate = today()->toDateString();
     }
 
+    /**
+     * Livewire lo invoca al renderizar.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Livewire lo invoca al renderizar; prepara opciones y datos dependientes de los filtros vigentes.
+    //   Ejemplo: `render()` entrega `events`, `statuses` y `bookingHours` a la vista.
+    //   Resultado: calendario y formularios reflejan filtros y horarios actuales.
     public function render()
     {
         return view('livewire.admin.schedule', [
@@ -111,6 +130,14 @@ class Schedule extends Component
         ]);
     }
 
+    /**
+     * La vista lo llama al iniciar una reserva.
+     *
+     * @return void
+     */
+    // La vista lo llama al iniciar una reserva; reinicia campos y propone una fecha futura seleccionada o, en otro caso, hoy.
+    //   Ejemplo: `<flux:button wire:click="prepareBooking">Crear cita</flux:button>`.
+    //   Resultado: abre el modal limpio con una fecha inicial válida.
     public function prepareBooking(): void
     {
         $this->authorize('appointments.create');
@@ -121,6 +148,16 @@ class Schedule extends Component
         Flux::modal('agenda-crear-cita-modal')->show();
     }
 
+    /**
+     * La búsqueda lo invoca con el ID elegido.
+     *
+     * @param  int  $id  Identificador del registro.
+     *
+     * @return void
+     */
+    // La búsqueda lo invoca con el ID elegido; verifica que el paciente esté activo, no fusionado y tenga expediente.
+    //   Ejemplo: `wire:click="selectBookingPatient({{ $patient->id }})"`.
+    //   Resultado: el ID y nombre del paciente quedan cargados.
     public function selectBookingPatient(int $id): void
     {
         $this->authorize('appointments.create');
@@ -133,6 +170,14 @@ class Schedule extends Component
         $this->bookingPatientSearch = $patient->nombre_completo;
     }
 
+    /**
+     * La vista lo invoca para permitir otro paciente.
+     *
+     * @return void
+     */
+    // La vista lo invoca para permitir otro paciente; borra el ID y el texto de búsqueda.
+    //   Ejemplo: `<flux:button wire:click="changeBookingPatient">Cambiar</flux:button>`.
+    //   Resultado: la búsqueda queda disponible sin paciente seleccionado.
     public function changeBookingPatient(): void
     {
         $this->authorize('appointments.create');
@@ -140,6 +185,14 @@ class Schedule extends Component
         $this->bookingPatientSearch = '';
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar `bookingType` para no conservar asignaciones que pudieran ser incompatibles.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar `bookingType` para no conservar asignaciones que pudieran ser incompatibles.
+    //   Ejemplo: `<select wire:model="bookingType">…</select>` cambia a `seguimiento`.
+    //   Resultado: profesional y especialidad deben elegirse de nuevo.
     public function updatedBookingType(): void
     {
         $this->authorize('appointments.create');
@@ -150,6 +203,14 @@ class Schedule extends Component
         }
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar `bookingBranchId` para no conservar datos de otra sede.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar `bookingBranchId` para no conservar datos de otra sede.
+    //   Ejemplo: `<select wire:model="bookingBranchId">…</select>` elige otra sede.
+    //   Resultado: profesional y especialidad quedan sin seleccionar.
     public function updatedBookingBranchId(): void
     {
         $this->authorize('appointments.create');
@@ -157,12 +218,30 @@ class Schedule extends Component
         $this->bookingSpecialtyId = null;
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar el profesional, pues sus especialidades dependen de esa selección.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar el profesional, pues sus especialidades dependen de esa selección.
+    //   Ejemplo: `<select wire:model="bookingProfessionalId">…</select>` elige otro.
+    //   Resultado: debe elegirse una especialidad compatible.
     public function updatedBookingProfessionalId(): void
     {
         $this->authorize('appointments.create');
         $this->bookingSpecialtyId = null;
     }
 
+    /**
+     * Livewire le pasa la nueva fecha.
+     *
+     * @param  ?string  $date  Fecha recibida desde Livewire.
+     *
+     * @return void
+     */
+    // Livewire le pasa la nueva fecha; valida el formato antes de consultar horarios y borra la hora anterior.
+    //   Ejemplo: `<input type="date" wire:model="bookingDate">` recibe `2026-10-25`.
+    //   Resultado: se calculan horarios para la fecha nueva y se descarta la hora anterior.
     public function updatedBookingDate(?string $date): void
     {
         $this->authorize('appointments.create');
@@ -172,6 +251,14 @@ class Schedule extends Component
         }
     }
 
+    /**
+     * La vista lo llama al enviar el formulario.
+     *
+     * @return void
+     */
+    // La vista lo llama al enviar el formulario; valida los datos y delega las reglas de disponibilidad al servicio.
+    //   Ejemplo: `<flux:button wire:click="createDirectAppointment">Guardar cita</flux:button>`.
+    //   Resultado: si confirma, cierra el modal y notifica éxito; si no, muestra el error.
     public function createDirectAppointment(): void
     {
         $this->authorize('appointments.create');
@@ -223,6 +310,14 @@ class Schedule extends Component
         Flux::toast(text: 'Cita creada y confirmada.', variant: 'success');
     }
 
+    /**
+     * Se usa al abrir el modal y tras crear una cita para no reutilizar datos anteriores.
+     *
+     * @return void
+     */
+    // Se usa al abrir el modal y tras crear una cita para no reutilizar datos anteriores.
+    //   Ejemplo: `$this->resetBookingForm()` después de guardar correctamente.
+    //   Resultado: el tipo vuelve a `primera_vez` y los demás campos quedan limpios.
     public function resetBookingForm(): void
     {
         $this->reset([
@@ -240,6 +335,14 @@ class Schedule extends Component
         $this->resetValidation();
     }
 
+    /**
+     * Se invoca desde `render()`.
+     *
+     * @return Collection
+     */
+    // Se invoca desde `render()`; busca solo con al menos dos caracteres y sin un paciente ya seleccionado.
+    //   Ejemplo: con `bookingPatientSearch = "Ana"`, se llama `$this->bookingPatients()`.
+    //   Resultado: devuelve hasta diez pacientes elegibles o una colección vacía.
     private function bookingPatients(): Collection
     {
         $search = trim($this->bookingPatientSearch);
@@ -263,6 +366,14 @@ class Schedule extends Component
             ->get(['id', 'nombres', 'apellidos', 'numero_dpi']);
     }
 
+    /**
+     * Se invoca desde `render()` y filtra por sede.
+     *
+     * @return SupportCollection
+     */
+    // Se invoca desde `render()` y filtra por sede; para primera visita exige el Evaluador MBI configurado.
+    //   Ejemplo: `$this->bookingProfessionals()` con `bookingBranchId = "2"`.
+    //   Resultado: devuelve profesionales elegibles ordenados o una colección vacía sin sede.
     private function bookingProfessionals(): SupportCollection
     {
         if (! $this->bookingBranchId) {
@@ -286,6 +397,14 @@ class Schedule extends Component
         return $query->orderBy('nombre_completo')->get();
     }
 
+    /**
+     * Se invoca desde `render()`.
+     *
+     * @return SupportCollection
+     */
+    // Se invoca desde `render()`; limita a Evaluación MBI para primeras visitas.
+    //   Ejemplo: `$this->bookingSpecialties()` con un profesional seleccionado.
+    //   Resultado: devuelve especialidades compatibles o una colección vacía sin profesional.
     private function bookingSpecialties(): SupportCollection
     {
         if (! $this->bookingProfessionalId) {
@@ -302,6 +421,16 @@ class Schedule extends Component
             ->get();
     }
 
+    /**
+     * Livewire pasa la fecha nueva.
+     *
+     * @param  ?string  $fecha  Fecha seleccionada para reprogramar.
+     *
+     * @return void
+     */
+    // Livewire pasa la fecha nueva; conserva la hora solo si sigue libre, excluyendo la cita que se reprograma.
+    //   Ejemplo: `<input type="date" wire:model="reprogramacion.fecha">` cambia de día.
+    //   Resultado: se conserva la hora disponible o se limpia para elegir otra.
     public function updatedReprogramacionFecha(?string $fecha): void
     {
         if (! $fecha || ! in_array(
@@ -313,6 +442,16 @@ class Schedule extends Component
         }
     }
 
+    /**
+     * La vista lo invoca al elegir modo.
+     *
+     * @param  string  $viewMode  Modo de visualización solicitado.
+     *
+     * @return void
+     */
+    // La vista lo invoca al elegir modo; valida el valor e invalida las citas computadas.
+    //   Ejemplo: `wire:click="setViewMode('week')"`.
+    //   Resultado: la agenda cambia a semana y actualiza sus citas.
     public function setViewMode(string $viewMode): void
     {
         $this->authorize('page.view.schedule');
@@ -324,6 +463,16 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    /**
+     * La vista envía -1 o 1 al pulsar las flechas.
+     *
+     * @param  int  $direction  Dirección de navegación: -1 o 1.
+     *
+     * @return void
+     */
+    // La vista envía -1 o 1 al pulsar las flechas; se rechazan otras direcciones.
+    //   Ejemplo: `<button wire:click="navigatePeriod(1)">Siguiente</button>`.
+    //   Resultado: avanza un día, semana o mes según el modo.
     public function navigatePeriod(int $direction): void
     {
         $this->authorize('page.view.schedule');
@@ -341,6 +490,14 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    /**
+     * La vista lo invoca desde el control Hoy e invalida las citas computadas.
+     *
+     * @return void
+     */
+    // La vista lo invoca desde el control Hoy e invalida las citas computadas.
+    //   Ejemplo: `<flux:button wire:click="goToToday">Hoy</flux:button>`.
+    //   Resultado: `selectedDate` queda en hoy y el calendario vuelve a ese periodo.
     public function goToToday(): void
     {
         $this->authorize('page.view.schedule');
@@ -348,6 +505,18 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    /**
+     * Lo invoca el evento `calendar-day-selected`.
+     *
+     * @param  string  $date  Fecha recibida desde Livewire.
+     *
+     * @param  array  $events  Eventos enviados por el calendario.
+     *
+     * @return void
+     */
+    // Lo invoca el evento `calendar-day-selected`; valida que la fecha ISO exista antes de actualizar la agenda.
+    //   Ejemplo: `<flux:calendar event-name="calendar-day-selected" />` al elegir `2026-10-24`.
+    //   Resultado: se actualiza la agenda a esa fecha o se informa una fecha inválida.
     #[On('calendar-day-selected')]
     public function selectDate(string $date, array $events = []): void
     {
@@ -369,6 +538,14 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar `status`.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar `status`; solo permite estados conocidos, además de activa y todas.
+    //   Ejemplo: `<select wire:model="status">…</select>` cambia a `confirmada`.
+    //   Resultado: la agenda muestra únicamente citas confirmadas.
     public function updatedStatus(): void
     {
         $this->authorize('page.view.schedule');
@@ -378,6 +555,14 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar `sucursalFiltro`.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar `sucursalFiltro`; acepta todas, sin sede o una sede existente.
+    //   Ejemplo: `<select wire:model="sucursalFiltro">…</select>` elige sede 3.
+    //   Resultado: la agenda queda limitada a esa sede.
     public function updatedSucursalFiltro(): void
     {
         $this->authorize('page.view.schedule');
@@ -390,6 +575,14 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar `profesionalFiltro`.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar `profesionalFiltro`; acepta todos, sin asignar o un profesional existente.
+    //   Ejemplo: `<select wire:model="profesionalFiltro">…</select>` elige profesional 4.
+    //   Resultado: la agenda muestra sus citas asignadas.
     public function updatedProfesionalFiltro(): void
     {
         $this->authorize('page.view.schedule');
@@ -406,6 +599,14 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar `viewMode` directamente y restringe sus valores a día, semana o mes.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar `viewMode` directamente y restringe sus valores a día, semana o mes.
+    //   Ejemplo: `<select wire:model="viewMode">…</select>` elige `day`.
+    //   Resultado: se invalida la caché y queda activo el modo diario.
     public function updatedViewMode(): void
     {
         $this->authorize('page.view.schedule');
@@ -413,6 +614,16 @@ class Schedule extends Component
         unset($this->appointments);
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar la sede.
+     *
+     * @param  ?string  $sucursalId  ID de sede seleccionada.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar la sede; limpia selecciones dependientes y autoselecciona si hay un solo profesional.
+    //   Ejemplo: `<select wire:model="sucursalConfirmacion">…</select>` elige sede 2.
+    //   Resultado: aparecen profesionales elegibles y se autoselecciona la única opción.
     public function updatedSucursalConfirmacion(?string $sucursalId): void
     {
         $this->profesionalConfirmacion = null;
@@ -439,6 +650,16 @@ class Schedule extends Component
         }
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar profesional.
+     *
+     * @param  ?string  $profesionalId  ID del profesional seleccionado.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al cambiar profesional; elimina especialidades obsoletas y autoselecciona la única disponible.
+    //   Ejemplo: `<select wire:model="profesionalConfirmacion">…</select>` elige profesional 5.
+    //   Resultado: se cargan especialidades activas y se elige la única, si existe.
     public function updatedProfesionalConfirmacion(?string $profesionalId): void
     {
         $this->especialidadConfirmacion = null;
@@ -463,6 +684,16 @@ class Schedule extends Component
         }
     }
 
+    /**
+     * La bandeja lo invoca con la cita.
+     *
+     * @param  int  $id  Identificador del registro.
+     *
+     * @return void
+     */
+    // La bandeja lo invoca con la cita; comprueba que siga pendiente o necesite completar su asignación.
+    //   Ejemplo: `wire:click="prepareConfirmation({{ $row->id }})"`.
+    //   Resultado: abre el modal con asignaciones elegibles; primeras visitas requieren Evaluador MBI.
     public function prepareConfirmation(int $id): void
     {
         $this->authorize('requests.confirm');
@@ -489,6 +720,14 @@ class Schedule extends Component
         Flux::modal('agenda-confirmar-cita-modal')->show();
     }
 
+    /**
+     * La vista lo invoca al guardar el modal.
+     *
+     * @return void
+     */
+    // La vista lo invoca al guardar el modal; el servicio vuelve a validar disponibilidad y reglas del dominio.
+    //   Ejemplo: `<flux:button wire:click="confirmAppointment">Confirmar cita</flux:button>`.
+    //   Resultado: confirma o asigna la cita y notifica éxito, o presenta el conflicto.
     public function confirmAppointment(): void
     {
         $this->authorize('requests.confirm');
@@ -599,6 +838,16 @@ class Schedule extends Component
         );
     }
 
+    /**
+     * La bandeja lo invoca para cambiar horario.
+     *
+     * @param  int  $id  Identificador del registro.
+     *
+     * @return void
+     */
+    // La bandeja lo invoca para cambiar horario; solo acepta solicitudes en estado `solicitada`.
+    //   Ejemplo: `wire:click="prepareRescheduling({{ $row->id }})"`.
+    //   Resultado: el modal muestra fecha y hora actuales para seleccionar otras.
     public function prepareRescheduling(int $id): void
     {
         $this->authorize('requests.reschedule');
@@ -620,6 +869,14 @@ class Schedule extends Component
         Flux::modal('agenda-reprogramar-cita-modal')->show();
     }
 
+    /**
+     * La vista lo invoca al guardar.
+     *
+     * @return void
+     */
+    // La vista lo invoca al guardar; el servicio comprueba que siga pendiente y que el horario esté libre.
+    //   Ejemplo: `<flux:button wire:click="rescheduleAppointment">Guardar horario</flux:button>`.
+    //   Resultado: la solicitud cambia de horario y continúa pendiente, o se muestra el error.
     public function rescheduleAppointment(): void
     {
         $this->authorize('requests.reschedule');
@@ -653,6 +910,16 @@ class Schedule extends Component
         Flux::toast(text: 'La solicitud fue reprogramada y sigue pendiente de confirmación.', variant: 'success');
     }
 
+    /**
+     * La bandeja lo invoca antes de pedir el motivo.
+     *
+     * @param  int  $id  Identificador del registro.
+     *
+     * @return void
+     */
+    // La bandeja lo invoca antes de pedir el motivo; solo permite solicitudes `solicitada`.
+    //   Ejemplo: `wire:click="prepareCancellation({{ $row->id }})"`.
+    //   Resultado: se abre el modal con el motivo vacío y sin errores previos.
     public function prepareCancellation(int $id): void
     {
         $this->authorize('requests.cancel');
@@ -671,6 +938,14 @@ class Schedule extends Component
         Flux::modal('agenda-cancelar-cita-modal')->show();
     }
 
+    /**
+     * La vista lo invoca al confirmar.
+     *
+     * @return void
+     */
+    // La vista lo invoca al confirmar; exige un motivo y delega el cambio de estado al servicio.
+    //   Ejemplo: `<flux:button wire:click="cancelAppointment">Confirmar cancelación</flux:button>`.
+    //   Resultado: se cancela y notifica éxito, o se informa que ya no está pendiente.
     public function cancelAppointment(): void
     {
         $this->authorize('requests.cancel');
@@ -695,6 +970,16 @@ class Schedule extends Component
         Flux::toast(text: 'La solicitud fue cancelada.', variant: 'success');
     }
 
+    /**
+     * Se usa para preparar o renderizar confirmaciones.
+     *
+     * @param  ?int  $sucursalId  ID de sede seleccionada.
+     *
+     * @return SupportCollection
+     */
+    // Se usa para preparar o renderizar confirmaciones; en primeras visitas filtra el Evaluador MBI de la sede.
+    //   Ejemplo: `$this->profesionalesPorSucursal(2)`.
+    //   Resultado: devuelve profesionales elegibles de esa sede o colección vacía.
     public function profesionalesPorSucursal(?int $sucursalId): SupportCollection
     {
         if (! $sucursalId) {
@@ -715,6 +1000,16 @@ class Schedule extends Component
             ->get();
     }
 
+    /**
+     * Se usa para mostrar opciones y completar asignaciones.
+     *
+     * @param  ?int  $profesionalId  ID del profesional seleccionado.
+     *
+     * @return SupportCollection
+     */
+    // Se usa para mostrar opciones y completar asignaciones; restringe a Evaluación MBI si la cita lo requiere.
+    //   Ejemplo: `$this->especialidadesPorProfesional(5)`.
+    //   Resultado: devuelve especialidades activas y compatibles ordenadas.
     public function especialidadesPorProfesional(?int $profesionalId): SupportCollection
     {
         if (! $profesionalId) {
@@ -729,6 +1024,14 @@ class Schedule extends Component
             ->get();
     }
 
+    /**
+     * Se invoca al preparar confirmación para completar selecciones únicas sin escoger arbitrariamente entre varias.
+     *
+     * @return void
+     */
+    // Se invoca al preparar confirmación para completar selecciones únicas sin escoger arbitrariamente entre varias.
+    //   Ejemplo: `$this->selectOnlyAvailableAssignments()` con una cita incompleta.
+    //   Resultado: rellena opciones únicas; para primera visita elige evaluador y especialidad MBI.
     private function selectOnlyAvailableAssignments(): void
     {
         if (! $this->sucursalConfirmacion) {
@@ -772,6 +1075,14 @@ class Schedule extends Component
         }
     }
 
+    /**
+     * Livewire la calcula como propiedad computada al acceder a `$this->appointments`.
+     *
+     * @return Collection
+     */
+    // Livewire la calcula como propiedad computada al acceder a `$this->appointments`; el rango depende del modo.
+    //   Ejemplo: `{{ $this->appointments->count() }}` en la vista.
+    //   Resultado: devuelve las citas del día o semana seleccionados.
     #[Computed]
     public function appointments(): Collection
     {
@@ -791,6 +1102,14 @@ class Schedule extends Component
             ->get();
     }
 
+    /**
+     * La usan las consultas de agenda para reutilizar la carga de relaciones y filtros vigentes.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    // La usan las consultas de agenda para reutilizar la carga de relaciones y filtros vigentes.
+    //   Ejemplo: `$this->appointmentsQuery()->count()`.
+    //   Resultado: queda lista una consulta con paciente, profesional, sede y especialidad.
     private function appointmentsQuery()
     {
         return $this->applyFilters(Cita::query()
@@ -802,6 +1121,16 @@ class Schedule extends Component
             ]));
     }
 
+    /**
+     * La usan la lista del periodo y los eventos para que ambas vistas respeten los mismos filtros.
+     *
+     * @param  Builder  $query  Consulta Eloquent que se filtrará.
+     *
+     * @return Builder
+     */
+    // La usan la lista del periodo y los eventos para que ambas vistas respeten los mismos filtros.
+    //   Ejemplo: `$this->applyFilters(Cita::query())`.
+    //   Resultado: devuelve la consulta con los criterios seleccionados encadenados.
     private function applyFilters(Builder $query): Builder
     {
         return $query
@@ -819,6 +1148,14 @@ class Schedule extends Component
             );
     }
 
+    /**
+     * Se invoca desde `render()`.
+     *
+     * @return array
+     */
+    // Se invoca desde `render()`; prepara la fecha seleccionada o cada día de la semana.
+    //   Ejemplo: `$this->appointmentDays()` en modo semanal.
+    //   Resultado: devuelve un arreglo por fecha ISO con las citas de cada día.
     private function appointmentDays(): array
     {
         $dates = $this->viewMode === 'week'
@@ -829,6 +1166,14 @@ class Schedule extends Component
         return $dates->mapWithKeys(fn (string $date) => [$date => $appointmentsByDate->get($date, collect())])->all();
     }
 
+    /**
+     * Se invoca desde `render()`.
+     *
+     * @return array
+     */
+    // Se invoca desde `render()`; limita el rango para dar contexto sin cargar toda la historia.
+    //   Ejemplo: `events = $this->events()` al construir la vista.
+    //   Resultado: devuelve eventos por fecha con título, hora y color.
     private function events(): array
     {
         $desde = today()->subMonths(3)->startOfMonth();
@@ -847,6 +1192,14 @@ class Schedule extends Component
             ->all();
     }
 
+    /**
+     * Se usa para poblar el filtro y traducir el estado de cada evento.
+     *
+     * @return array
+     */
+    // Se usa para poblar el filtro y traducir el estado de cada evento.
+    //   Ejemplo: `$this->statusOptions()['confirmada']`.
+    //   Resultado: devuelve `Confirmada`.
     private function statusOptions(): array
     {
         return [
@@ -861,6 +1214,16 @@ class Schedule extends Component
         ];
     }
 
+    /**
+     * La invoca `events()` para distinguir estados.
+     *
+     * @param  string  $status  Clave del estado de la cita.
+     *
+     * @return string
+     */
+    // La invoca `events()` para distinguir estados; usa un color neutro para claves desconocidas.
+    //   Ejemplo: `$this->statusColor('confirmada')`.
+    //   Resultado: devuelve `#16a34a`.
     private function statusColor(string $status): string
     {
         return match ($status) {

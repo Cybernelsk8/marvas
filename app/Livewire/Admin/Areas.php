@@ -9,6 +9,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\Attributes\Title;
 
+/** Componente Livewire que lista y administra áreas y dependencias. */
 #[Title('Áreas')]
 class Areas extends Component
 {
@@ -28,6 +29,14 @@ class Areas extends Component
         'deleted_at' => null,
     ];
 
+    /**
+     * Lista áreas incluidas en la papelera aplicando búsqueda, orden y filtros para alimentar la tabla paginada.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    // Lista áreas incluidas en la papelera aplicando búsqueda, orden y filtros para alimentar la tabla paginada.
+    //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
+    //   Resultado: La tabla recibe la página filtrada y conserva el total para la paginación.
     #[Computed]
     public function rows()
     {
@@ -45,6 +54,14 @@ class Areas extends Component
         return $query->paginate($this->per_page ?? 10);
     }
 
+    /**
+     * Entrega la vista y carga las áreas que pueden elegirse como dependencia.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Entrega la vista y carga las áreas que pueden elegirse como dependencia.
+    //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
+    //   Resultado: Livewire entrega la vista con los datos preparados para sus controles.
     public function render()
     {
         $dependencies = Area::query()
@@ -55,6 +72,14 @@ class Areas extends Component
         return view('livewire.admin.areas', compact('dependencies'));
     }
 
+    /**
+     * Valida y crea un área; al terminar limpia el formulario y notifica el resultado.
+     *
+     * @return void
+     */
+    // Valida y crea un área; al terminar limpia el formulario y notifica el resultado.
+    //   Ejemplo: Desde la vista: wire:click="store"
+    //   Resultado: El registro se crea y la interfaz confirma el resultado.
     public function store(): void
     {
         $this->validate([
@@ -75,12 +100,29 @@ class Areas extends Component
         }
     }
 
+    /**
+     * Carga el área seleccionada, incluso si está desactivada, y abre el formulario de edición.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga el área seleccionada, incluso si está desactivada, y abre el formulario de edición.
+    //   Ejemplo: Desde la vista: wire:click="edit({{ $row->id }})"
+    //   Resultado: El formulario se abre con los datos del registro seleccionado.
     public function edit(int $id): void
     {
         $this->area = Area::withTrashed()->findOrFail($id)->toArray();
         Flux::modal('editArea')->show();
     }
 
+    /**
+     * Valida y guarda los cambios del área seleccionada y limpia el formulario.
+     *
+     * @return void
+     */
+    // Valida y guarda los cambios del área seleccionada y limpia el formulario.
+    //   Ejemplo: Desde la vista: wire:click="update"
+    //   Resultado: Los cambios válidos quedan guardados y la interfaz confirma el resultado.
     public function update(): void
     {
         $this->validate([
@@ -110,12 +152,29 @@ class Areas extends Component
         }
     }
 
+    /**
+     * Carga el área elegida y abre el diálogo para confirmar el cambio de estado.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga el área elegida y abre el diálogo para confirmar el cambio de estado.
+    //   Ejemplo: Desde la vista: wire:click="disableItem({{ $row->id }})"
+    //   Resultado: El diálogo queda abierto para confirmar el cambio de estado.
     public function disableItem(int $id): void
     {
         $this->area = Area::withTrashed()->findOrFail($id)->toArray();
         Flux::modal('disableArea')->show();
     }
 
+    /**
+     * Alterna entre borrado lógico y restauración según el estado actual del área.
+     *
+     * @return void
+     */
+    // Alterna entre borrado lógico y restauración según el estado actual del área.
+    //   Ejemplo: Desde la vista: wire:click="disabled"
+    //   Resultado: El registro se desactiva o restaura y la interfaz confirma el cambio.
     public function disabled(): void
     {
         try {
@@ -135,12 +194,29 @@ class Areas extends Component
         }
     }
 
+    /**
+     * Carga el área seleccionada y abre la confirmación de eliminación física.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga el área seleccionada y abre la confirmación de eliminación física.
+    //   Ejemplo: Desde la vista: wire:click="delete({{ $row->id }})"
+    //   Resultado: El diálogo identifica el registro pendiente de eliminación.
     public function delete(int $id): void
     {
         $this->area = Area::withTrashed()->findOrFail($id)->toArray();
         Flux::modal('deleteArea')->show();
     }
 
+    /**
+     * Elimina definitivamente el área confirmada y comunica el resultado.
+     *
+     * @return void
+     */
+    // Elimina definitivamente el área confirmada y comunica el resultado.
+    //   Ejemplo: Desde la vista: wire:click="destroy"
+    //   Resultado: El registro se elimina y la interfaz informa el resultado.
     public function destroy(): void
     {
         try {
@@ -154,6 +230,14 @@ class Areas extends Component
         }
     }
 
+    /**
+     * Restablece los campos y errores del formulario y cierra los modales.
+     *
+     * @return void
+     */
+    // Restablece los campos y errores del formulario y cierra los modales.
+    //   Ejemplo: Desde la vista: wire:click="resetData"
+    //   Resultado: Los datos y errores del formulario se limpian y se cierran los modales.
     public function resetData(): void
     {
         $this->reset('area');

@@ -25,7 +25,7 @@ El sitio público presenta el Modelo 6+ y terapias como homeopatía, naturopatí
 - La implementación actual usa Laravel 13, Livewire y Flux. Para pantallas internas se priorizarán componentes Livewire de página completa bajo `app/Livewire` y sus vistas en `resources/views/livewire`. Las rutas administrativas se agrupan bajo `/admin` con autenticación.
 - El proyecto solo tiene `App\Http\Controllers\Controller` como controlador convencional visible en esta revisión. No crear controladores por costumbre: una pantalla interactiva debe seguir el patrón Livewire existente. Usar controladores solo cuando una integración o respuesta HTTP específica lo justifique.
 - Las tablas clínicas contienen información sensible. Aplicar autorización en servidor, validación, registro de auditoría cuando corresponda y mínima exposición de datos.
-- **Convenciones obligatorias para toda IA/persona:** (1) cada CRUD usa `Searchable`, `<x-data-table>` y `@interact` al estilo de `Livewire/Admin/Pages.php`; (2) todo permiso nuevo (páginas y acciones) se agrega en `database/seeders/PermissionsAccessSeeder.php`. Detalle en la sección 6.
+- **Convenciones obligatorias para toda IA/persona:** (1) cada CRUD usa `Searchable`, `<x-data-table>` y `@interact` al estilo de `Livewire/Admin/Pages.php`; (2) todo permiso nuevo (páginas y acciones) se agrega en `database/seeders/PermissionsAccessSeeder.php`; (3) cada método de una clase Livewire se comenta con explicación y ejemplo de uso al estilo del componente `calendar`, además del DocBlock. Detalle en la sección 6.
 ## 3. Arquitectura funcional observada
 
 ### Cadena de datos prevista
@@ -488,6 +488,23 @@ No iniciar módulos de fase posterior si falta su contrato de datos o permisos; 
 - No modificar código ajeno o cambios locales no relacionados.
 - Reutilizar modelos, relaciones, componentes, traits, filtros, permisos y convenciones existentes.
 - **Regla obligatoria de CRUD:** todo CRUD nuevo o modificado debe seguir el patrón de `app/Livewire/Admin/Pages.php`: trait `App\Traits\DataTable` en el componente (`$headers`, `rows()` computada con `filterAdvance`), vista con el componente `<x-data-table>` y la directiva `@interact` para columnas personalizadas y acciones, y trait `App\Traits\Searchable` en los modelos listados. No crear tablas HTML manuales ni paginación propia.
+- **Regla obligatoria de comentarios en clases Livewire:** cada método de un componente Livewire (acciones públicas, `rows()`, hooks `updated*`, `mount`, `render`, métodos privados) debe llevar un comentario explicativo **con un ejemplo de uso**, además del DocBlock/PHPDoc. Se sigue el estilo de `resources/views/components/calendar.blade.php`: qué hace, por qué se hace así (si no es obvio), cómo se invoca/recibe datos y un ejemplo breve de la llamada o del resultado. El ejemplo va indentado dentro del comentario. Ejemplo:
+
+  ```php
+  /**
+   * Activa o desactiva una sede sin borrarla (conserva el historial).
+   *
+   * @param  int  $id  Identificador de la sede.
+   */
+  // Alterna el indicador `activa`; no hay borrado físico porque las citas
+  // históricas dependen de la sede.
+  //   Desde la vista:
+  //     <flux:menu.item wire:click="toggleActive({{ $row->id }})">Desactivar</flux:menu.item>
+  //   Resultado: Sucursal #3 pasa de activa=1 a activa=0 y se muestra un toast.
+  public function toggleActive(int $id): void
+  ```
+
+  Los comentarios deben mantenerse al modificar el método. Aplica a código nuevo y a los métodos que se toquen; no se exige comentar masivamente código antiguo no modificado.
 - **Regla obligatoria de permisos:** todo permiso nuevo (ver página `page.view.*` o acción) debe registrarse en `database/seeders/PermissionsAccessSeeder.php` (constantes `PAGE_PERMISSIONS`, `ACTION_PERMISSIONS` y `ROLE_PERMISSIONS`), que `DatabaseSeeder` invoca. No crear permisos fuera de los seeders ni dispersarlos en componentes o migraciones. Las páginas de menú se registran en el seeder de acceso del módulo y su permiso en `PermissionsAccessSeeder`. Los permisos antes dispersos en `AdminAccessSeeder`, `AgendaAccessSeeder`, `SolicitudesAccessSeeder`, `PacientesAccessSeeder` y `ClinicalCatalogAccessSeeder` ya fueron trasladados allí (incluida la asignación a Recepcionista y Sysadmin); esos seeders solo registran páginas de menú.
 - Añadir pruebas de comportamiento junto con la función, no como tarea indefinida posterior.
 - Tratar la documentación como coordinación, no como sustituto de pruebas ni evidencia de implementación.

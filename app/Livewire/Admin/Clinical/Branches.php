@@ -9,6 +9,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/** Componente Livewire para administrar el catálogo de sedes clínicas. */
 #[Title('Sedes')]
 class Branches extends Component
 {
@@ -33,6 +34,14 @@ class Branches extends Component
 
     public bool $activa = true;
 
+    /**
+     * Autoriza el acceso al catálogo y define el orden inicial del listado.
+     *
+     * @return void
+     */
+    // Autoriza el acceso al catálogo y define el orden inicial del listado.
+    //   Ejemplo: Livewire invoca este hook al montar el componente.
+    //   Resultado: El componente queda autorizado y configurado con sus valores iniciales.
     public function mount(): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -40,6 +49,14 @@ class Branches extends Component
         $this->sortDirection = 'asc';
     }
 
+    /**
+     * Consulta sedes aplicando búsqueda, orden, filtros y paginación.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    // Consulta sedes aplicando búsqueda, orden, filtros y paginación.
+    //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
+    //   Resultado: La tabla recibe la página filtrada y conserva el total para la paginación.
     #[Computed]
     public function rows()
     {
@@ -52,6 +69,14 @@ class Branches extends Component
             ->paginate($this->per_page ?? 10);
     }
 
+    /**
+     * Valida y crea o actualiza una sede, normaliza campos opcionales y cierra el formulario.
+     *
+     * @return void
+     */
+    // Valida y crea o actualiza una sede, normaliza campos opcionales y cierra el formulario.
+    //   Ejemplo: Desde la vista: wire:click="save"
+    //   Resultado: Los datos se guardan y la interfaz confirma creación o actualización.
     public function save(): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -77,6 +102,15 @@ class Branches extends Component
         $this->resetForm();
     }
 
+    /**
+     * Carga una sede y abre el formulario con sus datos actuales.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga una sede y abre el formulario con sus datos actuales.
+    //   Ejemplo: Desde la vista: wire:click="edit({{ $row->id }})"
+    //   Resultado: El formulario se abre con los datos del registro seleccionado.
     public function edit(int $id): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -89,6 +123,15 @@ class Branches extends Component
         Flux::modal('branch-form')->show();
     }
 
+    /**
+     * Alterna el indicador activa; no hay borrado físico porque las citas dependen de la sede.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Alterna el indicador activa; no hay borrado físico porque las citas dependen de la sede.
+    //   Ejemplo: Desde la vista: wire:click="toggleActive({{ $row->id }})"
+    //   Resultado: El estado se alterna sin borrar el registro y la interfaz lo confirma.
     public function toggleActive(int $id): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -97,12 +140,28 @@ class Branches extends Component
         Flux::toast(text: $branch->activa ? 'Sede activada.' : 'Sede desactivada.', variant: 'success');
     }
 
+    /**
+     * Restablece los campos del formulario y limpia errores de validación.
+     *
+     * @return void
+     */
+    // Restablece los campos del formulario y limpia errores de validación.
+    //   Ejemplo: Desde la vista: wire:click="resetForm"
+    //   Resultado: Los campos regresan a sus valores iniciales y se limpian los errores.
     public function resetForm(): void
     {
         $this->reset(['editingId', 'nombre', 'direccion', 'telefono', 'activa']);
         $this->resetValidation();
     }
 
+    /**
+     * Devuelve la vista de administración del catálogo de sedes.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Devuelve la vista de administración del catálogo de sedes.
+    //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
+    //   Resultado: Livewire entrega la vista con los datos preparados para sus controles.
     public function render()
     {
         return view('livewire.admin.clinical.branches');

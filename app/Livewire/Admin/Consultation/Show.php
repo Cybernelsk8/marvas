@@ -8,6 +8,7 @@ use Flux\Flux;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/** Formulario y operaciones para documentar, cerrar o reabrir una consulta clínica. */
 #[Title('Consulta clínica')]
 class Show extends Component
 {
@@ -55,6 +56,14 @@ class Show extends Component
 
     public ?string $activeAnamnesis = null;
 
+    /**
+     * @param Consulta $consultation
+     * @return void
+     */
+    // Carga la consulta, sus relaciones clínicas y los valores existentes en los formularios; Livewire la invoca al abrir la ficha.
+    //   Uso:
+    //     <livewire:admin.consultation.show :consultation="$consultation" />
+    //   Resultado: La consulta queda lista para editarse según permisos y estado.
     public function mount(Consulta $consultation): void
     {
         abort_unless(auth()->user()?->canAny([
@@ -134,6 +143,14 @@ class Show extends Component
         }
     }
 
+    /**
+     * @param string $section
+     * @return void
+     */
+    // Abre la sección clínica solicitada, limpia errores previos y solo admite secciones válidas en consultas editables.
+    //   Uso:
+    //     wire:click="openAnamnesis('general')"
+    //   Resultado: Se muestra el formulario de anamnesis general.
     public function openAnamnesis(string $section): void
     {
         $this->authorize('consultations.edit');
@@ -144,12 +161,27 @@ class Show extends Component
         $this->resetValidation();
     }
 
+    /**
+     * @return void
+     */
+    // Cierra el formulario de anamnesis activo y descarta errores de validación para volver al índice de secciones.
+    //   Uso:
+    //     wire:click="backToAnamneses"
+    //   Resultado: La ficha vuelve a mostrar las secciones clínicas.
     public function backToAnamneses(): void
     {
         $this->activeAnamnesis = null;
         $this->resetValidation();
     }
 
+    /**
+     * @param ConsultationService $consultationService
+     * @return void
+     */
+    // Valida y persiste la anamnesis general mediante el servicio, actualiza la relación cargada y cierra la sección.
+    //   Uso:
+    //     wire:click="saveGeneralAnamnesis"
+    //   Resultado: La anamnesis queda guardada y aparece una notificación de éxito.
     public function saveGeneralAnamnesis(ConsultationService $consultationService): void
     {
         $this->authorize('consultations.edit');
@@ -164,6 +196,14 @@ class Show extends Component
         Flux::toast(text: 'Anamnesis general guardada correctamente.', variant: 'success');
     }
 
+    /**
+     * @param ConsultationService $consultationService
+     * @return void
+     */
+    // Guarda en conjunto la anamnesis general y las evaluaciones homeopática y quiropráctica, separando sus datos complementarios.
+    //   Uso:
+    //     wire:click="saveIntegralAnamnesis"
+    //   Resultado: Las tres partes quedan persistidas y la ficha muestra confirmación.
     public function saveIntegralAnamnesis(ConsultationService $consultationService): void
     {
         $this->authorize('consultations.edit');
@@ -195,6 +235,15 @@ class Show extends Component
         Flux::toast(text: 'Anamnesis integral guardada correctamente.', variant: 'success');
     }
 
+    /**
+     * @param string $formKey
+     * @param ConsultationService $consultationService
+     * @return void
+     */
+    // Valida y guarda una evaluación individual permitida (homeopatía, quiropraxia o acupuntura) junto con sus datos complementarios.
+    //   Uso:
+    //     wire:click="saveAssessment('acupuntura')"
+    //   Resultado: La evaluación seleccionada se guarda y se confirma con una notificación.
     public function saveAssessment(string $formKey, ConsultationService $consultationService): void
     {
         $this->authorize('consultations.edit');
@@ -220,6 +269,14 @@ class Show extends Component
         Flux::toast(text: 'Evaluación guardada correctamente.', variant: 'success');
     }
 
+    /**
+     * @param ConsultationService $consultationService
+     * @return void
+     */
+    // Valida la evaluación integral MBI, convierte sus campos de varias líneas a listas y la guarda mediante el servicio.
+    //   Uso:
+    //     wire:click="saveMbiEvaluation"
+    //   Resultado: La evaluación MBI queda actualizada en la consulta.
     public function saveMbiEvaluation(ConsultationService $consultationService): void
     {
         $this->authorize('consultations.edit');
@@ -252,6 +309,14 @@ class Show extends Component
         Flux::toast(text: 'Evaluación integral MBI guardada correctamente.', variant: 'success');
     }
 
+    /**
+     * @param ConsultationService $consultationService
+     * @return void
+     */
+    // Valida el motivo y las observaciones de cierre, cierra la consulta y refresca sus relaciones visibles.
+    //   Uso:
+    //     wire:click="closeConsultation"
+    //   Resultado: La consulta queda cerrada y se muestra la confirmación.
     public function closeConsultation(ConsultationService $consultationService): void
     {
         $this->authorize('consultations.close');
@@ -274,6 +339,14 @@ class Show extends Component
         Flux::toast(text: 'Consulta cerrada correctamente.', variant: 'success');
     }
 
+    /**
+     * @param ConsultationService $consultationService
+     * @return void
+     */
+    // Reabre la consulta mediante el servicio y recarga sus relaciones para reflejar el estado actualizado.
+    //   Uso:
+    //     wire:click="reopenConsultation"
+    //   Resultado: La consulta vuelve al estado en proceso y se muestra la confirmación.
     public function reopenConsultation(ConsultationService $consultationService): void
     {
         $this->authorize('consultations.reopen');
@@ -290,6 +363,13 @@ class Show extends Component
         Flux::toast(text: 'Consulta reabierta en proceso.', variant: 'success');
     }
 
+    /**
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Construye la vista de la consulta con permisos, estado clínico y definiciones de secciones para sus formularios.
+    //   Uso:
+    //     Livewire ejecuta render() al mostrar o actualizar el componente.
+    //   Resultado: Se presenta la ficha con acciones y secciones disponibles según el usuario.
     public function render()
     {
         $user = auth()->user();
@@ -309,6 +389,13 @@ class Show extends Component
         ]);
     }
 
+    /**
+     * @return array
+     */
+    // Define etiquetas y campos de las secciones del formulario integral para reutilizarlos en la interfaz y validación.
+    //   Uso:
+    //     $sections = $this->integralFormSections();
+    //   Resultado: Devuelve un mapa de secciones con su etiqueta y campos.
     private function integralFormSections(): array
     {
         return [
@@ -381,6 +468,13 @@ class Show extends Component
         ];
     }
 
+    /**
+     * @return array
+     */
+    // Describe los campos complementarios de homeopatía, quiropraxia y acupuntura que se presentan en la ficha clínica.
+    //   Uso:
+    //     $sections = $this->assessmentComplementarySections();
+    //   Resultado: Devuelve los títulos y campos complementarios de cada evaluación.
     private function assessmentComplementarySections(): array
     {
         return [
@@ -458,6 +552,13 @@ class Show extends Component
         ];
     }
 
+    /**
+     * @return array
+     */
+    // Genera valores iniciales vacíos para cada campo declarado en las secciones del formulario integral.
+    //   Uso:
+    //     $defaults = $this->integralFormDefaults();
+    //   Resultado: Cada sección contiene sus campos listos para capturar texto.
     private function integralFormDefaults(): array
     {
         $defaults = [];
@@ -469,6 +570,14 @@ class Show extends Component
         return $defaults;
     }
 
+    /**
+     * @param string $formKey
+     * @return array
+     */
+    // Crea valores vacíos para los campos complementarios de la evaluación identificada por su clave.
+    //   Uso:
+    //     $defaults = $this->assessmentComplementaryDefaults('homeopatia');
+    //   Resultado: Devuelve un arreglo con los campos complementarios de homeopatía vacíos.
     private function assessmentComplementaryDefaults(string $formKey): array
     {
         $fields = $this->assessmentComplementarySections()[$formKey]['fields'] ?? [];
@@ -476,6 +585,13 @@ class Show extends Component
         return array_fill_keys(array_keys($fields), '');
     }
 
+    /**
+     * @return array
+     */
+    // Prepara las tarjetas de anamnesis para la vista, indicando descripción, icono y si cada registro ya fue guardado.
+    //   Uso:
+    //     'anamnesisSections' => $this->anamnesisSections()
+    //   Resultado: La interfaz recibe las secciones y su estado de captura.
     private function anamnesisSections(): array
     {
         $anamnesis = $this->consultation->anamnesisGeneral;
@@ -516,6 +632,13 @@ class Show extends Component
         ];
     }
 
+    /**
+     * @return array
+     */
+    // Valida los campos generales e integrales de la anamnesis y normaliza listas y valores vacíos antes de persistirlos.
+    //   Uso:
+    //     $data = $this->validatedAnamnesis();
+    //   Resultado: Devuelve los datos validados con campos opcionales normalizados.
     private function validatedAnamnesis(): array
     {
         $rules = [
@@ -565,6 +688,14 @@ class Show extends Component
         return $validated;
     }
 
+    /**
+     * @param string $formKey
+     * @return array
+     */
+    // Valida los datos de la evaluación indicada y convierte listas, booleanos y valores vacíos a sus tipos de persistencia.
+    //   Uso:
+    //     $data = $this->validatedAssessmentForm('quiropraxia');
+    //   Resultado: Devuelve los campos de quiropraxia validados y normalizados.
     private function validatedAssessmentForm(string $formKey): array
     {
         $formDefaults = $this->assessmentFormDefaults()[$formKey] ?? null;
@@ -625,6 +756,13 @@ class Show extends Component
         return $validated;
     }
 
+    /**
+     * @return array
+     */
+    // Centraliza los valores iniciales y campos de las tres evaluaciones clínicas, incluidos booleanos y listas de acupuntura.
+    //   Uso:
+    //     $forms = $this->assessmentFormDefaults();
+    //   Resultado: Devuelve los formularios de homeopatía, quiropraxia y acupuntura.
     private function assessmentFormDefaults(): array
     {
         return [
@@ -692,6 +830,14 @@ class Show extends Component
         ];
     }
 
+    /**
+     * @param string $formKey
+     * @return array
+     */
+    // Indica qué campos de la evaluación se guardan como listas separadas por líneas; solo acupuntura tiene estos campos.
+    //   Uso:
+    //     $fields = $this->assessmentArrayFields('acupuntura');
+    //   Resultado: Devuelve los nombres de campos que deben convertirse en arreglos.
     private function assessmentArrayFields(string $formKey): array
     {
         return $formKey === 'acupuntura' ? [
@@ -709,6 +855,14 @@ class Show extends Component
         ] : [];
     }
 
+    /**
+     * @param string $field
+     * @return array
+     */
+    // Construye las reglas de validación permitidas para las opciones enumeradas de calidad de sueño, desplazamiento, trabajo o recreación.
+    //   Uso:
+    //     $rules = $this->enumRules('calidad_sueno');
+    //   Resultado: Devuelve una regla nullable con las opciones válidas de sueño.
     private function enumRules(string $field): array
     {
         return [
@@ -732,6 +886,14 @@ class Show extends Component
         ];
     }
 
+    /**
+     * @param ?string $value
+     * @return array
+     */
+    // Divide un texto por saltos de línea, recorta espacios y elimina entradas vacías para guardar una lista limpia.
+    //   Uso:
+    //     $items = $this->linesToArray("uno\ndos");
+    //   Resultado: Devuelve ['uno', 'dos']; si el texto está vacío, devuelve un arreglo vacío.
     private function linesToArray(?string $value): array
     {
         if ($value === null || trim($value) === '') {

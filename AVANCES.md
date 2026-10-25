@@ -490,6 +490,21 @@
 - **Pruebas:** suite completa 135 pruebas, 595 assertions OK; Pint OK.
 - **Estado del trabajo:** completo.
 
+### 2026-10-24 — Regla de comentarios en Livewire
+
+- **Agente/persona:** Copilot.
+- **Cambios realizados:** `PLANIFICACION.md` (secciones 2 y 6) exige comentar cada método de las clases Livewire con explicación y ejemplo de uso al estilo del componente `calendar`, además del DocBlock. Solo documentación; sin código ni pruebas.
+- **Estado del trabajo:** completo.
+
+### 2026-10-24 — Comentarios y ejemplos en todas las clases Livewire
+
+- **Agente/persona:** Copilot (cuatro agentes en paralelo por grupos de archivos).
+- **Objetivo:** aplicar la regla de comentarios de la sección 6 de `PLANIFICACION.md` a todo `app/Livewire`.
+- **Cambios realizados:** comentario de clase y comentario con ejemplo de uso y resultado esperado sobre cada método (más PHPDoc) en los 25 archivos de `app/Livewire` y subcarpetas: raíz (`Solicitud`, `User`), `Actions`, `Admin` (`Areas`, `Availability`, `Pages`, `Permissions`, `Roles`, `Schedule`), `Admin/Clinical`, `Admin/Consultation`, `Admin/Patient`, `Admin/User`, `LandingPage`, `Settings` (incluye `TwoFactor`) y `Traits/HasCitas`. Solo comentarios; no se cambió lógica.
+- **Pruebas/comandos y resultado:** `php -l` pasó en todos los archivos; el diff solo contiene líneas de comentario (más una línea `*` de DocBlock reemplazada). La suite completa dio 32 fallos, todos `ViteManifestNotFoundException`: `public/hot` y `public/build` no existen (servidor de Vite detenido), por lo que es un problema de entorno. Antes de este cambio la suite pasaba 135/135 con Vite activo. Hay que repetir la suite con `npm run dev` o `npm run build`.
+- **Pendientes:** repetir la suite con Vite activo; Pint no se ejecutó sobre estos archivos.
+- **Estado del trabajo:** completo, con la validación completa de pruebas pendiente de Vite.
+
 ## Plantilla para registrar una entrega para registrar una entrega
 
 Copiar al final del registro cronológico y completar al terminar cada tarea:

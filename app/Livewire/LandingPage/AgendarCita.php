@@ -11,6 +11,9 @@ use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
+/**
+ * Recibe solicitudes públicas para agendar una primera cita.
+ */
 class AgendarCita extends Component
 {
     use HasCitas;
@@ -25,6 +28,13 @@ class AgendarCita extends Component
 
     public ?string $mensaje = null;
 
+    /**
+     * Define la validación del formulario público de datos y horario de cita.
+     * @return array Define la validación del formulario público de datos y horario de cita.
+     */
+    // Define la validación del formulario público de datos y horario de cita.
+    //   Ejemplo: $this->validate() desde store() utiliza estas reglas.
+    //   Resultado: contactos, fecha futura y hora con formato válido son requeridos según campo.
     public function rules(): array
     {
         return [
@@ -38,6 +48,13 @@ class AgendarCita extends Component
         ];
     }
 
+    /**
+     * Al cambiar fecha, descarta la hora si ya no pertenece a la disponibilidad del día.
+     * @return void Al cambiar fecha, descarta la hora si ya no pertenece a la disponibilidad del día.
+     */
+    // Al cambiar fecha, descarta la hora si ya no pertenece a la disponibilidad del día.
+    //   Desde la vista: <input type="date" wire:model.live="fecha">
+    //   Resultado: hora queda vacía si no es válida para la nueva fecha.
     public function updatedFecha(): void
     {
         if ($this->fecha && $this->hora && ! in_array(
@@ -49,6 +66,13 @@ class AgendarCita extends Component
         }
     }
 
+    /**
+     * Prepara disponibilidad, eventos ocupados y fechas llenas para el calendario público.
+     * @return \Illuminate\Contracts\View\View Prepara disponibilidad, eventos ocupados y fechas llenas para el calendario público.
+     */
+    // Prepara disponibilidad, eventos ocupados y fechas llenas para el calendario público.
+    //   Ejemplo: cambiar la fecha hace que se rendericen sus horarios posibles.
+    //   Resultado: la vista recibe horarios, eventos y fechas que debe deshabilitar.
     public function render()
     {
         $availability = app(ClinicAvailabilityService::class);
@@ -69,6 +93,13 @@ class AgendarCita extends Component
         return view('livewire.landing-page.agendar-cita', compact('horarios', 'eventos', 'fechasLlenas'));
     }
 
+    /**
+     * Registra paciente, expediente y solicitud dentro de una transacción con verificación de disponibilidad.
+     * @return void Registra paciente, expediente y solicitud dentro de una transacción con verificación de disponibilidad.
+     */
+    // Registra paciente, expediente y solicitud dentro de una transacción con verificación de disponibilidad.
+    //   Desde la vista: <flux:button wire:click="store">Solicitar cita</flux:button>
+    //   Resultado: solicitud guardada o error si el turno cambió y ya no está libre.
     public function store(): void
     {
         $datos = $this->validate();
@@ -134,6 +165,13 @@ class AgendarCita extends Component
         );
     }
 
+    /**
+     * Limpia todos los campos del formulario después de aceptar una solicitud.
+     * @return void Limpia todos los campos del formulario después de aceptar una solicitud.
+     */
+    // Limpia todos los campos del formulario después de aceptar una solicitud.
+    //   Ejemplo: store() lo invoca al registrar correctamente una cita.
+    //   Resultado: formulario listo para una solicitud nueva.
     private function resetData(): void
     {
         $this->reset([

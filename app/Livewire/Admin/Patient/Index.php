@@ -16,6 +16,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/** Listado administrativo para consultar, crear, editar y fusionar pacientes. */
 #[Title('Pacientes')]
 class Index extends Component
 {
@@ -52,12 +53,26 @@ class Index extends Component
         ['index' => 'actions', 'label' => ''],
     ];
 
+    /**
+     * @return void
+     */
+    // Autoriza el acceso al listado y establece el orden inicial por nombre completo.
+    //   Uso:
+    //     <livewire:admin.patient.index />
+    //   Resultado: El listado queda ordenado alfabéticamente por paciente.
     public function mount(): void
     {
         $this->authorize('page.view.patients');
         $this->sortBy = 'nombre_completo';
     }
 
+    /**
+     * @return void
+     */
+    // Prepara un formulario limpio y abre el modal para registrar un paciente nuevo.
+    //   Uso:
+    //     wire:click="createPatient"
+    //   Resultado: Se abre el formulario vacío de alta.
     public function createPatient(): void
     {
         $this->authorize('patients.create');
@@ -65,6 +80,14 @@ class Index extends Component
         Flux::modal('patient-form')->show();
     }
 
+    /**
+     * @param int $patientId
+     * @return void
+     */
+    // Carga los datos del paciente indicado, prepara el formulario de edición y abre su modal.
+    //   Uso:
+    //     wire:click="editPatient({{ $patient->id }})"
+    //   Resultado: El modal aparece con los datos del paciente seleccionado.
     public function editPatient(int $patientId): void
     {
         $this->authorize('patients.edit');
@@ -92,11 +115,25 @@ class Index extends Component
         Flux::modal('patient-form')->show();
     }
 
+    /**
+     * @return void
+     */
+    // Reinicia la confirmación de paciente distinto cada vez que Livewire detecta cambios en el formulario.
+    //   Uso:
+    //     wire:model="patientForm.nombres"
+    //   Resultado: Una modificación obliga a revisar nuevamente las posibles coincidencias.
     public function updatedPatientForm(): void
     {
         $this->confirmDistinctPatient = false;
     }
 
+    /**
+     * @return \Illuminate\Support\Collection
+     */
+    // Busca pacientes que podrían coincidir con los datos actuales del formulario, excluyendo el registro que se edita.
+    //   Uso:
+    //     {{ $this->possibleMatches }}
+    //   Resultado: La vista recibe los candidatos para prevenir duplicados.
     #[Computed]
     public function possibleMatches()
     {
@@ -106,6 +143,14 @@ class Index extends Component
         );
     }
 
+    /**
+     * @param int $patientId
+     * @return void
+     */
+    // Selecciona como origen un paciente activo no fusionado y abre el flujo de fusión manual.
+    //   Uso:
+    //     wire:click="startPatientMerge({{ $row->id }})"
+    //   Resultado: Se abre el modal con el paciente elegido como origen.
     public function startPatientMerge(int $patientId): void
     {
         $this->authorize('patients.merge');
@@ -119,6 +164,13 @@ class Index extends Component
         Flux::modal('patient-merge')->show();
     }
 
+    /**
+     * @return \Illuminate\Support\Collection
+     */
+    // Busca hasta diez posibles pacientes destino activos y no fusionados por nombre, DPI, teléfono o correo.
+    //   Uso:
+    //     wire:model.live.debounce.300ms="mergeTargetSearch"
+    //   Resultado: La lista muestra coincidencias cuando la búsqueda tiene al menos dos caracteres.
     #[Computed]
     public function mergeTargetCandidates()
     {
@@ -151,6 +203,13 @@ class Index extends Component
             ->get();
     }
 
+    /**
+     * @return ?array
+     */
+    // Calcula la vista previa de conflictos entre origen y destino para que se elijan los datos que prevalecerán.
+    //   Uso:
+    //     {{ $this->mergePreview['profileConflicts'] }}
+    //   Resultado: La vista recibe los conflictos o null hasta seleccionar ambos pacientes.
     #[Computed]
     public function mergePreview(): ?array
     {
@@ -166,6 +225,13 @@ class Index extends Component
         );
     }
 
+    /**
+     * @return void
+     */
+    // Invalida el destino, elecciones de conflicto y confirmación al cambiar el texto de búsqueda.
+    //   Uso:
+    //     wire:model.live="mergeTargetSearch"
+    //   Resultado: Los datos de vista previa anteriores dejan de ser válidos.
     public function updatedMergeTargetSearch(): void
     {
         $this->mergeTargetPatientId = null;
@@ -175,6 +241,14 @@ class Index extends Component
         unset($this->mergePreview);
     }
 
+    /**
+     * @param int $patientId
+     * @return void
+     */
+    // Verifica que el paciente pertenezca a los candidatos actuales y lo fija como destino de la fusión.
+    //   Uso:
+    //     wire:click="selectMergeTarget({{ $candidate->id }})"
+    //   Resultado: Se actualiza la vista previa con el destino seleccionado.
     public function selectMergeTarget(int $patientId): void
     {
         $this->authorize('patients.merge');
@@ -188,6 +262,13 @@ class Index extends Component
         unset($this->mergePreview);
     }
 
+    /**
+     * @return void
+     */
+    // Valida la confirmación y las elecciones para cada conflicto y ejecuta la fusión manual del expediente.
+    //   Uso:
+    //     wire:click="mergePatientsManually"
+    //   Resultado: El origen queda inactivo y vinculado al destino; se muestra una notificación.
     public function mergePatientsManually(): void
     {
         $this->authorize('patients.merge');
@@ -226,6 +307,13 @@ class Index extends Component
         $this->resetPage();
     }
 
+    /**
+     * @return void
+     */
+    // Limpia selecciones, búsqueda, confirmación, errores y vista previa del flujo de fusión.
+    //   Uso:
+    //     wire:click="resetMergeForm"
+    //   Resultado: El formulario de fusión vuelve a su estado inicial.
     public function resetMergeForm(): void
     {
         $this->mergeSourcePatientId = null;
@@ -238,6 +326,14 @@ class Index extends Component
         unset($this->mergePreview);
     }
 
+    /**
+     * @param string $field
+     * @return string
+     */
+    // Traduce los nombres técnicos de campos de perfil o expediente a etiquetas legibles para mostrar conflictos.
+    //   Uso:
+    //     {{ $this->mergeProfileFieldLabel('numero_dpi') }}
+    //   Resultado: Se muestra «DPI» en lugar del nombre interno del campo.
     public function mergeProfileFieldLabel(string $field): string
     {
         return match ($field) {
@@ -263,6 +359,13 @@ class Index extends Component
         };
     }
 
+    /**
+     * @return void
+     */
+    // Valida y normaliza el perfil, alerta sobre posibles duplicados y crea o actualiza paciente, expediente y auditoría en una transacción.
+    //   Uso:
+    //     wire:submit="savePatient"
+    //   Resultado: Los datos quedan guardados o se solicita confirmar que se trata de otra persona.
     public function savePatient(): void
     {
         $this->authorize($this->editingPatientId ? 'patients.edit' : 'patients.create');
@@ -344,6 +447,13 @@ class Index extends Component
         $this->resetPage();
     }
 
+    /**
+     * @return void
+     */
+    // Restaura los valores iniciales del formulario, desactiva el modo edición y limpia errores y confirmaciones.
+    //   Uso:
+    //     wire:click="resetPatientForm"
+    //   Resultado: El formulario queda listo para un nuevo registro.
     public function resetPatientForm(): void
     {
         $this->patientForm = [
@@ -366,11 +476,25 @@ class Index extends Component
         $this->resetValidation();
     }
 
+    /**
+     * @return void
+     */
+    // Reinicia la paginación cuando cambia el filtro de estado para regresar a la primera página.
+    //   Uso:
+    //     wire:model="status"
+    //   Resultado: La tabla se actualiza desde su primera página.
     public function updatedStatus(): void
     {
         $this->resetPage();
     }
 
+    /**
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    // Obtiene los pacientes filtrados por estado, búsqueda, orden y filtros de tabla, incluyendo búsqueda numérica de teléfono.
+    //   Uso:
+    //     {{ $this->rows }}
+    //   Resultado: La vista recibe la página correspondiente de resultados.
     #[Computed]
     public function rows()
     {
@@ -404,11 +528,26 @@ class Index extends Component
         return $query->paginate($this->per_page);
     }
 
+    /**
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Renderiza la vista del listado, que consume el estado y las filas calculadas del componente.
+    //   Uso:
+    //     Livewire ejecuta render() al mostrar o actualizar el componente.
+    //   Resultado: Se presenta el listado administrativo de pacientes.
     public function render()
     {
         return view('livewire.admin.patient.index');
     }
 
+    /**
+     * @param array $data
+     * @return array
+     */
+    // Recorta textos, convierte cadenas vacías a null y normaliza nombres y correo antes de guardar.
+    //   Uso:
+    //     $patientData = $this->normalizePatientData($data);
+    //   Resultado: Devuelve los datos limpios con nombres capitalizados y correo en minúsculas.
     private function normalizePatientData(array $data): array
     {
         foreach ($data as $field => $value) {

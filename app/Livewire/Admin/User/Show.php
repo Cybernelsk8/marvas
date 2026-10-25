@@ -18,6 +18,7 @@ use Livewire\WithFileUploads;
 use Spatie\Permission\Models\Role;
 use Livewire\Attributes\Title;
 
+/** Componente Livewire para consultar y actualizar el perfil y los accesos de un usuario. */
 #[Title('Detalles del usuario')]
 class Show extends Component
 {
@@ -58,6 +59,15 @@ class Show extends Component
 
     public ?string $search_permissions = null;
 
+    /**
+     * Carga el usuario y sus relaciones, sincroniza el formulario y prepara permisos, departamentos y roles.
+     *
+     * @param  User $user
+     * @return void
+     */
+    // Carga el usuario y sus relaciones, sincroniza el formulario y prepara permisos, departamentos y roles.
+    //   Ejemplo: Al abrir la ruta /admin/users/3, Livewire recibe el usuario #3.
+    //   Resultado: El componente queda autorizado y configurado con sus valores iniciales.
     public function mount(User $user): void
     {
         $this->user = $user->load(['roles', 'information.domicilio']);
@@ -67,6 +77,14 @@ class Show extends Component
         $this->roles = Role::orderBy('name')->get();
     }
 
+    /**
+     * Lista permisos con búsqueda, filtros y paginación para administrar accesos directos.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    // Lista permisos con búsqueda, filtros y paginación para administrar accesos directos.
+    //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
+    //   Resultado: La tabla recibe la página filtrada y conserva el total para la paginación.
     #[Computed]
     public function rows()
     {
@@ -82,6 +100,14 @@ class Show extends Component
         return $query->paginate($this->per_page);
     }
 
+    /**
+     * Define las validaciones de perfil, rol, identidad, contacto y domicilio.
+     *
+     * @return array
+     */
+    // Define las validaciones de perfil, rol, identidad, contacto y domicilio.
+    //   Ejemplo: Livewire lo consulta al ejecutar $this->validate().
+    //   Resultado: Los campos conformes pasan la validación y los demás reciben errores asociados.
     public function rules(): array
     {
         return [
@@ -100,6 +126,14 @@ class Show extends Component
         ];
     }
 
+    /**
+     * Carga municipios del departamento seleccionado y entrega la vista de detalle.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Carga municipios del departamento seleccionado y entrega la vista de detalle.
+    //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
+    //   Resultado: Livewire entrega la vista con los datos preparados para sus controles.
     public function render()
     {
         $municipios = Municipio::where('departamento_id', $this->departamento_id)
@@ -109,6 +143,14 @@ class Show extends Component
         return view('livewire.admin.user.show', compact('municipios'));
     }
 
+    /**
+     * Valida y actualiza rol, información personal y domicilio dentro de una transacción.
+     *
+     * @return void
+     */
+    // Valida y actualiza rol, información personal y domicilio dentro de una transacción.
+    //   Ejemplo: Desde la vista: wire:click="updateProfileInformation"
+    //   Resultado: El perfil y sus relaciones quedan actualizados dentro de una transacción.
     public function updateProfileInformation(): void
     {
         $this->validate();
@@ -155,6 +197,14 @@ class Show extends Component
         }
     }
 
+    /**
+     * Restablece la contraseña a la clave predeterminada del modelo y notifica el resultado.
+     *
+     * @return void
+     */
+    // Restablece la contraseña a la clave predeterminada del modelo y notifica el resultado.
+    //   Ejemplo: Desde la vista: wire:click="resetPassword"
+    //   Resultado: La contraseña predeterminada se guarda cifrada y se confirma la acción.
     public function resetPassword(): void
     {
         try {
@@ -168,6 +218,14 @@ class Show extends Component
         }
     }
 
+    /**
+     * Desactiva lógicamente la cuenta para conservar datos y relaciones.
+     *
+     * @return void
+     */
+    // Desactiva lógicamente la cuenta para conservar datos y relaciones.
+    //   Ejemplo: Desde la vista: wire:click="disabledUser"
+    //   Resultado: La cuenta queda desactivada lógicamente y se confirma la acción.
     public function disabledUser(): void
     {
         try {
@@ -180,6 +238,14 @@ class Show extends Component
         }
     }
 
+    /**
+     * Valida y almacena la foto cargada y actualiza la ruta en la información del usuario.
+     *
+     * @return void
+     */
+    // Valida y almacena la foto cargada y actualiza la ruta en la información del usuario.
+    //   Ejemplo: Desde la vista: wire:click="uploadPicture"
+    //   Resultado: La ruta de la nueva foto queda guardada en el perfil.
     public function uploadPicture(): void
     {
         $this->validate([
@@ -201,6 +267,14 @@ class Show extends Component
         }
     }
 
+    /**
+     * Elimina el archivo de foto existente y limpia su ruta persistida.
+     *
+     * @return void
+     */
+    // Elimina el archivo de foto existente y limpia su ruta persistida.
+    //   Ejemplo: Desde la vista: wire:click="deletePicture"
+    //   Resultado: El archivo y su ruta asociada se eliminan cuando existe una foto.
     public function deletePicture(): void
     {
         try {
@@ -216,6 +290,14 @@ class Show extends Component
         }
     }
 
+    /**
+     * Sincroniza en la cuenta los permisos seleccionados en la tabla.
+     *
+     * @return void
+     */
+    // Sincroniza en la cuenta los permisos seleccionados en la tabla.
+    //   Ejemplo: Desde la vista: wire:click="syncDirectPermissions"
+    //   Resultado: Los permisos directos reflejan la selección actual.
     public function syncDirectPermissions(): void
     {
         try {
@@ -227,11 +309,27 @@ class Show extends Component
         }
     }
 
+    /**
+     * Cierra los modales abiertos tras completar o cancelar una operación.
+     *
+     * @return void
+     */
+    // Cierra los modales abiertos tras completar o cancelar una operación.
+    //   Ejemplo: Desde la vista: wire:click="resetData"
+    //   Resultado: Los datos y errores del formulario se limpian y se cierran los modales.
     public function resetData(): void
     {
         Flux::modals()->close();
     }
 
+    /**
+     * Copia datos persistidos al formulario y deriva el departamento desde el municipio del domicilio.
+     *
+     * @return void
+     */
+    // Copia datos persistidos al formulario y deriva el departamento desde el municipio del domicilio.
+    //   Ejemplo: Uso interno: $this->syncFormState()
+    //   Resultado: El formulario refleja los datos cargados del usuario y su departamento.
     protected function syncFormState(): void
     {
         $information = $this->user->information;
@@ -265,6 +363,15 @@ class Show extends Component
             : 7;
     }
 
+    /**
+     * Recorta, pasa a minúsculas y capitaliza cada palabra para estandarizar nombres.
+     *
+     * @param  ?string $value
+     * @return ?string
+     */
+    // Recorta, pasa a minúsculas y capitaliza cada palabra para estandarizar nombres.
+    //   Ejemplo: Uso interno: $this->formatName($value)
+    //   Resultado: "ana pérez" se transforma en "Ana Pérez"; una entrada vacía da null.
     protected function formatName(?string $value): ?string
     {
         return ! empty($value)
@@ -272,6 +379,15 @@ class Show extends Component
             : null;
     }
 
+    /**
+     * Normaliza texto opcional con formatName y devuelve null si no hay contenido.
+     *
+     * @param  ?string $value
+     * @return ?string
+     */
+    // Normaliza texto opcional con formatName y devuelve null si no hay contenido.
+    //   Ejemplo: Uso interno: $this->normalizeOptionalText($value)
+    //   Resultado: El texto opcional queda normalizado; una entrada vacía se convierte en null.
     protected function normalizeOptionalText(?string $value): ?string
     {
         return ! empty($value)

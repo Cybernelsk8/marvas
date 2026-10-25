@@ -11,6 +11,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/** Componente Livewire para administrar el catálogo de especialidades clínicas. */
 #[Title('Especialidades')]
 class Specialties extends Component
 {
@@ -36,6 +37,14 @@ class Specialties extends Component
 
     public bool $activa = true;
 
+    /**
+     * Autoriza el catálogo y define el orden inicial por nombre de especialidad.
+     *
+     * @return void
+     */
+    // Autoriza el catálogo y define el orden inicial por nombre de especialidad.
+    //   Ejemplo: Livewire invoca este hook al montar el componente.
+    //   Resultado: El componente queda autorizado y configurado con sus valores iniciales.
     public function mount(): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -43,6 +52,14 @@ class Specialties extends Component
         $this->sortDirection = 'asc';
     }
 
+    /**
+     * Consulta especialidades aplicando búsqueda, orden, filtros y paginación.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    // Consulta especialidades aplicando búsqueda, orden, filtros y paginación.
+    //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
+    //   Resultado: La tabla recibe la página filtrada y conserva el total para la paginación.
     #[Computed]
     public function rows()
     {
@@ -55,6 +72,15 @@ class Specialties extends Component
             ->paginate($this->per_page ?? 10);
     }
 
+    /**
+     * Hook Livewire que genera el slug al escribir el nombre al crear, sin pisarlo durante edición.
+     *
+     * @param  string $nombre
+     * @return void
+     */
+    // Hook Livewire que genera el slug al escribir el nombre al crear, sin pisarlo durante edición.
+    //   Ejemplo: Livewire lo invoca al actualizar la propiedad asociada a updatedNombre.
+    //   Resultado: Hook Livewire que genera el slug al escribir el nombre al crear, sin pisarlo durante edición.
     public function updatedNombre(string $nombre): void
     {
         if (! $this->editingId) {
@@ -62,6 +88,14 @@ class Specialties extends Component
         }
     }
 
+    /**
+     * Valida y crea o actualiza especialidad con slug y campos opcionales normalizados.
+     *
+     * @return void
+     */
+    // Valida y crea o actualiza especialidad con slug y campos opcionales normalizados.
+    //   Ejemplo: Desde la vista: wire:click="save"
+    //   Resultado: Los datos se guardan y la interfaz confirma creación o actualización.
     public function save(): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -95,6 +129,15 @@ class Specialties extends Component
         $this->resetForm();
     }
 
+    /**
+     * Carga los datos de la especialidad y abre el formulario en modo edición.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga los datos de la especialidad y abre el formulario en modo edición.
+    //   Ejemplo: Desde la vista: wire:click="edit({{ $row->id }})"
+    //   Resultado: El formulario se abre con los datos del registro seleccionado.
     public function edit(int $id): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -108,6 +151,15 @@ class Specialties extends Component
         Flux::modal('specialty-form')->show();
     }
 
+    /**
+     * Alterna el estado de la especialidad sin eliminarla físicamente.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Alterna el estado de la especialidad sin eliminarla físicamente.
+    //   Ejemplo: Desde la vista: wire:click="toggleActive({{ $row->id }})"
+    //   Resultado: El estado se alterna sin borrar el registro y la interfaz lo confirma.
     public function toggleActive(int $id): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -116,12 +168,28 @@ class Specialties extends Component
         Flux::toast(text: $specialty->activa ? 'Especialidad activada.' : 'Especialidad desactivada.', variant: 'success');
     }
 
+    /**
+     * Restablece los campos y errores de validación del formulario.
+     *
+     * @return void
+     */
+    // Restablece los campos y errores de validación del formulario.
+    //   Ejemplo: Desde la vista: wire:click="resetForm"
+    //   Resultado: Los campos regresan a sus valores iniciales y se limpian los errores.
     public function resetForm(): void
     {
         $this->reset(['editingId', 'nombre', 'slug', 'descripcion', 'color_hex', 'activa']);
         $this->resetValidation();
     }
 
+    /**
+     * Devuelve la vista administrativa del catálogo de especialidades.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Devuelve la vista administrativa del catálogo de especialidades.
+    //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
+    //   Resultado: Livewire entrega la vista con los datos preparados para sus controles.
     public function render()
     {
         return view('livewire.admin.clinical.specialties');

@@ -10,6 +10,9 @@ use Illuminate\Support\Carbon;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
+/**
+ * Presenta datos de usuario y eventos seleccionados en el calendario.
+ */
 class User extends Component
 {
     use DataTable;
@@ -48,6 +51,13 @@ class User extends Component
     public ?string $diaActivo = null;
     public array $eventosDelDia = [];
 
+    /**
+     * Calcula la página de usuarios con la búsqueda, filtros y orden actuales.
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator Calcula la página de usuarios con la búsqueda, filtros y orden actuales.
+     */
+    // Calcula la página de usuarios con la búsqueda, filtros y orden actuales.
+    //   Desde la vista: @foreach ($this->rows as $user) ... @endforeach
+    //   Resultado: filas paginadas de usuarios.
     #[Computed]
     public function rows()
     {
@@ -64,7 +74,13 @@ class User extends Component
         return $query->paginate($this->per_page);
     }
 
-
+    /**
+     * Prepara las opciones del selector y establece hoy como fecha activa del calendario.
+     * @return \Illuminate\Contracts\View\View Prepara las opciones del selector y establece hoy como fecha activa del calendario.
+     */
+    // Prepara las opciones del selector y establece hoy como fecha activa del calendario.
+    //   Ejemplo: al abrir la pantalla se obtienen usuarios para las opciones.
+    //   Resultado: la vista recibe opciones y fecha activa actual.
     public function render()
     {
         $this->options = UserModel::all()->map(fn($user) => [
@@ -77,6 +93,15 @@ class User extends Component
         return view('livewire.user');
     }
 
+    /**
+     * Recibe el evento del calendario para actualizar el día y abrir su panel de agenda.
+     * @param string $date Dato recibido por el componente.
+     * @param array $events Dato recibido por el componente.
+     * @return void Recibe el evento del calendario para actualizar el día y abrir su panel de agenda.
+     */
+    // Recibe el evento del calendario para actualizar el día y abrir su panel de agenda.
+    //   Emisión: $dispatch("calendar-day-selected", date: "2026-08-03", events: $eventos)
+    //   Resultado: el modal muestra los eventos del día seleccionado.
     #[On('calendar-day-selected')]
     public function onDiaSeleccionado(string $date, array $events): void
     {

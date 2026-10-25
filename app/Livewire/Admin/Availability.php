@@ -14,6 +14,9 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * Componente Livewire para consultar y mantener horarios, cierres y evaluadores MBI por sede.
+ */
 #[Title('Disponibilidad')]
 class Availability extends Component
 {
@@ -27,6 +30,14 @@ class Availability extends Component
 
     public array $evaluadoresMbi = [];
 
+    /**
+     * Livewire lo ejecuta al montar la pantalla.
+     *
+     * @return void
+     */
+    // Livewire lo ejecuta al montar la pantalla; carga la configuración guardada y prepara los selectores.
+    //   Ejemplo: al abrir Disponibilidad, `mount()` carga grupos, duración, cierres y evaluadores.
+    //   Resultado: el formulario muestra los datos existentes.
     public function mount(): void
     {
         $this->authorize('page.view.schedule');
@@ -45,6 +56,14 @@ class Availability extends Component
             ->all();
     }
 
+    /**
+     * La vista lo invoca al agregar un grupo.
+     *
+     * @return void
+     */
+    // La vista lo invoca al agregar un grupo; el límite de siete corresponde a los días de la semana.
+    //   Ejemplo: `<flux:button wire:click="addGroup">Agregar grupo</flux:button>`.
+    //   Resultado: aparece un grupo vacío, hasta un máximo de siete.
     public function addGroup(): void
     {
         $this->authorize('schedule.edit');
@@ -54,6 +73,16 @@ class Availability extends Component
         }
     }
 
+    /**
+     * La vista envía el índice de la fila.
+     *
+     * @param  int  $index  Índice del elemento que se modificará.
+     *
+     * @return void
+     */
+    // La vista envía el índice de la fila; reindexar conserva índices contiguos para los enlaces Livewire.
+    //   Ejemplo: `wire:click="removeGroup({{ $index }})"`.
+    //   Resultado: desaparece el grupo indicado y los demás conservan su orden.
     public function removeGroup(int $index): void
     {
         $this->authorize('schedule.edit');
@@ -64,6 +93,16 @@ class Availability extends Component
         }
     }
 
+    /**
+     * La vista pasa el índice del grupo para mantener separadas sus franjas.
+     *
+     * @param  int  $groupIndex  Índice del grupo horario.
+     *
+     * @return void
+     */
+    // La vista pasa el índice del grupo para mantener separadas sus franjas.
+    //   Ejemplo: `wire:click="addHour({{ $groupIndex }})"`.
+    //   Resultado: se añade un campo vacío al grupo existente.
     public function addHour(int $groupIndex): void
     {
         $this->authorize('schedule.edit');
@@ -73,6 +112,18 @@ class Availability extends Component
         }
     }
 
+    /**
+     * La vista pasa ambos índices para borrar solo esa franja y evitar huecos en el formulario.
+     *
+     * @param  int  $groupIndex  Índice del grupo horario.
+     *
+     * @param  int  $hourIndex  Índice de la hora dentro del grupo.
+     *
+     * @return void
+     */
+    // La vista pasa ambos índices para borrar solo esa franja y evitar huecos en el formulario.
+    //   Ejemplo: `wire:click="removeHour({{ $groupIndex }}, {{ $hourIndex }})"`.
+    //   Resultado: se quita esa hora y las demás quedan reindexadas.
     public function removeHour(int $groupIndex, int $hourIndex): void
     {
         $this->authorize('schedule.edit');
@@ -83,6 +134,14 @@ class Availability extends Component
         }
     }
 
+    /**
+     * Livewire lo ejecuta al renderizar.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Livewire lo ejecuta al renderizar; lista sedes activas y profesionales activos con especialidad MBI activa.
+    //   Ejemplo: `render()` pasa `dayOptions` y `sucursalesEvaluadoresMbi` a la vista.
+    //   Resultado: el formulario muestra días y opciones válidas por sede.
     public function render()
     {
         return view('livewire.admin.availability', [
@@ -112,6 +171,14 @@ class Availability extends Component
         ]);
     }
 
+    /**
+     * La vista lo invoca para agregar un periodo sin atención.
+     *
+     * @return void
+     */
+    // La vista lo invoca para agregar un periodo sin atención; el motivo puede dejarse vacío.
+    //   Ejemplo: `<flux:button wire:click="addClosure">Agregar cierre</flux:button>`.
+    //   Resultado: aparece una fila para fechas de inicio, fin y motivo.
     public function addClosure(): void
     {
         $this->authorize('schedule.edit');
@@ -123,6 +190,16 @@ class Availability extends Component
         ];
     }
 
+    /**
+     * La vista envía el índice de la fila.
+     *
+     * @param  int  $index  Índice del elemento que se modificará.
+     *
+     * @return void
+     */
+    // La vista envía el índice de la fila; reindexar conserva enlaces Livewire coherentes.
+    //   Ejemplo: `wire:click="removeClosure({{ $index }})"`.
+    //   Resultado: desaparece el cierre elegido y los demás siguen ordenados.
     public function removeClosure(int $index): void
     {
         $this->authorize('schedule.edit');
@@ -133,6 +210,14 @@ class Availability extends Component
         }
     }
 
+    /**
+     * La vista lo invoca al guardar.
+     *
+     * @return void
+     */
+    // La vista lo invoca al guardar; valida reglas y conflictos con citas futuras antes de persistir.
+    //   Ejemplo: `<flux:button wire:click="save">Guardar disponibilidad</flux:button>`.
+    //   Resultado: se guardan los cambios o se informan conflictos sin persistirlos.
     public function save(): void
     {
         $this->authorize('schedule.edit');

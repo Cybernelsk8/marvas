@@ -15,17 +15,35 @@ use Flux\Flux;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/** Ficha del paciente con citas, información clínica, documentos y facturación permitidos. */
 #[Title('Ficha del paciente')]
 class Show extends Component
 {
     public Paciente $patient;
 
+    /**
+     * @param Paciente $patient
+     * @return void
+     */
+    // Autoriza la consulta de la ficha y carga las relaciones de expediente y paciente fusionador.
+    //   Uso:
+    //     <livewire:admin.patient.show :patient="$patient" />
+    //   Resultado: La ficha muestra el expediente y el vínculo de fusión si existe.
     public function mount(Paciente $patient): void
     {
         $this->authorize('page.view.patients');
         $this->patient = $patient->load(['expediente', 'fusionadoEn']);
     }
 
+    /**
+     * @param int $appointmentId
+     * @param ConsultationService $consultationService
+     * @return void
+     */
+    // Abre una consulta desde una cita del paciente usando el servicio y confirma la operación con una notificación.
+    //   Uso:
+    //     wire:click="startConsultation({{ $appointment->id }})"
+    //   Resultado: Se crea o abre la consulta asociada y se muestra su número.
     public function startConsultation(int $appointmentId, ConsultationService $consultationService): void
     {
         $this->authorize('consultations.create');
@@ -38,6 +56,13 @@ class Show extends Component
         );
     }
 
+    /**
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Carga citas paginadas y, según permisos, la información clínica, documentos y facturación vinculados al expediente.
+    //   Uso:
+    //     Livewire ejecuta render() al mostrar o actualizar la ficha.
+    //   Resultado: La vista recibe únicamente los bloques permitidos al usuario.
     public function render()
     {
         $expedientId = $this->patient->expediente?->getKey();

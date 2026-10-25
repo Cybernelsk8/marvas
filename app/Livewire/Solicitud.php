@@ -24,6 +24,9 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * Gestiona la bandeja de solicitudes de citas y sus acciones de recepción.
+ */
 #[Title('Solicitudes')]
 class Solicitud extends Component
 {
@@ -64,6 +67,13 @@ class Solicitud extends Component
 
     public bool $confirmPatientReuse = false;
 
+    /**
+     * Calcula las filas visibles según búsqueda, filtros y orden actuales.
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator Calcula las filas visibles según búsqueda, filtros y orden actuales.
+     */
+    // Calcula las filas visibles según búsqueda, filtros y orden actuales.
+    //   Desde la vista: {{ $this->rows->total() }}
+    //   Resultado: página actual de solicitudes con metadatos de paginación.
     #[Computed]
     public function rows()
     {
@@ -80,6 +90,13 @@ class Solicitud extends Component
             ->paginate($this->per_page);
     }
 
+    /**
+     * Livewire lo ejecuta al crear el componente para priorizar solicitudes pendientes recientes.
+     * @return void Livewire lo ejecuta al crear el componente para priorizar solicitudes pendientes recientes.
+     */
+    // Livewire lo ejecuta al crear el componente para priorizar solicitudes pendientes recientes.
+    //   Ejemplo: al abrir la pantalla queda aplicado estado=solicitada y se cargan filtros.
+    //   Resultado: la tabla inicia ordenada por fecha descendente.
     public function mount(): void
     {
         $this->sortBy = 'fecha_hora_inicio';
@@ -137,6 +154,13 @@ class Solicitud extends Component
 
     }
 
+    /**
+     * Livewire lo invoca en cada render para entregar sedes, opciones y horarios vigentes.
+     * @return \Illuminate\Contracts\View\View Livewire lo invoca en cada render para entregar sedes, opciones y horarios vigentes.
+     */
+    // Livewire lo invoca en cada render para entregar sedes, opciones y horarios vigentes.
+    //   Ejemplo: elegir fecha de reprogramación actualiza las horas incluidas en la vista.
+    //   Resultado: la vista recibe colecciones y horarios disponibles.
     public function render()
     {
         return view('livewire.solicitud', [
@@ -153,6 +177,14 @@ class Solicitud extends Component
         ]);
     }
 
+    /**
+     * Livewire lo ejecuta al cambiar reprogramacion.fecha para descartar horas obsoletas.
+     * @param ?string $fecha Dato recibido por el componente.
+     * @return void Livewire lo ejecuta al cambiar reprogramacion.fecha para descartar horas obsoletas.
+     */
+    // Livewire lo ejecuta al cambiar reprogramacion.fecha para descartar horas obsoletas.
+    //   Desde la vista: <input type="date" wire:model.live="reprogramacion.fecha">
+    //   Resultado: hora se limpia si no está disponible para la fecha nueva.
     public function updatedReprogramacionFecha(?string $fecha): void
     {
         if (! $fecha || ! in_array(
@@ -168,6 +200,14 @@ class Solicitud extends Component
         }
     }
 
+    /**
+     * Carga el detalle de la cita, reinicia selección de paciente y abre su modal autorizado.
+     * @param int $id Dato recibido por el componente.
+     * @return void Carga el detalle de la cita, reinicia selección de paciente y abre su modal autorizado.
+     */
+    // Carga el detalle de la cita, reinicia selección de paciente y abre su modal autorizado.
+    //   Desde la vista: <flux:button wire:click="showSolicitud({{ $row->id }})">Ver</flux:button>
+    //   Resultado: solicitud-modal muestra el registro elegido con validaciones limpias.
     public function showSolicitud(int $id): void
     {
         $this->authorize('page.view.requests');
@@ -181,6 +221,13 @@ class Solicitud extends Component
         Flux::modal('solicitud-modal')->show();
     }
 
+    /**
+     * Calcula candidatos que coinciden con el paciente de la solicitud pendiente.
+     * @return \Illuminate\Support\Collection Calcula candidatos que coinciden con el paciente de la solicitud pendiente.
+     */
+    // Calcula candidatos que coinciden con el paciente de la solicitud pendiente.
+    //   Desde la vista: @foreach ($this->possiblePatientMatches as $paciente) ... @endforeach
+    //   Resultado: candidatos disponibles o colección vacía si la solicitud no aplica.
     #[Computed]
     public function possiblePatientMatches()
     {
@@ -198,12 +245,27 @@ class Solicitud extends Component
         );
     }
 
+    /**
+     * Reinicia selección y confirmación si cambian datos del formulario de solicitud.
+     * @return void Reinicia selección y confirmación si cambian datos del formulario de solicitud.
+     */
+    // Reinicia selección y confirmación si cambian datos del formulario de solicitud.
+    //   Desde la vista: <input wire:model.live="solicitud.expediente.paciente.nombres">
+    //   Resultado: se descarta cualquier coincidencia potencialmente desactualizada.
     public function updatedSolicitud(): void
     {
         $this->selectedExistingPatientId = null;
         $this->confirmPatientReuse = false;
     }
 
+    /**
+     * Selecciona un candidato mostrado y verifica permiso y pertenencia a la lista calculada.
+     * @param int $patientId Dato recibido por el componente.
+     * @return void Selecciona un candidato mostrado y verifica permiso y pertenencia a la lista calculada.
+     */
+    // Selecciona un candidato mostrado y verifica permiso y pertenencia a la lista calculada.
+    //   Desde la vista: <flux:button wire:click="selectExistingPatient({{ $paciente->id }})">Vincular</flux:button>
+    //   Resultado: candidato elegido sin conservar una confirmación anterior.
     public function selectExistingPatient(int $patientId): void
     {
         $this->authorize('requests.edit');
@@ -216,6 +278,13 @@ class Solicitud extends Component
         $this->resetValidation('confirmPatientReuse');
     }
 
+    /**
+     * Valida y vincula la solicitud al expediente del paciente existente seleccionado.
+     * @return void Valida y vincula la solicitud al expediente del paciente existente seleccionado.
+     */
+    // Valida y vincula la solicitud al expediente del paciente existente seleccionado.
+    //   Desde la vista: <flux:button wire:click="reuseExistingPatient">Confirmar vínculo</flux:button>
+    //   Resultado: cita asociada al expediente y toast con posibles conflictos.
     public function reuseExistingPatient(): void
     {
         $this->authorize('requests.edit');
@@ -267,6 +336,13 @@ class Solicitud extends Component
         Flux::toast(text: $message, variant: 'success');
     }
 
+    /**
+     * Valida y persiste los datos editables del paciente de la solicitud abierta.
+     * @return void Valida y persiste los datos editables del paciente de la solicitud abierta.
+     */
+    // Valida y persiste los datos editables del paciente de la solicitud abierta.
+    //   Desde la vista: <flux:button wire:click="store">Guardar paciente</flux:button>
+    //   Resultado: detalle actualizado y toast de confirmación.
     public function store(): void
     {
         $this->authorize('requests.edit');
@@ -317,6 +393,14 @@ class Solicitud extends Component
         Flux::toast(text: 'Datos del paciente guardados correctamente.', variant: 'success');
     }
 
+    /**
+     * Confirma una cita con asignaciones activas y delega la operación al servicio de gestión.
+     * @param int $id Dato recibido por el componente.
+     * @return void Confirma una cita con asignaciones activas y delega la operación al servicio de gestión.
+     */
+    // Confirma una cita con asignaciones activas y delega la operación al servicio de gestión.
+    //   Desde la vista: <flux:button wire:click="confirmar({{ $solicitudId }})">Confirmar</flux:button>
+    //   Resultado: cita confirmada o aviso si la asignación dejó de estar disponible.
     public function confirmar(int $id): void
     {
         $this->authorize('requests.confirm');
@@ -406,6 +490,14 @@ class Solicitud extends Component
         Flux::toast(text: 'La cita fue confirmada correctamente.', variant: 'success');
     }
 
+    /**
+     * Precarga asignaciones válidas y abre el formulario de confirmación para la cita.
+     * @param int $id Dato recibido por el componente.
+     * @return void Precarga asignaciones válidas y abre el formulario de confirmación para la cita.
+     */
+    // Precarga asignaciones válidas y abre el formulario de confirmación para la cita.
+    //   Desde la vista: <flux:button wire:click="prepararConfirmacion({{ $row->id }})">Asignar</flux:button>
+    //   Resultado: confirmar-cita-modal muestra sede, profesional y especialidad sugeridos.
     public function prepararConfirmacion(int $id): void
     {
         $this->authorize('requests.confirm');
@@ -428,6 +520,14 @@ class Solicitud extends Component
         Flux::modal('confirmar-cita-modal')->show();
     }
 
+    /**
+     * Al cambiar sede, limpia opciones dependientes y autoselecciona si solo hay una.
+     * @param ?string $sucursalId Dato recibido por el componente.
+     * @return void Al cambiar sede, limpia opciones dependientes y autoselecciona si solo hay una.
+     */
+    // Al cambiar sede, limpia opciones dependientes y autoselecciona si solo hay una.
+    //   Desde la vista: <select wire:model.live="sucursalConfirmacion">...</select>
+    //   Resultado: se cargan profesionales activos para la sede elegida.
     public function updatedSucursalConfirmacion(?string $sucursalId): void
     {
         $this->profesionalConfirmacion = null;
@@ -452,6 +552,14 @@ class Solicitud extends Component
         }
     }
 
+    /**
+     * Al cambiar profesional, reinicia y resuelve la especialidad única cuando exista.
+     * @param ?string $profesionalId Dato recibido por el componente.
+     * @return void Al cambiar profesional, reinicia y resuelve la especialidad única cuando exista.
+     */
+    // Al cambiar profesional, reinicia y resuelve la especialidad única cuando exista.
+    //   Desde la vista: <select wire:model.live="profesionalConfirmacion">...</select>
+    //   Resultado: especialidad previa limpia o reemplazada por la única válida.
     public function updatedProfesionalConfirmacion(?string $profesionalId): void
     {
         $this->especialidadConfirmacion = null;
@@ -470,6 +578,14 @@ class Solicitud extends Component
         }
     }
 
+    /**
+     * Consulta profesionales activos asignados a una sede y aptos para el tipo de cita.
+     * @param ?int $sucursalId Dato recibido por el componente.
+     * @return \Illuminate\Database\Eloquent\Collection Consulta profesionales activos asignados a una sede y aptos para el tipo de cita.
+     */
+    // Consulta profesionales activos asignados a una sede y aptos para el tipo de cita.
+    //   Ejemplo: $this->profesionalesPorSucursal(3)
+    //   Resultado: colección ordenada; en primera cita MBI solo devuelve su evaluador.
     public function profesionalesPorSucursal(?int $sucursalId)
     {
         if (! $sucursalId) {
@@ -490,6 +606,13 @@ class Solicitud extends Component
             ->get();
     }
 
+    /**
+     * Completa asignaciones únicas para evitar elecciones manuales cuando no hay ambigüedad.
+     * @return void Completa asignaciones únicas para evitar elecciones manuales cuando no hay ambigüedad.
+     */
+    // Completa asignaciones únicas para evitar elecciones manuales cuando no hay ambigüedad.
+    //   Ejemplo: una sede con un solo profesional y una sola especialidad.
+    //   Resultado: los campos de confirmación se completan solo con opciones únicas.
     private function selectOnlyAvailableAssignments(): void
     {
         if (! $this->sucursalConfirmacion) {
@@ -533,6 +656,14 @@ class Solicitud extends Component
         }
     }
 
+    /**
+     * Consulta especialidades activas asociadas al profesional seleccionado.
+     * @param ?int $profesionalId Dato recibido por el componente.
+     * @return \Illuminate\Database\Eloquent\Collection Consulta especialidades activas asociadas al profesional seleccionado.
+     */
+    // Consulta especialidades activas asociadas al profesional seleccionado.
+    //   Ejemplo: $this->especialidadesPorProfesional(8)
+    //   Resultado: colección ordenada y, para MBI, restringida a Evaluación MBI.
     public function especialidadesPorProfesional(?int $profesionalId)
     {
         if (! $profesionalId) {
@@ -547,6 +678,14 @@ class Solicitud extends Component
             ->get();
     }
 
+    /**
+     * Genera una URL firmada de siete días para completar los datos del paciente.
+     * @param int $id Dato recibido por el componente.
+     * @return void Genera una URL firmada de siete días para completar los datos del paciente.
+     */
+    // Genera una URL firmada de siete días para completar los datos del paciente.
+    //   Desde la vista: <flux:button wire:click="generarLinkFormulario({{ $row->id }})">Enviar formulario</flux:button>
+    //   Resultado: modal con el nombre del paciente y el enlace temporal.
     public function generarLinkFormulario(int $id): void
     {
         $this->authorize('requests.edit');
@@ -563,6 +702,14 @@ class Solicitud extends Component
         Flux::modal('formulario-paciente-link-modal')->show();
     }
 
+    /**
+     * Verifica que la cita siga pendiente y precarga su fecha y hora actuales.
+     * @param int $id Dato recibido por el componente.
+     * @return void Verifica que la cita siga pendiente y precarga su fecha y hora actuales.
+     */
+    // Verifica que la cita siga pendiente y precarga su fecha y hora actuales.
+    //   Desde la vista: <flux:button wire:click="prepararReprogramacion({{ $row->id }})">Reprogramar</flux:button>
+    //   Resultado: se abre el modal para elegir un horario sustituto.
     public function prepararReprogramacion(int $id): void
     {
         $this->authorize('requests.reschedule');
@@ -583,6 +730,13 @@ class Solicitud extends Component
         Flux::modal('reprogramar-cita-modal')->show();
     }
 
+    /**
+     * Valida el nuevo horario y solicita al servicio reprogramar la cita pendiente.
+     * @return void Valida el nuevo horario y solicita al servicio reprogramar la cita pendiente.
+     */
+    // Valida el nuevo horario y solicita al servicio reprogramar la cita pendiente.
+    //   Desde la vista: <flux:button wire:click="reprogramar">Guardar horario</flux:button>
+    //   Resultado: cita pendiente con nuevo horario o error de disponibilidad.
     public function reprogramar(): void
     {
         $this->authorize('requests.reschedule');
@@ -613,6 +767,14 @@ class Solicitud extends Component
         Flux::toast(text: 'La solicitud fue reprogramada y sigue pendiente de confirmación.', variant: 'success');
     }
 
+    /**
+     * Valida que la solicitud siga pendiente y abre el formulario de cancelación.
+     * @param int $id Dato recibido por el componente.
+     * @return void Valida que la solicitud siga pendiente y abre el formulario de cancelación.
+     */
+    // Valida que la solicitud siga pendiente y abre el formulario de cancelación.
+    //   Desde la vista: <flux:button wire:click="prepararCancelacion({{ $row->id }})">Cancelar</flux:button>
+    //   Resultado: modal asociado a la cita y motivo anterior reiniciado.
     public function prepararCancelacion(int $id): void
     {
         $this->authorize('requests.cancel');
@@ -630,6 +792,13 @@ class Solicitud extends Component
         Flux::modal('cancelar-cita-modal')->show();
     }
 
+    /**
+     * Valida el motivo y pide al servicio cancelar la cita pendiente.
+     * @return void Valida el motivo y pide al servicio cancelar la cita pendiente.
+     */
+    // Valida el motivo y pide al servicio cancelar la cita pendiente.
+    //   Desde la vista: <flux:button wire:click="cancelar">Confirmar cancelación</flux:button>
+    //   Resultado: cancelación registrada o aviso si cambió el estado.
     public function cancelar(): void
     {
         $this->authorize('requests.cancel');
@@ -650,6 +819,13 @@ class Solicitud extends Component
         Flux::toast(text: 'La solicitud fue cancelada.', variant: 'success');
     }
 
+    /**
+     * Limpia el estado temporal de la solicitud y cierra los modales abiertos.
+     * @return void Limpia el estado temporal de la solicitud y cierra los modales abiertos.
+     */
+    // Limpia el estado temporal de la solicitud y cierra los modales abiertos.
+    //   Ejemplo: invocado al terminar la edición o vinculación del paciente.
+    //   Resultado: formulario limpio para abrir otro registro.
     public function resetData(): void
     {
         $this->reset([
@@ -669,6 +845,13 @@ class Solicitud extends Component
         Flux::modals()->close();
     }
 
+    /**
+     * Recupera la cita seleccionada con expediente y paciente, o responde 404 si falta.
+     * @return Cita Recupera la cita seleccionada con expediente y paciente, o responde 404 si falta.
+     */
+    // Recupera la cita seleccionada con expediente y paciente, o responde 404 si falta.
+    //   Ejemplo: $cita = $this->selectedRequest() desde store() o reprogramar().
+    //   Resultado: cita actual con relaciones necesarias precargadas.
     private function selectedRequest(): Cita
     {
         abort_if($this->solicitudId < 1, 404);

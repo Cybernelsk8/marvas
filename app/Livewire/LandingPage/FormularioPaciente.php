@@ -8,6 +8,9 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * Permite completar los datos de paciente asociados a una cita firmada.
+ */
 #[Title('Completar datos del paciente')]
 class FormularioPaciente extends Component
 {
@@ -18,12 +21,27 @@ class FormularioPaciente extends Component
 
     public bool $guardado = false;
 
+    /**
+     * Fija el ID de la cita recibida por ruta y precarga los datos del paciente.
+     * @param int $cita Dato recibido por el componente.
+     * @return void Fija el ID de la cita recibida por ruta y precarga los datos del paciente.
+     */
+    // Fija el ID de la cita recibida por ruta y precarga los datos del paciente.
+    //   Ejemplo: abrir el enlace firmado asociado a la cita #15.
+    //   Resultado: formulario muestra los datos existentes de ese expediente.
     public function mount(int $cita): void
     {
         $this->citaId = $cita;
         $this->cargarDatosPaciente();
     }
 
+    /**
+     * Valida y persiste los campos personales complementarios del paciente.
+     * @return void Valida y persiste los campos personales complementarios del paciente.
+     */
+    // Valida y persiste los campos personales complementarios del paciente.
+    //   Desde la vista: <flux:button wire:click="guardar">Guardar datos</flux:button>
+    //   Resultado: paciente actualizado, indicador guardado activo y datos recargados.
     public function guardar(): void
     {
         $cita = $this->cita();
@@ -55,12 +73,26 @@ class FormularioPaciente extends Component
         $this->cargarDatosPaciente();
     }
 
+    /**
+     * Renderiza el formulario público usando el layout de la landing page.
+     * @return \Illuminate\Contracts\View\View Renderiza el formulario público usando el layout de la landing page.
+     */
+    // Renderiza el formulario público usando el layout de la landing page.
+    //   Ejemplo: visita al formulario de paciente desde su enlace firmado.
+    //   Resultado: se muestra livewire.landing-page.formulario-paciente en el layout público.
     public function render()
     {
         return view('livewire.landing-page.formulario-paciente')
             ->layout('layouts.landing-page');
     }
 
+    /**
+     * Recupera la cita con expediente y paciente, o devuelve 404 si no existe.
+     * @return Cita Recupera la cita con expediente y paciente, o devuelve 404 si no existe.
+     */
+    // Recupera la cita con expediente y paciente, o devuelve 404 si no existe.
+    //   Ejemplo: $this->cita() durante la carga o el guardado del formulario.
+    //   Resultado: instancia de Cita con relaciones necesarias precargadas.
     private function cita(): Cita
     {
         return Cita::query()
@@ -68,6 +100,13 @@ class FormularioPaciente extends Component
             ->findOrFail($this->citaId);
     }
 
+    /**
+     * Copia al formulario los campos editables y normaliza la fecha como Y-m-d.
+     * @return void Copia al formulario los campos editables y normaliza la fecha como Y-m-d.
+     */
+    // Copia al formulario los campos editables y normaliza la fecha como Y-m-d.
+    //   Ejemplo: se ejecuta al montar y después de persistir cambios.
+    //   Resultado: propiedades del formulario sincronizadas con la información guardada.
     private function cargarDatosPaciente(): void
     {
         $this->paciente = $this->cita()->expediente->paciente->only([

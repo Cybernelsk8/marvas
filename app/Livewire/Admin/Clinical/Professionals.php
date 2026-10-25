@@ -14,6 +14,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/** Componente Livewire para administrar profesionales y sus relaciones clínicas. */
 #[Title('Profesionales')]
 class Professionals extends Component
 {
@@ -50,6 +51,14 @@ class Professionals extends Component
 
     public ?string $primarySpecialtyId = null;
 
+    /**
+     * Autoriza el catálogo y fija el orden inicial por nombre del profesional.
+     *
+     * @return void
+     */
+    // Autoriza el catálogo y fija el orden inicial por nombre del profesional.
+    //   Ejemplo: Livewire invoca este hook al montar el componente.
+    //   Resultado: El componente queda autorizado y configurado con sus valores iniciales.
     public function mount(): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -57,6 +66,14 @@ class Professionals extends Component
         $this->sortDirection = 'asc';
     }
 
+    /**
+     * Carga profesionales con cuenta, sedes y especialidades para el listado paginado.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    // Carga profesionales con cuenta, sedes y especialidades para el listado paginado.
+    //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
+    //   Resultado: La tabla recibe la página filtrada y conserva el total para la paginación.
     #[Computed]
     public function rows()
     {
@@ -70,6 +87,15 @@ class Professionals extends Component
             ->paginate($this->per_page ?? 10);
     }
 
+    /**
+     * Hook Livewire que completa el nombre desde la cuenta elegida solo si aún está vacío.
+     *
+     * @param  ?string $userId
+     * @return void
+     */
+    // Hook Livewire que completa el nombre desde la cuenta elegida solo si aún está vacío.
+    //   Ejemplo: Livewire lo invoca al actualizar la propiedad asociada a updatedUserId.
+    //   Resultado: Si el nombre estaba vacío, se completa con el nombre de la cuenta elegida.
     public function updatedUserId(?string $userId): void
     {
         if (! $userId) {
@@ -82,6 +108,14 @@ class Professionals extends Component
         }
     }
 
+    /**
+     * Hook Livewire que conserva como principal una sede todavía seleccionada.
+     *
+     * @return void
+     */
+    // Hook Livewire que conserva como principal una sede todavía seleccionada.
+    //   Ejemplo: Livewire lo invoca al actualizar la propiedad asociada a updatedBranchIds.
+    //   Resultado: La sede principal permanece entre las seleccionadas o se elige otra válida.
     public function updatedBranchIds(): void
     {
         if (! in_array($this->primaryBranchId, $this->branchIds, true)) {
@@ -89,6 +123,14 @@ class Professionals extends Component
         }
     }
 
+    /**
+     * Hook Livewire que conserva como principal una especialidad todavía seleccionada.
+     *
+     * @return void
+     */
+    // Hook Livewire que conserva como principal una especialidad todavía seleccionada.
+    //   Ejemplo: Livewire lo invoca al actualizar la propiedad asociada a updatedSpecialtyIds.
+    //   Resultado: La especialidad principal permanece seleccionada o se elige otra válida.
     public function updatedSpecialtyIds(): void
     {
         if (! in_array($this->primarySpecialtyId, $this->specialtyIds, true)) {
@@ -96,6 +138,14 @@ class Professionals extends Component
         }
     }
 
+    /**
+     * Valida y guarda profesional, sedes y especialidades en una transacción para mantener relaciones consistentes.
+     *
+     * @return void
+     */
+    // Valida y guarda profesional, sedes y especialidades en una transacción para mantener relaciones consistentes.
+    //   Ejemplo: Desde la vista: wire:click="save"
+    //   Resultado: Los datos se guardan y la interfaz confirma creación o actualización.
     public function save(): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -143,6 +193,15 @@ class Professionals extends Component
         $this->resetForm();
     }
 
+    /**
+     * Carga datos del profesional y sus sedes y especialidades para editarlo.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga datos del profesional y sus sedes y especialidades para editarlo.
+    //   Ejemplo: Desde la vista: wire:click="edit({{ $row->id }})"
+    //   Resultado: El formulario se abre con los datos del registro seleccionado.
     public function edit(int $id): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -160,6 +219,15 @@ class Professionals extends Component
         Flux::modal('professional-form')->show();
     }
 
+    /**
+     * Alterna el estado activo sin eliminar el historial ni las relaciones clínicas.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Alterna el estado activo sin eliminar el historial ni las relaciones clínicas.
+    //   Ejemplo: Desde la vista: wire:click="toggleActive({{ $row->id }})"
+    //   Resultado: El estado se alterna sin borrar el registro y la interfaz lo confirma.
     public function toggleActive(int $id): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -168,6 +236,14 @@ class Professionals extends Component
         Flux::toast(text: $professional->activo ? 'Profesional activado.' : 'Profesional desactivado.', variant: 'success');
     }
 
+    /**
+     * Restablece todos los campos del profesional y elimina errores de validación.
+     *
+     * @return void
+     */
+    // Restablece todos los campos del profesional y elimina errores de validación.
+    //   Ejemplo: Desde la vista: wire:click="resetForm"
+    //   Resultado: Los campos regresan a sus valores iniciales y se limpian los errores.
     public function resetForm(): void
     {
         $this->reset([
@@ -185,6 +261,14 @@ class Professionals extends Component
         $this->resetValidation();
     }
 
+    /**
+     * Carga cuentas disponibles y catálogos clínicos activos para completar los selectores.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Carga cuentas disponibles y catálogos clínicos activos para completar los selectores.
+    //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
+    //   Resultado: Livewire entrega la vista con los datos preparados para sus controles.
     public function render()
     {
         $users = User::query()

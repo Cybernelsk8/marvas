@@ -10,6 +10,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\Attributes\Title;
 
+/** Componente Livewire para gestionar las páginas del menú administrativo. */
 #[Title('Páginas')]
 class Pages extends Component
 {
@@ -38,6 +39,14 @@ class Pages extends Component
         'permission_name' => null,
     ];
 
+    /**
+     * Consulta páginas con su padre y aplica búsqueda, orden, filtros y paginación.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    // Consulta páginas con su padre y aplica búsqueda, orden, filtros y paginación.
+    //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
+    //   Resultado: La tabla recibe la página filtrada y conserva el total para la paginación.
     #[Computed]
     public function rows()
     {
@@ -55,8 +64,24 @@ class Pages extends Component
         return $query->paginate($this->per_page ?? 10);
     }
 
+    /**
+     * Hook de montaje sin inicialización adicional; Livewire lo ejecuta al crear el componente.
+     *
+     * @return void
+     */
+    // Hook de montaje sin inicialización adicional; Livewire lo ejecuta al crear el componente.
+    //   Ejemplo: Livewire invoca este hook al montar el componente.
+    //   Resultado: El componente queda autorizado y configurado con sus valores iniciales.
     public function mount(): void {}
 
+    /**
+     * Carga páginas y permisos para poblar los selectores de la vista.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Carga páginas y permisos para poblar los selectores de la vista.
+    //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
+    //   Resultado: Livewire entrega la vista con los datos preparados para sus controles.
     public function render()
     {
         $pages = Page::query()
@@ -70,6 +95,14 @@ class Pages extends Component
         return view('livewire.admin.pages', compact('pages', 'permissions'));
     }
 
+    /**
+     * Valida y crea una página aplicando valores predeterminados a campos opcionales.
+     *
+     * @return void
+     */
+    // Valida y crea una página aplicando valores predeterminados a campos opcionales.
+    //   Ejemplo: Desde la vista: wire:click="store"
+    //   Resultado: El registro se crea y la interfaz confirma el resultado.
     public function store(): void
     {
         $this->validate([
@@ -100,12 +133,29 @@ class Pages extends Component
         }
     }
 
+    /**
+     * Carga la página seleccionada, incluso si está desactivada, y abre su formulario.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga la página seleccionada, incluso si está desactivada, y abre su formulario.
+    //   Ejemplo: Desde la vista: wire:click="edit({{ $row->id }})"
+    //   Resultado: El formulario se abre con los datos del registro seleccionado.
     public function edit(int $id): void
     {
         $this->page = Page::withTrashed()->findOrFail($id)->toArray();
         Flux::modal('editPage')->show();
     }
 
+    /**
+     * Valida y guarda la página editada y después limpia el formulario.
+     *
+     * @return void
+     */
+    // Valida y guarda la página editada y después limpia el formulario.
+    //   Ejemplo: Desde la vista: wire:click="update"
+    //   Resultado: Los cambios válidos quedan guardados y la interfaz confirma el resultado.
     public function update(): void
     {
         $this->validate([
@@ -144,12 +194,29 @@ class Pages extends Component
         }
     }
 
+    /**
+     * Carga una página y abre el diálogo de confirmación para desactivarla.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga una página y abre el diálogo de confirmación para desactivarla.
+    //   Ejemplo: Desde la vista: wire:click="disableItem({{ $row->id }})"
+    //   Resultado: El diálogo queda abierto para confirmar el cambio de estado.
     public function disableItem(int $id): void
     {
         $this->page = Page::withTrashed()->findOrFail($id)->toArray();
         Flux::modal('disableItem')->show();
     }
 
+    /**
+     * Desactiva lógicamente la página confirmada para conservar su registro.
+     *
+     * @return void
+     */
+    // Desactiva lógicamente la página confirmada para conservar su registro.
+    //   Ejemplo: Desde la vista: wire:click="disabled"
+    //   Resultado: La página se desactiva y se muestra una notificación.
     public function disabled(): void
     {
         try {
@@ -163,12 +230,29 @@ class Pages extends Component
         }
     }
 
+    /**
+     * Carga una página y abre la confirmación de eliminación permanente.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Carga una página y abre la confirmación de eliminación permanente.
+    //   Ejemplo: Desde la vista: wire:click="deleteItem({{ $row->id }})"
+    //   Resultado: El diálogo queda abierto para confirmar la eliminación permanente.
     public function deleteItem(int $id): void
     {
         $this->page = Page::withTrashed()->findOrFail($id)->toArray();
         Flux::modal('deleteItem')->show();
     }
 
+    /**
+     * Elimina permanentemente la página confirmada y notifica el resultado.
+     *
+     * @return void
+     */
+    // Elimina permanentemente la página confirmada y notifica el resultado.
+    //   Ejemplo: Desde la vista: wire:click="destroy"
+    //   Resultado: El registro se elimina y la interfaz informa el resultado.
     public function destroy(): void
     {
         try {
@@ -182,6 +266,14 @@ class Pages extends Component
         }
     }
 
+    /**
+     * Restablece los datos y errores del formulario y cierra los modales.
+     *
+     * @return void
+     */
+    // Restablece los datos y errores del formulario y cierra los modales.
+    //   Ejemplo: Desde la vista: wire:click="resetData"
+    //   Resultado: Los datos y errores del formulario se limpian y se cierran los modales.
     public function resetData(): void
     {
         $this->reset('page');
@@ -189,6 +281,14 @@ class Pages extends Component
         Flux::modals()->close();
     }
 
+    /**
+     * Devuelve los tipos configurados en Page para llenar el selector del formulario.
+     *
+     * @return array
+     */
+    // Devuelve los tipos configurados en Page para llenar el selector del formulario.
+    //   Ejemplo: Blade itera `@foreach ($this->typePages() as $type)`.
+    //   Resultado: El selector presenta los tipos admitidos para una página.
     public function typePages(): array
     {
         return Page::type;

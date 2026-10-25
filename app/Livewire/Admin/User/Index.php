@@ -15,6 +15,7 @@ use Livewire\Component;
 use Spatie\Permission\Models\Role;
 use Livewire\Attributes\Title;
 
+/** Componente Livewire para listar, crear y restaurar usuarios administrativos. */
 #[Title('Usuarios')]
 class Index extends Component
 {
@@ -56,6 +57,14 @@ class Index extends Component
         ],
     ];
 
+    /**
+     * Lista usuarios, incluidos los desactivados, con información y área aplicando criterios de tabla.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    // Lista usuarios, incluidos los desactivados, con información y área aplicando criterios de tabla.
+    //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
+    //   Resultado: La tabla recibe la página filtrada y conserva el total para la paginación.
     #[Computed]
     public function rows()
     {
@@ -73,6 +82,14 @@ class Index extends Component
         return $query->paginate($this->per_page ?? 10);
     }
 
+    /**
+     * Carga departamentos, áreas y roles para los controles del formulario.
+     *
+     * @return void
+     */
+    // Carga departamentos, áreas y roles para los controles del formulario.
+    //   Ejemplo: Livewire invoca este hook al montar el componente.
+    //   Resultado: El componente queda autorizado y configurado con sus valores iniciales.
     public function mount(): void
     {
         $this->departamentos = Departamento::orderBy('nombre')->get();
@@ -80,6 +97,14 @@ class Index extends Component
         $this->roles = Role::orderBy('name')->get();
     }
 
+    /**
+     * Define validaciones del alta para datos personales, contacto y domicilio.
+     *
+     * @return array
+     */
+    // Define validaciones del alta para datos personales, contacto y domicilio.
+    //   Ejemplo: Livewire lo consulta al ejecutar $this->validate().
+    //   Resultado: Los campos conformes pasan la validación y los demás reciben errores asociados.
     public function rules(): array
     {
         return [
@@ -100,6 +125,14 @@ class Index extends Component
         ];
     }
 
+    /**
+     * Carga municipios pertenecientes al departamento seleccionado para la vista.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
+    // Carga municipios pertenecientes al departamento seleccionado para la vista.
+    //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
+    //   Resultado: Livewire entrega la vista con los datos preparados para sus controles.
     public function render()
     {
         $municipios = Municipio::where('departamento_id', $this->departamento_id)
@@ -109,6 +142,14 @@ class Index extends Component
         return view('livewire.admin.user.index', compact('municipios'));
     }
 
+    /**
+     * Valida y crea usuario, información y domicilio en una transacción, asignando el rol opcional.
+     *
+     * @return void
+     */
+    // Valida y crea usuario, información y domicilio en una transacción, asignando el rol opcional.
+    //   Ejemplo: Desde la vista: wire:click="store"
+    //   Resultado: El registro se crea y la interfaz confirma el resultado.
     public function store(): void
     {
         $this->syncMunicipioFromForm();
@@ -151,12 +192,29 @@ class Index extends Component
         }
     }
 
+    /**
+     * Selecciona un usuario eliminado y abre la confirmación de restauración.
+     *
+     * @param  int $id
+     * @return void
+     */
+    // Selecciona un usuario eliminado y abre la confirmación de restauración.
+    //   Ejemplo: Desde la vista: wire:click="userRestore({{ $row->id }})"
+    //   Resultado: Se abre el diálogo de restauración para el usuario seleccionado.
     public function userRestore(int $id): void
     {
         $this->usuario_id = $id;
         Flux::modal('restaurar-usuario')->show();
     }
 
+    /**
+     * Restaura el usuario seleccionado desde la papelera y cierra los modales.
+     *
+     * @return void
+     */
+    // Restaura el usuario seleccionado desde la papelera y cierra los modales.
+    //   Ejemplo: Desde la vista: wire:click="restore"
+    //   Resultado: El usuario vuelve a estar activo y se muestra una confirmación.
     public function restore(): void
     {
         $user = User::withTrashed()->findOrFail($this->usuario_id);
@@ -166,17 +224,42 @@ class Index extends Component
         Flux::modals()->close();
     }
 
+    /**
+     * Restablece los datos del formulario y cierra los modales.
+     *
+     * @return void
+     */
+    // Restablece los datos del formulario y cierra los modales.
+    //   Ejemplo: Desde la vista: wire:click="resetData"
+    //   Resultado: Los datos y errores del formulario se limpian y se cierran los modales.
     public function resetData(): void
     {
         $this->reset(['user', 'municipio_id']);
         Flux::modals()->close();
     }
 
+    /**
+     * Copia al domicilio el municipio seleccionado para validar y guardar la misma ubicación.
+     *
+     * @return void
+     */
+    // Copia al domicilio el municipio seleccionado para validar y guardar la misma ubicación.
+    //   Ejemplo: Uso interno: $this->syncMunicipioFromForm()
+    //   Resultado: El domicilio recibe el municipio actualmente seleccionado.
     protected function syncMunicipioFromForm(): void
     {
         $this->user['information']['domicilio']['municipio_id'] = $this->municipio_id;
     }
 
+    /**
+     * Recorta, pasa a minúsculas y capitaliza cada palabra para estandarizar nombres.
+     *
+     * @param  ?string $value
+     * @return ?string
+     */
+    // Recorta, pasa a minúsculas y capitaliza cada palabra para estandarizar nombres.
+    //   Ejemplo: Uso interno: $this->formatName($value)
+    //   Resultado: "ana pérez" se transforma en "Ana Pérez"; una entrada vacía da null.
     protected function formatName(?string $value): ?string
     {
         return ! empty($value)
@@ -184,6 +267,15 @@ class Index extends Component
             : null;
     }
 
+    /**
+     * Normaliza texto opcional como nombre y mantiene null si no se proporcionó.
+     *
+     * @param  ?string $value
+     * @return ?string
+     */
+    // Normaliza texto opcional como nombre y mantiene null si no se proporcionó.
+    //   Ejemplo: Uso interno: $this->normalizeOptionalText($value)
+    //   Resultado: El texto opcional queda normalizado; una entrada vacía se convierte en null.
     protected function normalizeOptionalText(?string $value): ?string
     {
         return ! empty($value)
@@ -191,6 +283,15 @@ class Index extends Component
             : null;
     }
 
+    /**
+     * Recorta espacios y convierte el correo a minúsculas antes de guardarlo.
+     *
+     * @param  ?string $email
+     * @return ?string
+     */
+    // Recorta espacios y convierte el correo a minúsculas antes de guardarlo.
+    //   Ejemplo: Uso interno: $this->normalizeEmail($email)
+    //   Resultado: El correo queda recortado y en minúsculas.
     protected function normalizeEmail(?string $email): ?string
     {
         return ! empty($email)
