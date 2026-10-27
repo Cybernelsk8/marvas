@@ -19,7 +19,7 @@
 | 1. Solicitudes y recepción | Implementado y validado | `App\Livewire\Solicitud` permite editar datos, asignar sede y Evaluador MBI en primera visita, reprogramar y cancelar. | Hacer prueba visual con usuarios reales; después decidir historial de llamadas y automatización de mensajes. |
 | 2. Agenda y disponibilidad | Implementado y validado automáticamente | `admin.schedule` permite confirmar solicitudes y citas directas. Recepción crea citas confirmadas desde la agenda; el servicio revalida horario global, expediente y asignaciones en transacción. Primera visita requiere Evaluador MBI configurado por sede. | Hacer prueba visual en recepción y atender incidencias operativas. |
 | 3. Pacientes y expediente | Implementado; cierre de módulo pendiente | `/admin/patients` ofrece directorio/ficha y fusión manual; el expediente tiene citas y secciones clínicas, documentos/consentimientos y pagos/paquetes protegidos por permisos. El usuario confirmó visualmente las secciones. | Completar pruebas visuales de integración y cerrar el módulo con el flujo clínico inicial. |
-| 4. Consultas y evaluación | Implementado parcialmente; pruebas dirigidas pasan | La anamnesis integral guarda los incisos 01–06; Acupuntura es individual; el resultado del evaluador y la evaluación MBI se muestran en la ficha. MBI se edita por consulta, guarda listas JSON y audita nombres de campos sin registrar valores clínicos. Cierre/reapertura conservan permisos y comportamiento. | Construir informe por sistemas, test de intoxicación y mapas corporales como componentes separados; definir catálogos clínicos del Modelo 6+ antes de restringir esas selecciones. |
+| 4. Consultas y evaluación | Implementado parcialmente; pruebas dirigidas pasan | La anamnesis integral guarda los incisos 01–06; Acupuntura es individual; el resultado del evaluador y la evaluación MBI se muestran en la ficha. MBI se edita por consulta, guarda listas JSON y audita nombres de campos sin registrar valores clínicos. Cierre/reapertura conservan permisos y comportamiento. | Construir el mapa de dolor y rediseñar la anamnesis integral según la especificación (informe por sistemas ya es el inciso 04; el test de intoxicación se eliminó); definir catálogos clínicos del Modelo 6+ antes de restringir esas selecciones. |
 | 5. Clasificación y tratamiento | Parcial en datos / pendiente en pantallas | Existen clasificación, plan terapéutico, paquete asociado y evolución en esquema/modelos. | Definir Modelo 6+ con el equipo y crear flujo de clasificación/plan/evolución. |
 | 6. Consentimientos y archivos | Parcial en datos / pendiente en pantallas | Hay plantillas/registros de consentimiento, archivos y campos de trazabilidad. | Definir política legal/de almacenamiento y crear pantallas seguras. |
 | 7. Paquetes, pagos y facturación | Parcial en datos / pendiente en pantallas | Existen paquetes clínicos/paciente, pagos y datos de facturación. | Acordar reglas financieras e implementar catálogo/registro de cobro. |
@@ -126,7 +126,7 @@
 ## Próximos pasos recomendados
 
 1. Terminar la validación automatizada y probar visualmente los CRUD y el modal de cita interna con usuarios autorizados.
-2. Implementar informe por sistemas, test de intoxicación y mapas corporales como componentes separados.
+2. Rediseño de anamnesis/acupuntura/mapa de dolor: Etapas 1 a 4 hechas; falta revisión visual del mapa, ajustar contornos con el trazador y ejecutar `migrate:fresh --seed`. Ver Módulo 4, paso 10.
 3. Definir con el equipo clínico catálogos de sistemas y la selección operativa del Modelo 6+.
 4. Definir historial de contacto y canal de comunicación antes de automatizar confirmaciones/recordatorios.
 
@@ -505,7 +505,54 @@
 - **Pendientes:** repetir la suite con Vite activo; Pint no se ejecutó sobre estos archivos.
 - **Estado del trabajo:** completo, con la validación completa de pruebas pendiente de Vite.
 
-## Plantilla para registrar una entrega para registrar una entrega
+### 2026-10-26 — Rediseño anamnesis/mapa de dolor, Etapa 1 (esquema y modelos)
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** adecuar el esquema a `MARVAS_especificacion_anamnesis_acupuntura_mapa_dolor.md`, editando migraciones existentes (para `migrate:fresh --seed`).
+- **Cambios realizados:** eliminadas migraciones y modelos de `informe_sistemas` y `test_intoxicacion` (y sus relaciones en `Consulta`). Nuevo catálogo `regiones_corporales` + `RegionCorporal` + `RegionesCorporalesSeeder` (12 anteriores y 8 posteriores de `mapa-corporal.png`, ampliable). `mapas_corporales` rediseñada (1 por consulta, estado, EVA máximo, zona mayor; relación `Consulta::mapaCorporal()`); `zonas_dolor` rediseñada (región, lateralidad, EVA 0–10, nivel derivado automáticamente, tipos/irradiación/patrón JSON, inicio, comentario; única por mapa+región+lado). Columnas aditivas: anamnesis general (`intensidad_dolor`, `zona_dolor_principal`, `antecedentes_estados`, `revision_sistemas`, `presion_sistolica/diastolica`), quiropraxia (`sintomas`, `postura_movilidad`, `pruebas_neuro_ortopedicas`, `seguridad`, `decision_manipulacion`, `motivo_decision`), acupuntura (`pulsos`, `lengua_movimiento`), paciente (`contacto_emergencia`, accesor `edad`).
+- **Archivos modificados:** migraciones 000006, 000022, 000025, 000026, 000032 (nueva), 000034, 000035; modelos afectados; `DatabaseSeeder`; `PainMapSchemaTest` (nueva) y `ConsultationTest` (prueba de historial por región).
+- **Pruebas/comandos y resultado:** `npm run build`; PainMapSchemaTest + ConsultationTest 21/21. Suite completa 137/139: 2 fallos en `ClinicalCatalogsTest` (profesionales) por cambios previos del usuario en `professionals.blade.php`, ajenos a esta tarea.
+- **Decisiones tomadas (responsable/fecha):** catálogo solo con regiones de la imagen; se conservan `diagnostico_energetico`, `principio_terapeutico`, `antecedentes_familiares_detalle` y `eva_maximo`; teléfono de emergencia separado y edad calculada en paciente (usuario/2026-10-26).
+- **Pendientes o bloqueos:** las columnas antiguas (PA string, booleanos de quiropraxia, enums del índice funcional, 12 columnas de pulso) se retiran en la Etapa 2/3 junto con la UI que las usa; revisar fallos de `ClinicalCatalogsTest`.
+- **Próximo paso recomendado:** Etapa 2, UI de la anamnesis integral.
+- **Estado del trabajo:** Etapa 1 completa.
+
+### 2026-10-27 — Rediseño anamnesis integral, Etapa 2 (UI con selectores de tres estados)
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** reemplazar los campos de texto libres de la anamnesis integral y de quiropraxia por la estructura de la especificación.
+- **Cambios realizados:** nuevo `app/Support/AnamnesisCatalog.php` (catálogos 03, 04, 06, 06A, 06B, 06C, 06D, estados, reglas y helpers) y parcial `partials/state-block.blade.php`. Anamnesis general: antecedentes y revisión por sistemas con selector + detalle, intensidad 0–10, zona, presión sistólica/diastólica; hábitos y antecedentes familiares quedan en `datos_formulario`; sección `revision_sistemas` renombrada a `examen_general`. Quiropraxia reescrita (síntomas, postura/movilidad, pruebas con lado y fuerza 0–5, otras pruebas, índice funcional, seguridad 06D, decisión de manipulación). Regla 06D: alerta en «Sí» muestra advertencia en vivo y bloquea la decisión «indicada». Migraciones 000022 y 000025 editadas (columnas antiguas retiradas); modelos `AnamnesisGeneral` y `AnamnesisQuiropraxia` ajustados.
+- **Archivos modificados:** `Consultation/Show.php`, `show.blade.php`, `assessments/chiropractic.blade.php`, `partials/state-block.blade.php`, `AnamnesisCatalog.php`, migraciones 000022/000025, modelos, `ConsultationTest`.
+- **Pruebas/comandos y resultado:** `ConsultationTest` 18/18 (incluye bloques estructurados y regla 06D). Suite completa 137/139: mismos 2 fallos previos de `ClinicalCatalogsTest` (profesionales). Pint ejecutado sobre Support, Consultation, Models.
+- **Pendientes o bloqueos:** Pint reformateó también algunos archivos no relacionados (p. ej. `HeaderMap.php`, modelos); revisar el diff.
+- **Próximo paso recomendado:** Etapa 3, formulario de acupuntura.
+- **Estado del trabajo:** Etapa 2 completa.
+
+### 2026-10-27 — Rediseño acupuntura, Etapa 3 (formulario `Acu`)
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** adecuar la evaluación de acupuntura a la Parte B de la especificación.
+- **Cambios realizados:** nuevo `app/Support/AcupunctureCatalog.php`; vista `assessments/acupuncture.blade.php` reescrita (pulsos con órgano, lengua con casillas, humedad y movimiento, 8 reglas con radios, 6 niveles, 4 capas, Zang-Fu con tabla de generación/control en vivo, protocolo distal/local/maestro). Los multi-selección se guardan como arreglo de claves; un bloque sin capturar queda `null` y no crea fila. Migración 000026: eliminadas las 12 columnas `pulso_*`. Modelo `AnamnesisAcupuntura`: `puntosPorCategoria()` y `relacionesZangFu()`. El complemento de acupuntura queda solo con «patrones inusuales de la lengua».
+- **Archivos modificados:** `Consultation/Show.php`, `acupuncture.blade.php`, `AcupunctureCatalog.php`, `AnamnesisAcupuntura.php`, migración 000026, `ConsultationTest` (prueba de acupuntura reescrita).
+- **Pruebas/comandos y resultado:** `ConsultationTest` 18/18. Suite completa 137/139; fallan `ClinicalCatalogsTest` (profesionales) y `PatientDirectoryTest` (búsqueda), ambos por cambios del usuario sin confirmar en `professionals.blade.php` y en `Patient/Index` (no relacionados con esta etapa).
+- **Decisiones tomadas (responsable/fecha):** calidad de pulso como texto libre con sugerencias; protocolo con puntos/técnica/observaciones (inferido, por confirmar); Zang-Fu guarda solo los órganos y calcula madre/control al mostrarlos (Copilot/2026-10-27).
+- **Pendientes o bloqueos:** exclusividad «Normal»/«Ausente», tabla maestra de 5 elementos y catálogo de puntos de acupuntura.
+- **Próximo paso recomendado:** Etapa 4, componente SVG del mapa de dolor.
+- **Estado del trabajo:** Etapa 3 completa.
+
+### 2026-10-27 — Rediseño mapa de dolor, Etapa 4 (componente SVG)
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** mapa de dolor interactivo con historial de progreso por región (Parte C de la especificación).
+- **Cambios realizados:** imagen limpia sin etiquetas en `public/img/mapa-corporal.png` (mismas dimensiones, 1122×1402). Migración 000032: columna JSON `trazos` en `regiones_corporales` (`{"derecha","izquierda","central"}` con paths SVG en coordenadas del PNG); `RegionesCorporalesSeeder` siembra contornos aproximados de las 20 regiones sin pisar los corregidos. CRUD `Clinical/BodyRegions` (DataTable, `@interact`, trazador por clic sobre la imagen, permiso `page.view.body-regions`, entrada en Catálogos clínicos, escritura con `clinical-catalogs.manage`). Componente `Consultation/PainMap` (embebido como sección «Mapa de dolor» de la consulta): SVG con vista Ambas/Anterior/Posterior, mapa de calor por EVA, panel de zona (EVA 0–10, tipo, patrón, inicio, irradiación, comentario), lista resumen con edición/borrado y alta desde lista (sin ratón), historial por zona con gráfico, y comparación con una sesión anterior (contorno punteado y columna de cambio). `ConsultationService::savePainMap` (transacción, bloqueo, solo consulta abierta/en proceso, auditoría) calcula estado, EVA máximo y zona de mayor dolor. `Show` escucha `pain-map-saved` y pre-llena `intensidad_dolor` y `zona_dolor_principal` (se persisten al guardar la anamnesis). Nuevo `app/Support/PainMapCatalog.php`.
+- **Archivos modificados:** `RegionCorporal.php`, migración 000032, `RegionesCorporalesSeeder`, `PermissionsAccessSeeder`, `ClinicalCatalogAccessSeeder`, `routes/admin.php`, `Consultation/Show.php` y `show.blade.php`, `ConsultationService`, `ConsultationTest` (5 pruebas nuevas), `BodyRegionsTest` (nuevo), `AdminAccessSeederTest` (47→48 permisos).
+- **Pruebas/comandos y resultado:** `ConsultationTest` 23/23, `BodyRegionsTest` 4/4. Suite completa: solo fallan los 2 casos ajenos ya conocidos (`ClinicalCatalogsTest` profesionales y `PatientDirectoryTest`). No se probó en navegador.
+- **Decisiones tomadas (responsable/fecha):** imagen de fondo + zonas guardadas en BD + trazador (usuario/2026-10-27); zonas editadas localmente y guardadas juntas; tipos y patrones fijos en `PainMapCatalog`.
+- **Pendientes o bloqueos:** afinar los contornos con el trazador (son aproximados); verificación visual en navegador; el mapa se muestra editable solo con `consultations.edit` (no hay vista de solo lectura en la ficha cerrada).
+- **Próximo paso recomendado:** revisión visual del mapa y ajuste de contornos; luego `migrate:fresh --seed`.
+- **Estado del trabajo:** Etapa 4 completa.
+
+## Plantilla para registrar una entrega
 
 Copiar al final del registro cronológico y completar al terminar cada tarea:
 

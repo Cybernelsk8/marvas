@@ -47,8 +47,6 @@ class Index extends Component
         ['index' => 'expediente.id', 'label' => 'Expediente #', 'type' => 'numeric'],
         ['index' => 'nombre_completo', 'label' => 'Paciente'],
         ['index' => 'numero_dpi', 'label' => 'DPI'],
-        ['index' => 'telefono', 'label' => 'Teléfono', 'type' => 'phone'],
-        ['index' => 'email', 'label' => 'Correo'],
         ['index' => 'activo', 'label' => 'Estado', 'type' => 'boolean'],
         ['index' => 'actions', 'label' => ''],
     ];
@@ -190,12 +188,12 @@ class Index extends Component
             ->whereNull('fusionado_en_paciente_id')
             ->whereKeyNot($this->mergeSourcePatientId)
             ->where(function (Builder $query) use ($search, $fullNameExpression): void {
-                $query->whereRaw('LOWER(nombres) LIKE ?', ['%'.$search.'%'])
-                    ->orWhereRaw('LOWER(apellidos) LIKE ?', ['%'.$search.'%'])
-                    ->orWhereRaw($fullNameExpression.' LIKE ?', ['%'.$search.'%'])
-                    ->orWhereRaw('LOWER(COALESCE(numero_dpi, \'\')) LIKE ?', ['%'.$search.'%'])
-                    ->orWhereRaw('LOWER(COALESCE(telefono, \'\')) LIKE ?', ['%'.$search.'%'])
-                    ->orWhereRaw('LOWER(COALESCE(email, \'\')) LIKE ?', ['%'.$search.'%']);
+                $query->whereRaw('LOWER(nombres) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(apellidos) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw($fullNameExpression . ' LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(COALESCE(numero_dpi, \'\')) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(COALESCE(telefono, \'\')) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(COALESCE(email, \'\')) LIKE ?', ['%' . $search . '%']);
             })
             ->orderBy('apellidos')
             ->orderBy('nombres')
@@ -282,11 +280,11 @@ class Index extends Component
         ];
 
         foreach (array_keys($preview['profileConflicts']) as $field) {
-            $rules['mergeProfileChoices.'.$field] = ['required', Rule::in(['source', 'target'])];
+            $rules['mergeProfileChoices.' . $field] = ['required', Rule::in(['source', 'target'])];
         }
 
         foreach (array_keys($preview['expedienteConflicts']) as $field) {
-            $rules['mergeExpedienteChoices.'.$field] = ['required', Rule::in(['source', 'target'])];
+            $rules['mergeExpedienteChoices.' . $field] = ['required', Rule::in(['source', 'target'])];
         }
 
         $this->validate($rules);
@@ -301,7 +299,7 @@ class Index extends Component
         $this->resetMergeForm();
         Flux::modals()->close();
         Flux::toast(
-            text: 'Se fusionó el expediente de '.$result['target']->nombre_completo.' y el registro de origen quedó inactivo y vinculado.',
+            text: 'Se fusionó el expediente de ' . $result['target']->nombre_completo . ' y el registro de origen quedó inactivo y vinculado.',
             variant: 'success',
         );
         $this->resetPage();

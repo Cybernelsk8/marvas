@@ -3,13 +3,13 @@
 namespace App\Models\Admin;
 
 use App\Models\Municipio;
-use App\Models\Zona;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Domicilio extends Model
 {
     public $timestamps = false;
+
     protected $fillable = [
         'municipio_id',
         'zona_id',

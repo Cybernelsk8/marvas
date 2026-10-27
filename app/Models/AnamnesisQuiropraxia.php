@@ -16,25 +16,14 @@ class AnamnesisQuiropraxia extends Model
 
     protected $fillable = [
         'anamnesis_id',
-        'cirugias',
-        'fracturas',
-        'hospitalizaciones',
-        'implantes_metales',
-        'detalle_implantes',
-        'embarazo',
-        'semanas_gestacion',
-        'adormecimientos',
-        'zonas_adormecidas',
-        'ciatica',
-        'dolor_cabeza',
-        'vertigo',
-        'atm',
-        'detalle_atm',
-        'postura',
-        'calidad_sueno',
-        'desplazamiento',
-        'tiempo_trabajo',
-        'recreacion',
+        'sintomas',
+        'postura_movilidad',
+        'pruebas_neuro_ortopedicas',
+        'otras_pruebas',
+        'indice_funcional',
+        'seguridad',
+        'decision_manipulacion',
+        'motivo_decision',
         'diagnostico',
         'plan_seguimiento_inicial',
         'observaciones',
@@ -43,15 +32,21 @@ class AnamnesisQuiropraxia extends Model
     protected function casts(): array
     {
         return [
-            'implantes_metales' => 'boolean',
-            'embarazo' => 'boolean',
-            'semanas_gestacion' => 'integer',
-            'adormecimientos' => 'boolean',
-            'ciatica' => 'boolean',
-            'dolor_cabeza' => 'boolean',
-            'vertigo' => 'boolean',
-            'atm' => 'boolean',
+            'sintomas' => 'array',
+            'postura_movilidad' => 'array',
+            'pruebas_neuro_ortopedicas' => 'array',
+            'indice_funcional' => 'array',
+            'seguridad' => 'array',
         ];
+    }
+
+    // Criterios de 06D marcados como "Sí"; si hay alguno se debe advertir antes de manipular. Ej.: ['trauma_fractura']
+    public function alertasSeguridad(): array
+    {
+        return collect($this->seguridad ?? [])
+            ->filter(fn (array $item): bool => ($item['estado'] ?? null) === 'si')
+            ->keys()
+            ->all();
     }
 
     // --- Relaciones ---

@@ -11,6 +11,8 @@ use App\Models\Cita;
 use App\Models\Consulta;
 use App\Models\EvaluacionIntegralMbi;
 use App\Models\ExpedienteMaestro;
+use App\Models\MapaCorporal;
+use App\Models\RegionCorporal;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -64,6 +66,80 @@ class ConsultationService
             ]);
 
             return $evaluation->fresh();
+        });
+    }
+
+    /**
+     * Guarda el mapa de dolor de una consulta abierta o en proceso, reemplazando sus zonas.
+     *
+     * @param  array<int, array<string, mixed>>  $zones  Cada zona: region_id, lateralidad, eva, tipos, irradiacion, inicio, patron, comentario.
+     */
+    public function savePainMap(int $consultationId, bool $noPain, ?string $notes, array $zones): MapaCorporal
+    {
+        return DB::transaction(function () use ($consultationId, $noPain, $notes, $zones): MapaCorporal {
+            $consultation = Consulta::query()
+                ->whereKey($consultationId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($consultation->estado, ['abierta', 'en_proceso'], true)) {
+                throw ValidationException::withMessages([
+                    'mapa' => 'Solo se puede guardar el mapa de dolor de una consulta abierta o en proceso.',
+                ]);
+            }
+
+            $map = MapaCorporal::query()
+                ->where('consulta_id', $consultation->id)
+                ->lockForUpdate()
+                ->first();
+            $isNew = $map === null;
+            $map ??= new MapaCorporal(['consulta_id' => $consultation->id]);
+            $previousZones = $isNew ? 0 : $map->zonasDolor()->count();
+
+            $withPain = collect($zones)->contains(fn (array $zone): bool => (int) $zone['eva'] > 0);
+            $strongest = collect($zones)->sortByDesc('eva')->first();
+            $regions = RegionCorporal::query()->whereIn('id', collect($zones)->pluck('region_id'))->pluck('nombre', 'id');
+
+            $map->fill([
+                'estado' => $withPain ? 'con_dolor' : (($noPain || $zones !== []) ? 'sin_dolor' : 'no_evaluado'),
+                'eva_maximo' => $strongest ? (int) $strongest['eva'] : ($noPain ? 0 : null),
+                'zona_mayor_dolor' => $withPain && $strongest
+                    ? trim(($regions[$strongest['region_id']] ?? '').' '.($strongest['lateralidad'] === 'central' ? '' : $strongest['lateralidad']))
+                    : null,
+                'observaciones' => $notes,
+            ])->save();
+
+            $map->zonasDolor()->delete();
+            foreach ($zones as $zone) {
+                $map->zonasDolor()->create([
+                    'region_id' => $zone['region_id'],
+                    'lateralidad' => $zone['lateralidad'],
+                    'eva' => (int) $zone['eva'],
+                    'tipos' => $zone['tipos'] ?: null,
+                    'irradiacion' => $zone['irradiacion'] ?: null,
+                    'inicio' => $zone['inicio'] ?: null,
+                    'patron' => $zone['patron'] ?: null,
+                    'comentario' => $zone['comentario'] ?: null,
+                ]);
+            }
+
+            Auditoria::create([
+                'user_id' => Auth::id(),
+                'tabla_afectada' => 'mapas_corporales',
+                'registro_id' => $map->id,
+                'accion' => $isNew ? 'crear' : 'editar',
+                'datos_anteriores' => $isNew ? null : ['consulta_id' => $consultation->id, 'zonas' => $previousZones],
+                'datos_nuevos' => [
+                    'consulta_id' => $consultation->id,
+                    'estado' => $map->estado,
+                    'eva_maximo' => $map->eva_maximo,
+                    'zonas' => count($zones),
+                ],
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            return $map->fresh('zonasDolor');
         });
     }
 

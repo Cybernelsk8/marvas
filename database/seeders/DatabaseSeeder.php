@@ -1468,6 +1468,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(CatalogosClinicosSeeder::class);
+        $this->call(RegionesCorporalesSeeder::class);
         $this->call(SucursalesDemoSeeder::class);
         $this->call(AgendaAccessSeeder::class);
         $this->call(CategoriasInventarioSeeder::class);

@@ -4,7 +4,12 @@ namespace App\Livewire\Admin\Consultation;
 
 use App\Models\Consulta;
 use App\Services\ConsultationService;
+use App\Support\AcupunctureCatalog;
+use App\Support\AnamnesisCatalog;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -17,16 +22,12 @@ class Show extends Component
     public array $form = [
         'motivo_consulta' => '',
         'historia_padecimiento' => '',
-        'antecedentes_patologicos' => '',
-        'antecedentes_quirurgicos' => '',
-        'antecedentes_traumaticos' => '',
-        'alergias' => '',
-        'medicamentos_actuales' => '',
-        'habitos' => '',
-        'sueno' => '',
-        'alimentacion' => '',
-        'estado_emocional' => '',
-        'presion_arterial' => '',
+        'intensidad_dolor' => '',
+        'zona_dolor_principal' => '',
+        'antecedentes_estados' => [],
+        'revision_sistemas' => [],
+        'presion_sistolica' => '',
+        'presion_diastolica' => '',
         'frecuencia_cardiaca' => '',
         'frecuencia_respiratoria' => '',
         'temperatura' => '',
@@ -56,10 +57,6 @@ class Show extends Component
 
     public ?string $activeAnamnesis = null;
 
-    /**
-     * @param Consulta $consultation
-     * @return void
-     */
     // Carga la consulta, sus relaciones clínicas y los valores existentes en los formularios; Livewire la invoca al abrir la ficha.
     //   Uso:
     //     <livewire:admin.consultation.show :consultation="$consultation" />
@@ -94,9 +91,23 @@ class Show extends Component
 
         $anamnesis = $this->consultation->anamnesisGeneral;
         $this->form['datos_formulario'] = $this->integralFormDefaults();
+        $this->form['antecedentes_estados'] = AnamnesisCatalog::merge(
+            AnamnesisCatalog::antecedentes(),
+            'no_evaluado',
+            $anamnesis?->antecedentes_estados,
+        );
+        $this->form['revision_sistemas'] = AnamnesisCatalog::merge(
+            AnamnesisCatalog::sistemas(),
+            'no_evaluado',
+            $anamnesis?->revision_sistemas,
+        );
 
         if ($anamnesis) {
-            foreach (array_diff(array_keys($this->form), ['datos_formulario']) as $field) {
+            foreach (array_diff(array_keys($this->form), [
+                'datos_formulario',
+                'antecedentes_estados',
+                'revision_sistemas',
+            ]) as $field) {
                 $value = $anamnesis->{$field};
                 $this->form[$field] = is_array($value)
                     ? implode(PHP_EOL, $value)
@@ -136,6 +147,24 @@ class Show extends Component
                 }
 
                 $value = $record?->{$field};
+                if ($formKey === 'acupuntura' && AcupunctureCatalog::isStructured($field)) {
+                    $this->assessmentForms[$formKey][$field] = AcupunctureCatalog::merge($field, $value);
+
+                    continue;
+                }
+
+                if (isset($this->structuredBlocks($formKey)[$field])) {
+                    $block = $this->structuredBlocks($formKey)[$field];
+                    $this->assessmentForms[$formKey][$field] = AnamnesisCatalog::merge(
+                        $block['catalog'],
+                        $block['default'],
+                        $value,
+                        $block['extra'],
+                    );
+
+                    continue;
+                }
+
                 $this->assessmentForms[$formKey][$field] = is_array($value)
                     ? implode(PHP_EOL, $value)
                     : ($value ?? $default);
@@ -143,10 +172,6 @@ class Show extends Component
         }
     }
 
-    /**
-     * @param string $section
-     * @return void
-     */
     // Abre la sección clínica solicitada, limpia errores previos y solo admite secciones válidas en consultas editables.
     //   Uso:
     //     wire:click="openAnamnesis('general')"
@@ -154,16 +179,32 @@ class Show extends Component
     public function openAnamnesis(string $section): void
     {
         $this->authorize('consultations.edit');
-        abort_unless(in_array($section, ['general', 'homeopatia', 'quiropraxia', 'acupuntura', 'mbi'], true), 404);
+        abort_unless(in_array($section, ['general', 'homeopatia', 'quiropraxia', 'acupuntura', 'mbi', 'mapa_dolor'], true), 404);
         abort_unless(in_array($this->consultation->estado, ['abierta', 'en_proceso'], true), 403);
 
         $this->activeAnamnesis = $section;
         $this->resetValidation();
     }
 
-    /**
-     * @return void
-     */
+    // Recibe el EVA máximo del mapa de dolor y rellena la intensidad y la zona principal de la anamnesis integral.
+    //   Uso:
+    //     El componente PainMap emite: $this->dispatch('pain-map-saved', eva: 7, zona: 'Lumbar')
+    //   Resultado: form.intensidad_dolor y form.zona_dolor_principal quedan pre-llenados; se guardan al guardar la anamnesis.
+    #[On('pain-map-saved')]
+    public function applyPainMapResult(?int $eva = null, ?string $zona = null): void
+    {
+        $this->consultation->unsetRelation('mapaCorporal');
+
+        if ($eva === null) {
+            return;
+        }
+
+        $this->form['intensidad_dolor'] = (string) $eva;
+        if (filled($zona)) {
+            $this->form['zona_dolor_principal'] = $zona;
+        }
+    }
+
     // Cierra el formulario de anamnesis activo y descarta errores de validación para volver al índice de secciones.
     //   Uso:
     //     wire:click="backToAnamneses"
@@ -174,10 +215,6 @@ class Show extends Component
         $this->resetValidation();
     }
 
-    /**
-     * @param ConsultationService $consultationService
-     * @return void
-     */
     // Valida y persiste la anamnesis general mediante el servicio, actualiza la relación cargada y cierra la sección.
     //   Uso:
     //     wire:click="saveGeneralAnamnesis"
@@ -196,10 +233,6 @@ class Show extends Component
         Flux::toast(text: 'Anamnesis general guardada correctamente.', variant: 'success');
     }
 
-    /**
-     * @param ConsultationService $consultationService
-     * @return void
-     */
     // Guarda en conjunto la anamnesis general y las evaluaciones homeopática y quiropráctica, separando sus datos complementarios.
     //   Uso:
     //     wire:click="saveIntegralAnamnesis"
@@ -235,11 +268,6 @@ class Show extends Component
         Flux::toast(text: 'Anamnesis integral guardada correctamente.', variant: 'success');
     }
 
-    /**
-     * @param string $formKey
-     * @param ConsultationService $consultationService
-     * @return void
-     */
     // Valida y guarda una evaluación individual permitida (homeopatía, quiropraxia o acupuntura) junto con sus datos complementarios.
     //   Uso:
     //     wire:click="saveAssessment('acupuntura')"
@@ -269,10 +297,6 @@ class Show extends Component
         Flux::toast(text: 'Evaluación guardada correctamente.', variant: 'success');
     }
 
-    /**
-     * @param ConsultationService $consultationService
-     * @return void
-     */
     // Valida la evaluación integral MBI, convierte sus campos de varias líneas a listas y la guarda mediante el servicio.
     //   Uso:
     //     wire:click="saveMbiEvaluation"
@@ -309,10 +333,6 @@ class Show extends Component
         Flux::toast(text: 'Evaluación integral MBI guardada correctamente.', variant: 'success');
     }
 
-    /**
-     * @param ConsultationService $consultationService
-     * @return void
-     */
     // Valida el motivo y las observaciones de cierre, cierra la consulta y refresca sus relaciones visibles.
     //   Uso:
     //     wire:click="closeConsultation"
@@ -339,10 +359,6 @@ class Show extends Component
         Flux::toast(text: 'Consulta cerrada correctamente.', variant: 'success');
     }
 
-    /**
-     * @param ConsultationService $consultationService
-     * @return void
-     */
     // Reabre la consulta mediante el servicio y recarga sus relaciones para reflejar el estado actualizado.
     //   Uso:
     //     wire:click="reopenConsultation"
@@ -364,7 +380,7 @@ class Show extends Component
     }
 
     /**
-     * @return \Illuminate\Contracts\View\View
+     * @return View
      */
     // Construye la vista de la consulta con permisos, estado clínico y definiciones de secciones para sus formularios.
     //   Uso:
@@ -389,9 +405,6 @@ class Show extends Component
         ]);
     }
 
-    /**
-     * @return array
-     */
     // Define etiquetas y campos de las secciones del formulario integral para reutilizarlos en la interfaz y validación.
     //   Uso:
     //     $sections = $this->integralFormSections();
@@ -406,7 +419,7 @@ class Show extends Component
                     'forma_inicio' => 'Forma de inicio',
                     'frecuencia' => 'Frecuencia',
                     'evolucion' => 'Evolución',
-                    'intensidad_zona_momento' => 'Intensidad (0–10), zona y momento',
+                    'momento_dolor' => 'Momento del día en que se presenta',
                     'hormigueo_adormecimiento' => 'Hormigueo o adormecimiento',
                     'debilidad_extremidad_lado' => 'Debilidad: extremidad y lado',
                     'irradiacion' => 'Irradiación y región',
@@ -415,14 +428,9 @@ class Show extends Component
                 ],
             ],
             'antecedentes_habitos' => [
-                'label' => '03 Antecedentes y hábitos',
+                'label' => '03 Antecedentes familiares y hábitos',
                 'fields' => [
-                    'enfermedades_cronicas_previas' => 'Enfermedades crónicas y previas',
-                    'cirugias_hospitalizaciones' => 'Cirugías y hospitalizaciones: tipo, motivo y fecha',
-                    'traumatismos_fracturas' => 'Traumatismos y fracturas: región y fecha',
-                    'implantes_protesis' => 'Implantes metálicos o prótesis: tipo y localización',
-                    'embarazo' => 'Embarazo posible: semanas y fecha de última menstruación, si aplica',
-                    'antecedentes_familiares' => 'Antecedentes familiares: enfermedad, parentesco y tratamiento',
+                    'antecedentes_familiares' => 'Antecedentes familiares: cáncer, diabetes, hipertensión, artritis, artrosis, hernias, Alzheimer, osteoporosis; parentesco y tratamiento',
                     'tabaco' => 'Tabaco: cantidad y frecuencia',
                     'alcohol' => 'Alcohol: cantidad y frecuencia',
                     'cafe' => 'Café: tazas por día',
@@ -435,24 +443,9 @@ class Show extends Component
                     'condiciones_laborales' => 'Condiciones laborales y ergonomía',
                 ],
             ],
-            'revision_sistemas' => [
-                'label' => '04 Revisión por sistemas y examen general',
+            'examen_general' => [
+                'label' => '04 Exámenes complementarios',
                 'fields' => [
-                    'piel_anexos' => 'Piel y anexos',
-                    'cabeza_cuello' => 'Cabeza y cuello',
-                    'ojos' => 'Ojos',
-                    'oidos_equilibrio' => 'Oídos y equilibrio',
-                    'nariz_senos' => 'Nariz y senos',
-                    'boca_garganta' => 'Boca y garganta',
-                    'mamas' => 'Mamas, si corresponde',
-                    'respiratorio' => 'Respiratorio',
-                    'cardiovascular' => 'Cardiovascular',
-                    'gastrointestinal' => 'Gastrointestinal',
-                    'oseo_muscular' => 'Óseo-muscular',
-                    'urinario' => 'Urinario',
-                    'reproductor_masculino' => 'Reproductor masculino, si corresponde',
-                    'reproductor_femenino' => 'Reproductor femenino, si corresponde',
-                    'neurologico' => 'Neurológico',
                     'examenes_complementarios' => 'Exámenes complementarios aportados y resultados relevantes',
                 ],
             ],
@@ -468,9 +461,6 @@ class Show extends Component
         ];
     }
 
-    /**
-     * @return array
-     */
     // Describe los campos complementarios de homeopatía, quiropraxia y acupuntura que se presentan en la ficha clínica.
     //   Uso:
     //     $sections = $this->assessmentComplementarySections();
@@ -487,74 +477,15 @@ class Show extends Component
                     'preferencias_aversiones' => 'Preferencias y aversiones',
                 ],
             ],
-            'quiropraxia' => [
-                'label' => '06 Evaluación quiropráctica y neuromusculoesquelética',
-                'fields' => [
-                    'cefalea_recurrente' => 'Cefalea recurrente: localización, frecuencia y asociación cervical',
-                    'lentes_contacto' => 'Uso de lentes de contacto: tiempo y motivo',
-                    'alteraciones_equilibrio' => 'Alteraciones del equilibrio: vértigo, inestabilidad y caídas',
-                    'ortodoncia_protesis_dental' => 'Ortodoncia o prótesis dental: tipo y fecha',
-                    'atm_bruxismo' => 'ATM o bruxismo: dolor, chasquido, bloqueo y apertura',
-                    'infecciones_garganta' => 'Infecciones de garganta recurrentes: frecuencia y antecedentes',
-                    'zumbido_oido' => 'Zumbido de oído: lateralidad e inicio',
-                    'paralisis_facial' => 'Parálisis facial previa: lado, fecha y secuelas',
-                    'dolor_ciatico' => 'Dolor ciático: lado, trayecto y parestesias',
-                    'adormecimiento_corporal' => 'Adormecimiento corporal: zona, distribución y progresión',
-                    'problemas_dermatologicos' => 'Problemas dermatológicos: localización',
-                    'cervicalgia' => 'Cervicalgia: irradiación, rigidez e intensidad',
-                    'dorsalgia' => 'Dorsalgia: localización, respiración y postura',
-                    'lumbalgia' => 'Lumbalgia: irradiación, postura y carga',
-                    'dolor_sacroiliaco_pelvico' => 'Dolor sacroilíaco o pélvico: lateralidad y marcha',
-                    'dolor_hombros_brazos_manos' => 'Dolor de hombros, brazos o manos: lado y movimiento',
-                    'dolor_cadera_rodilla_pies' => 'Dolor de cadera, rodilla o pies: lado y marcha',
-                    'dolor_nocturno_reposo' => 'Dolor nocturno o en reposo: despertares y progresión',
-                    'mapa_dolor' => 'Mapa del dolor: región, lateralidad, irradiación, inicio, intensidad EVA y características',
-                    'postura_cabeza' => 'Postura: posición de cabeza',
-                    'postura_hombros' => 'Postura: alineación de hombros',
-                    'curvaturas_vertebrales' => 'Curvaturas vertebrales: cifosis, lordosis y región',
-                    'alineacion_tronco' => 'Alineación del tronco',
-                    'alineacion_pelvica' => 'Alineación pélvica',
-                    'marcha_apoyo_plantar' => 'Marcha y apoyo plantar',
-                    'equilibrio' => 'Equilibrio: prueba realizada y estabilidad',
-                    'movilidad_cervical' => 'Movilidad cervical',
-                    'movilidad_dorsal' => 'Movilidad dorsal',
-                    'movilidad_lumbar' => 'Movilidad lumbar',
-                    'movilidad_extremidades' => 'Movilidad de extremidades: articulación, lado y movimiento',
-                    'palpacion_muscular' => 'Palpación muscular: zona, sensibilidad y espasmo',
-                    'fuerza_muscular' => 'Fuerza muscular segmentaria (0–5): lado, resultado y detalle',
-                    'sensibilidad_dermatomas' => 'Sensibilidad por dermatomas: lado, resultado y detalle',
-                    'reflejos_osteotendinosos' => 'Reflejos osteotendinosos: lado, resultado y detalle',
-                    'prueba_lasegue' => 'Elevación de pierna recta (Lasègue): lado, resultado y detalle',
-                    'prueba_slump' => 'Prueba de Slump: lado, resultado y detalle',
-                    'prueba_spurling' => 'Spurling o provocación cervical: lado, resultado y detalle',
-                    'pruebas_sacroiliacas' => 'Pruebas sacroilíacas: lado, resultado y detalle',
-                    'pruebas_hombro_cadera' => 'Pruebas de hombro o cadera: lado, resultado y detalle',
-                    'otras_pruebas' => 'Otras pruebas: resultados, interpretación y limitaciones de exploración',
-                    'alerta_deficit_neurologico' => 'Alarma: déficit neurológico nuevo o progresivo',
-                    'alerta_esfinteres' => 'Alarma: alteración de esfínteres o anestesia en silla de montar',
-                    'alerta_trauma' => 'Alarma: trauma importante o sospecha de fractura',
-                    'alerta_fiebre_infeccion' => 'Alarma: fiebre o sospecha de infección espinal',
-                    'alerta_cancer' => 'Alarma: cáncer conocido con dolor nuevo inexplicado',
-                    'alerta_osteoporosis' => 'Alarma: osteoporosis severa o fragilidad ósea',
-                    'alerta_anticoagulacion' => 'Alarma: anticoagulación o sangrado relevante',
-                    'alerta_vascular_cervical' => 'Alarma: síntomas vasculares cervicales',
-                    'alerta_cirugia_inestabilidad' => 'Alarma: cirugía reciente o inestabilidad conocida',
-                    'decision_seguridad' => 'Decisión: manipulación indicada, diferida o contraindicada; motivo y referencia',
-                ],
-            ],
             'acupuntura' => [
-                'label' => 'Complemento de acupuntura individual',
+                'label' => 'Complemento de acupuntura',
                 'fields' => [
-                    'movimiento_lengua' => 'Movimiento de la lengua: normal, rígida, temblorosa, débil o desviada',
-                    'protocolo' => 'Protocolo de acupuntura',
+                    'patrones_inusuales_lengua' => 'Patrones inusuales de la lengua',
                 ],
             ],
         ];
     }
 
-    /**
-     * @return array
-     */
     // Genera valores iniciales vacíos para cada campo declarado en las secciones del formulario integral.
     //   Uso:
     //     $defaults = $this->integralFormDefaults();
@@ -570,10 +501,6 @@ class Show extends Component
         return $defaults;
     }
 
-    /**
-     * @param string $formKey
-     * @return array
-     */
     // Crea valores vacíos para los campos complementarios de la evaluación identificada por su clave.
     //   Uso:
     //     $defaults = $this->assessmentComplementaryDefaults('homeopatia');
@@ -585,9 +512,6 @@ class Show extends Component
         return array_fill_keys(array_keys($fields), '');
     }
 
-    /**
-     * @return array
-     */
     // Prepara las tarjetas de anamnesis para la vista, indicando descripción, icono y si cada registro ya fue guardado.
     //   Uso:
     //     'anamnesisSections' => $this->anamnesisSections()
@@ -629,12 +553,15 @@ class Show extends Component
                 'icon' => 'adjustments-horizontal',
                 'saved' => $anamnesis?->acupuntura !== null,
             ],
+            'mapa_dolor' => [
+                'label' => 'Mapa de dolor',
+                'description' => 'Regiones con dolor, EVA por zona y evolución entre sesiones.',
+                'icon' => 'map-pin',
+                'saved' => ($this->consultation->mapaCorporal?->estado ?? 'no_evaluado') !== 'no_evaluado',
+            ],
         ];
     }
 
-    /**
-     * @return array
-     */
     // Valida los campos generales e integrales de la anamnesis y normaliza listas y valores vacíos antes de persistirlos.
     //   Uso:
     //     $data = $this->validatedAnamnesis();
@@ -644,22 +571,29 @@ class Show extends Component
         $rules = [
             'form.motivo_consulta' => ['required', 'string', 'max:10000'],
             'form.historia_padecimiento' => ['nullable', 'string', 'max:10000'],
-            'form.antecedentes_patologicos' => ['nullable', 'string', 'max:5000'],
-            'form.antecedentes_quirurgicos' => ['nullable', 'string', 'max:5000'],
-            'form.antecedentes_traumaticos' => ['nullable', 'string', 'max:5000'],
-            'form.alergias' => ['nullable', 'string', 'max:5000'],
-            'form.medicamentos_actuales' => ['nullable', 'string', 'max:5000'],
-            'form.habitos' => ['nullable', 'string', 'max:5000'],
-            'form.sueno' => ['nullable', 'string', 'max:5000'],
-            'form.alimentacion' => ['nullable', 'string', 'max:5000'],
-            'form.estado_emocional' => ['nullable', 'string', 'max:5000'],
-            'form.presion_arterial' => ['nullable', 'string', 'max:20'],
+            'form.intensidad_dolor' => ['nullable', 'integer', 'min:0', 'max:10'],
+            'form.zona_dolor_principal' => ['nullable', 'string', 'max:120'],
+            'form.presion_sistolica' => ['nullable', 'integer', 'min:0', 'max:400', 'required_with:form.presion_diastolica'],
+            'form.presion_diastolica' => [
+                'nullable', 'integer', 'min:0', 'max:300', 'required_with:form.presion_sistolica',
+                'lte:form.presion_sistolica',
+            ],
             'form.frecuencia_cardiaca' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'form.frecuencia_respiratoria' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'form.temperatura' => ['nullable', 'numeric', 'min:0', 'max:99.9'],
             'form.glicemia' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'form.peso_kg' => ['nullable', 'numeric', 'gt:0', 'max:999.99'],
             'form.talla_cm' => ['nullable', 'numeric', 'gt:0', 'max:999.99'],
+            ...AnamnesisCatalog::rules(
+                'form.antecedentes_estados',
+                AnamnesisCatalog::antecedentes(),
+                array_keys(AnamnesisCatalog::ESTADOS['tri']),
+            ),
+            ...AnamnesisCatalog::rules(
+                'form.revision_sistemas',
+                AnamnesisCatalog::sistemas(),
+                array_keys(AnamnesisCatalog::ESTADOS['sintomas']),
+            ),
         ];
         foreach ($this->integralFormSections() as $section => $definition) {
             foreach (array_keys($definition['fields']) as $field) {
@@ -669,12 +603,12 @@ class Show extends Component
 
         $validated = $this->validate($rules)['form'];
 
-        foreach (['antecedentes_patologicos', 'habitos'] as $field) {
-            $validated[$field] = $this->linesToArray($validated[$field] ?? null);
+        foreach (['antecedentes_estados', 'revision_sistemas'] as $field) {
+            $validated[$field] = AnamnesisCatalog::clean($validated[$field]);
         }
 
         foreach ($validated as $field => $value) {
-            if ($field !== 'antecedentes_patologicos' && $field !== 'habitos') {
+            if (! is_array($value)) {
                 $validated[$field] = $value === '' ? null : $value;
             }
         }
@@ -688,10 +622,6 @@ class Show extends Component
         return $validated;
     }
 
-    /**
-     * @param string $formKey
-     * @return array
-     */
     // Valida los datos de la evaluación indicada y convierte listas, booleanos y valores vacíos a sus tipos de persistencia.
     //   Uso:
     //     $data = $this->validatedAssessmentForm('quiropraxia');
@@ -715,17 +645,33 @@ class Show extends Component
                 continue;
             }
 
+            if (isset($this->structuredBlocks($formKey)[$field])) {
+                $block = $this->structuredBlocks($formKey)[$field];
+                $rules += AnamnesisCatalog::rules(
+                    "assessmentForms.{$formKey}.{$field}",
+                    $block['catalog'],
+                    array_keys($block['estados']),
+                    $block['extraRules'],
+                    $block['default'] === '',
+                );
+
+                continue;
+            }
+
+            if ($formKey === 'acupuntura' && AcupunctureCatalog::isStructured($field)) {
+                $rules += AcupunctureCatalog::rules("assessmentForms.{$formKey}", $field);
+
+                continue;
+            }
+
             $rules["assessmentForms.{$formKey}.{$field}"] = match (true) {
                 is_bool($default) => ['boolean'],
-                $field === 'semanas_gestacion' => ['nullable', 'integer', 'min:1', 'max:42'],
                 $field === 'humedad' => ['nullable', 'in:seca,humeda,pegajosa'],
-                in_array($field, [
-                    'calidad_sueno',
-                    'desplazamiento',
-                    'tiempo_trabajo',
-                    'recreacion',
-                ], true) => $this->enumRules($field),
-                str_starts_with($field, 'pulso_') => ['nullable', 'string', 'max:60'],
+                $field === 'decision_manipulacion' => ['nullable', 'in:indicada,diferida,contraindicada'],
+                $field === 'lengua_movimiento' => [
+                    'nullable',
+                    'in:'.implode(',', array_keys(AcupunctureCatalog::MOVIMIENTOS_LENGUA)),
+                ],
                 default => ['nullable', 'string', 'max:10000'],
             };
         }
@@ -743,22 +689,44 @@ class Show extends Component
                 continue;
             }
 
+            if (isset($this->structuredBlocks($formKey)[$field])) {
+                $block = $this->structuredBlocks($formKey)[$field];
+                $validated[$field] = AnamnesisCatalog::isUntouched($validated[$field], $block['default'])
+                    ? null
+                    : AnamnesisCatalog::clean($validated[$field]);
+
+                continue;
+            }
+
+            if ($formKey === 'acupuntura' && AcupunctureCatalog::isStructured($field)) {
+                $validated[$field] = AcupunctureCatalog::normalize(
+                    $field,
+                    $validated[$field] ?? $default,
+                );
+
+                continue;
+            }
+
             $value = $validated[$field] ?? $default;
-            if (in_array($field, $this->assessmentArrayFields($formKey), true)) {
-                $validated[$field] = $this->linesToArray($value);
-            } elseif (is_bool($default)) {
+            if (is_bool($default)) {
                 $validated[$field] = (bool) $value;
             } elseif ($value === '') {
                 $validated[$field] = null;
             }
         }
 
+        // 06D: con una alerta en "Sí" no se puede declarar la manipulación como indicada.
+        if ($formKey === 'quiropraxia'
+            && ($validated['decision_manipulacion'] ?? null) === 'indicada'
+            && collect($validated['seguridad'] ?? [])->contains(fn (array $item): bool => $item['estado'] === 'si')) {
+            throw ValidationException::withMessages([
+                'assessmentForms.quiropraxia.decision_manipulacion' => 'Hay alertas de seguridad (06D) en «Sí»: la manipulación no puede marcarse como indicada.',
+            ]);
+        }
+
         return $validated;
     }
 
-    /**
-     * @return array
-     */
     // Centraliza los valores iniciales y campos de las tres evaluaciones clínicas, incluidos booleanos y listas de acupuntura.
     //   Uso:
     //     $forms = $this->assessmentFormDefaults();
@@ -779,117 +747,88 @@ class Show extends Component
                 'datos_complementarios' => $this->assessmentComplementaryDefaults('homeopatia'),
             ],
             'quiropraxia' => [
+                ...array_map(
+                    fn (array $block): array => AnamnesisCatalog::defaults($block['catalog'], $block['default'], $block['extra']),
+                    $this->structuredBlocks('quiropraxia'),
+                ),
                 ...array_fill_keys([
-                    'cirugias',
-                    'fracturas',
-                    'hospitalizaciones',
-                    'detalle_implantes',
-                    'zonas_adormecidas',
-                    'detalle_atm',
-                    'postura',
+                    'otras_pruebas',
+                    'decision_manipulacion',
+                    'motivo_decision',
                     'diagnostico',
                     'plan_seguimiento_inicial',
                     'observaciones',
                 ], ''),
-                'implantes_metales' => false,
-                'embarazo' => false,
-                'semanas_gestacion' => '',
-                'adormecimientos' => false,
-                'ciatica' => false,
-                'dolor_cabeza' => false,
-                'vertigo' => false,
-                'atm' => false,
-                'calidad_sueno' => '',
-                'desplazamiento' => '',
-                'tiempo_trabajo' => '',
-                'recreacion' => '',
                 'datos_complementarios' => $this->assessmentComplementaryDefaults('quiropraxia'),
             ],
             'acupuntura' => [
                 ...array_fill_keys([
                     'diagnostico_energetico',
-                    'pulso_cun_der_superficial',
-                    'pulso_cun_der_profundo',
-                    'pulso_guan_der_superficial',
-                    'pulso_guan_der_profundo',
-                    'pulso_chi_der_superficial',
-                    'pulso_chi_der_profundo',
-                    'pulso_cun_izq_superficial',
-                    'pulso_cun_izq_profundo',
-                    'pulso_guan_izq_superficial',
-                    'pulso_guan_izq_profundo',
-                    'pulso_chi_izq_superficial',
-                    'pulso_chi_izq_profundo',
                     'humedad',
+                    'lengua_movimiento',
                     'principio_terapeutico',
                     'observaciones',
                 ], ''),
-                ...array_fill_keys($this->assessmentArrayFields('acupuntura'), ''),
+                ...AcupunctureCatalog::defaults(),
                 'datos_complementarios' => $this->assessmentComplementaryDefaults('acupuntura'),
             ],
         ];
     }
 
-    /**
-     * @param string $formKey
-     * @return array
-     */
-    // Indica qué campos de la evaluación se guardan como listas separadas por líneas; solo acupuntura tiene estos campos.
-    //   Uso:
-    //     $fields = $this->assessmentArrayFields('acupuntura');
-    //   Resultado: Devuelve los nombres de campos que deben convertirse en arreglos.
-    private function assessmentArrayFields(string $formKey): array
-    {
-        return $formKey === 'acupuntura' ? [
-            'lengua_forma',
-            'lengua_color',
-            'lengua_otros_rasgos',
-            'saburra_color',
-            'saburra_espesor',
-            'saburra_distribucion',
-            'diagnostico_8_reglas',
-            'diagnostico_6_niveles',
-            'diagnostico_4_capas',
-            'organos_zang_fu',
-            'puntos_sugeridos',
-        ] : [];
-    }
 
-    /**
-     * @param string $field
-     * @return array
-     */
-    // Construye las reglas de validación permitidas para las opciones enumeradas de calidad de sueño, desplazamiento, trabajo o recreación.
+    // Describe los bloques de selectores de tres estados de una evaluación: catálogo, estados válidos, estado inicial y extras por ítem.
     //   Uso:
-    //     $rules = $this->enumRules('calidad_sueno');
-    //   Resultado: Devuelve una regla nullable con las opciones válidas de sueño.
-    private function enumRules(string $field): array
+    //     $blocks = $this->structuredBlocks('quiropraxia');
+    //     $blocks['seguridad']['default']; // 'no_evaluado'
+    //   Resultado: Devuelve un arreglo vacío para evaluaciones sin bloques estructurados.
+    private function structuredBlocks(string $formKey): array
     {
+        if ($formKey !== 'quiropraxia') {
+            return [];
+        }
+
         return [
-            'nullable',
-            'in:'.implode(',', match ($field) {
-                'calidad_sueno' => ['bueno', 'ligero', 'moderado', 'malo'],
-                'desplazamiento' => ['sin_dolor', 'ligero', 'moderado', 'severo'],
-                'tiempo_trabajo' => [
-                    'tiempo_normal',
-                    'se_extralimita',
-                    'no_se_extralimita',
-                    'no_puede_trabajar',
+            'sintomas' => [
+                'catalog' => AnamnesisCatalog::sintomas(),
+                'estados' => AnamnesisCatalog::ESTADOS['sintomas'],
+                'default' => 'no_evaluado',
+                'extra' => [],
+                'extraRules' => [],
+            ],
+            'postura_movilidad' => [
+                'catalog' => AnamnesisCatalog::posturaMovilidad(),
+                'estados' => AnamnesisCatalog::ESTADOS['exploracion_a'],
+                'default' => 'no_evaluado',
+                'extra' => [],
+                'extraRules' => [],
+            ],
+            'pruebas_neuro_ortopedicas' => [
+                'catalog' => AnamnesisCatalog::pruebas(),
+                'estados' => AnamnesisCatalog::ESTADOS['exploracion_b'],
+                'default' => 'no_realizado',
+                'extra' => ['lado' => '', 'fuerza' => ''],
+                'extraRules' => [
+                    'lado' => ['nullable', 'in:'.implode(',', array_keys(AnamnesisCatalog::LATERALIDADES))],
+                    'fuerza' => ['nullable', 'integer', 'min:0', 'max:5'],
                 ],
-                'recreacion' => [
-                    'todas_actividades',
-                    'algunas_actividades',
-                    'pocas_actividades',
-                    'ninguna_actividad',
-                ],
-            }),
+            ],
+            'indice_funcional' => [
+                'catalog' => AnamnesisCatalog::indiceFuncional(),
+                'estados' => AnamnesisCatalog::ESTADOS['indice'],
+                'default' => '',
+                'extra' => [],
+                'extraRules' => [],
+            ],
+            'seguridad' => [
+                'catalog' => AnamnesisCatalog::seguridad(),
+                'estados' => AnamnesisCatalog::ESTADOS['tri'],
+                'default' => 'no_evaluado',
+                'extra' => [],
+                'extraRules' => [],
+            ],
         ];
     }
 
-    /**
-     * @param ?string $value
-     * @return array
-     */
     // Divide un texto por saltos de línea, recorta espacios y elimina entradas vacías para guardar una lista limpia.
     //   Uso:
     //     $items = $this->linesToArray("uno\ndos");

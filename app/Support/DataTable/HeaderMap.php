@@ -38,46 +38,46 @@ class HeaderMap
         // columna real — si en tu caso no lo es, márcala con 'virtual' => true
         // en el header y aquí se respeta.
         $definitelyVirtual = ['actions', 'checkbox', 'action', 'selection'];
-        $defaultType     = config('datatable.default_type', 'string');
+        $defaultType = config('datatable.default_type', 'string');
 
         $entries = collect($headers)
-            ->filter(fn($header) => isset($header['index']))
+            ->filter(fn ($header) => isset($header['index']))
             ->map(function ($header) use ($excludedIndexes, $definitelyVirtual, $defaultType) {
-                $index   = $header['index'];
+                $index = $header['index'];
                 $isCount = str_ends_with($index, '_count');
 
                 // Un campo *_count es numérico por naturaleza (se compara con
                 // >, <, =...) salvo que el programador diga otra cosa explícitamente.
                 $type = $header['type'] ?? ($isCount ? 'numeric' : $defaultType);
 
-                $typeConfig   = config("datatable.types.{$type}") ?? config("datatable.types.{$defaultType}") ?? [];
-                $family       = $typeConfig['family'] ?? 'string';
+                $typeConfig = config("datatable.types.{$type}") ?? config("datatable.types.{$defaultType}") ?? [];
+                $family = $typeConfig['family'] ?? 'string';
                 $familyConfig = config("datatable.families.{$family}", []);
 
                 $isRelation = Str::contains($index, '.');
-                $isExcluded = !empty($header['exclude']) || in_array($index, $excludedIndexes) || $isCount;
-                $isVirtual  = !empty($header['virtual']) || in_array($index, $definitelyVirtual);
+                $isExcluded = ! empty($header['exclude']) || in_array($index, $excludedIndexes) || $isCount;
+                $isVirtual = ! empty($header['virtual']) || in_array($index, $definitelyVirtual);
 
                 return [
-                    'index'             => $index,
-                    'label'             => $header['label'] ?? $index,
-                    'type'              => $type,
-                    'family'            => $family,
-                    'format'            => $typeConfig['format'] ?? [],
-                    'operators'         => $familyConfig['operators'] ?? [],
+                    'index' => $index,
+                    'label' => $header['label'] ?? $index,
+                    'type' => $type,
+                    'family' => $family,
+                    'format' => $typeConfig['format'] ?? [],
+                    'operators' => $familyConfig['operators'] ?? [],
                     // true | 'numeric_only' | 'date_only' | false
                     'searchable_global' => $familyConfig['searchable_global'] ?? false,
-                    'is_relation'       => $isRelation,
+                    'is_relation' => $isRelation,
                     // 'a.b.c' -> path 'a.b', columna 'c' (soporta relaciones anidadas)
-                    'relation_path'     => $isRelation ? Str::beforeLast($index, '.') : null,
-                    'relation_column'   => $isRelation ? Str::afterLast($index, '.') : null,
-                    'is_count'          => $isCount,
-                    'count_relation'    => $isCount ? Str::beforeLast($index, '_count') : null,
+                    'relation_path' => $isRelation ? Str::beforeLast($index, '.') : null,
+                    'relation_column' => $isRelation ? Str::afterLast($index, '.') : null,
+                    'is_count' => $isCount,
+                    'count_relation' => $isCount ? Str::beforeLast($index, '_count') : null,
                     // is_excluded: fuera del dropdown de filtros/orden.
-                    'is_excluded'       => $isExcluded,
+                    'is_excluded' => $isExcluded,
                     // is_virtual: no es una columna real de BD (no debe pedirse en SELECT).
-                    'is_virtual'        => $isVirtual,
-                    'raw'               => $header,
+                    'is_virtual' => $isVirtual,
+                    'raw' => $header,
                 ];
             })
             ->values()
@@ -93,7 +93,7 @@ class HeaderMap
     public function availableFields(): array
     {
         return collect($this->entries)
-            ->reject(fn($e) => $e['is_excluded'])
+            ->reject(fn ($e) => $e['is_excluded'])
             ->pluck('index')
             ->values()
             ->all();
@@ -103,7 +103,7 @@ class HeaderMap
     public function availableHeaders(): array
     {
         return collect($this->entries)
-            ->reject(fn($e) => $e['is_excluded'])
+            ->reject(fn ($e) => $e['is_excluded'])
             ->pluck('raw')
             ->values()
             ->all();
@@ -132,13 +132,13 @@ class HeaderMap
     public function fieldsForSearchTerm(string $term): array
     {
         return collect($this->entries)
-            ->reject(fn($e) => $e['is_excluded'])
+            ->reject(fn ($e) => $e['is_excluded'])
             ->filter(function ($e) use ($term) {
                 return match ($e['searchable_global']) {
-                    true           => true,
+                    true => true,
                     'numeric_only' => is_numeric($term),
-                    'date_only'    => $this->isDateTerm($term),
-                    default        => false,
+                    'date_only' => $this->isDateTerm($term),
+                    default => false,
                 };
             })
             ->pluck('index')
@@ -156,7 +156,7 @@ class HeaderMap
     public function eagerLoads(): array
     {
         return collect($this->entries)
-            ->filter(fn($e) => $e['is_relation'])
+            ->filter(fn ($e) => $e['is_relation'])
             ->pluck('relation_path')
             ->unique()
             ->values()
@@ -167,7 +167,7 @@ class HeaderMap
     public function withCounts(): array
     {
         return collect($this->entries)
-            ->filter(fn($e) => $e['is_count'])
+            ->filter(fn ($e) => $e['is_count'])
             ->pluck('count_relation')
             ->unique()
             ->values()
@@ -202,14 +202,14 @@ class HeaderMap
     public function selectableColumns(string $table, string $primaryKey = 'id', array $extraColumns = []): array
     {
         $columns = collect($this->entries)
-            ->reject(fn($e) => $e['is_relation'] || $e['is_count'] || $e['is_virtual'])
+            ->reject(fn ($e) => $e['is_relation'] || $e['is_count'] || $e['is_virtual'])
             ->pluck('index')
             ->merge($extraColumns)
             ->push($primaryKey)
             ->unique()
             ->values();
 
-        return $columns->map(fn($c) => "{$table}.{$c}")->all();
+        return $columns->map(fn ($c) => "{$table}.{$c}")->all();
     }
 
     /** Todos los operadores existentes en el sistema (unión de todas las familias).

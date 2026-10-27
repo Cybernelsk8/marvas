@@ -10,20 +10,17 @@ return new class extends Migration
     {
         Schema::create('mapas_corporales', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('anamnesis_id')
-                ->constrained('anamnesis_generales')
-                ->restrictOnDelete()
-                ->restrictOnUpdate();
             $table->foreignId('consulta_id')
+                ->unique()
                 ->constrained('consultas')
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
-            $table->string('imagen_path', 255)->nullable()
-                ->comment('Ruta de la imagen SVG/PNG guardada');
+            $table->enum('estado', ['no_evaluado', 'sin_dolor', 'con_dolor'])->default('no_evaluado');
+            $table->unsignedTinyInteger('eva_maximo')->nullable()
+                ->comment('EVA máximo 0-10 entre las zonas; alimenta la intensidad del inciso 02');
+            $table->string('zona_mayor_dolor', 120)->nullable();
             $table->text('observaciones')->nullable();
             $table->timestamps();
-
-            $table->index('consulta_id', 'idx_mapa_consulta');
         });
     }
 

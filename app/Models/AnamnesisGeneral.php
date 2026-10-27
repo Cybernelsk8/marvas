@@ -19,16 +19,12 @@ class AnamnesisGeneral extends Model
         'especialidad_id',
         'motivo_consulta',
         'historia_padecimiento',
-        'antecedentes_patologicos',
-        'antecedentes_quirurgicos',
-        'antecedentes_traumaticos',
-        'alergias',
-        'medicamentos_actuales',
-        'habitos',
-        'sueno',
-        'alimentacion',
-        'estado_emocional',
-        'presion_arterial',
+        'presion_sistolica',
+        'presion_diastolica',
+        'intensidad_dolor',
+        'zona_dolor_principal',
+        'antecedentes_estados',
+        'revision_sistemas',
         'frecuencia_cardiaca',
         'frecuencia_respiratoria',
         'temperatura',
@@ -43,8 +39,9 @@ class AnamnesisGeneral extends Model
     protected function casts(): array
     {
         return [
-            'antecedentes_patologicos' => 'array',
-            'habitos' => 'array',
+            'antecedentes_estados' => 'array',
+            'revision_sistemas' => 'array',
+            'intensidad_dolor' => 'integer',
             'datos_formulario' => 'array',
             'frecuencia_cardiaca' => 'integer',
             'frecuencia_respiratoria' => 'integer',
@@ -86,10 +83,5 @@ class AnamnesisGeneral extends Model
     public function acupuntura(): HasOne
     {
         return $this->hasOne(AnamnesisAcupuntura::class, 'anamnesis_id');
-    }
-
-    public function mapasCorporales(): HasMany
-    {
-        return $this->hasMany(MapaCorporal::class, 'anamnesis_id');
     }
 }

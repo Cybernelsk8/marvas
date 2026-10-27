@@ -23,8 +23,6 @@ class Professionals extends Component
     public array $headers = [
         ['index' => 'id', 'label' => '#', 'align' => 'center'],
         ['index' => 'nombre_completo', 'label' => 'Profesional'],
-        ['index' => 'user.email', 'label' => 'Cuenta'],
-        ['index' => 'cedula_profesional', 'label' => 'Cédula'],
         ['index' => 'sucursales', 'label' => 'Sedes', 'exclude' => true],
         ['index' => 'especialidades', 'label' => 'Especialidades', 'exclude' => true],
         ['index' => 'activo', 'label' => 'Estado', 'exclude' => true],
@@ -181,10 +179,10 @@ class Professionals extends Component
             ])->save();
 
             $professional->sucursales()->sync(collect($this->branchIds)->mapWithKeys(
-                fn (string|int $id): array => [(int) $id => ['es_principal' => (int) $id === (int) $this->primaryBranchId]],
+                fn(string|int $id): array => [(int) $id => ['es_principal' => (int) $id === (int) $this->primaryBranchId]],
             )->all());
             $professional->especialidades()->sync(collect($this->specialtyIds)->mapWithKeys(
-                fn (string|int $id): array => [(int) $id => ['es_principal' => (int) $id === (int) $this->primarySpecialtyId]],
+                fn(string|int $id): array => [(int) $id => ['es_principal' => (int) $id === (int) $this->primarySpecialtyId]],
             )->all());
         });
 
@@ -212,8 +210,8 @@ class Professionals extends Component
         $this->cedulaProfesional = $professional->cedula_profesional ?? '';
         $this->colorAgendaHex = $professional->color_agenda_hex ?? '';
         $this->activo = $professional->activo;
-        $this->branchIds = $professional->sucursales->pluck('id')->map(fn (int $id): string => (string) $id)->all();
-        $this->specialtyIds = $professional->especialidades->pluck('id')->map(fn (int $id): string => (string) $id)->all();
+        $this->branchIds = $professional->sucursales->pluck('id')->map(fn(int $id): string => (string) $id)->all();
+        $this->specialtyIds = $professional->especialidades->pluck('id')->map(fn(int $id): string => (string) $id)->all();
         $this->primaryBranchId = (string) ($professional->sucursalPrincipal()?->id ?? '');
         $this->primarySpecialtyId = (string) ($professional->especialidadPrincipal()?->id ?? '');
         Flux::modal('professional-form')->show();

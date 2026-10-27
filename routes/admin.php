@@ -3,6 +3,7 @@
 use App\Livewire\Admin\Areas;
 use App\Livewire\Admin\Availability;
 use App\Livewire\Admin\Consultation\Show as ConsultationShow;
+use App\Livewire\Admin\Clinical\BodyRegions;
 use App\Livewire\Admin\Clinical\Branches;
 use App\Livewire\Admin\Clinical\Professionals;
 use App\Livewire\Admin\Clinical\Specialties;
@@ -55,6 +56,10 @@ Route::livewire('branches', Branches::class)
 Route::livewire('specialties', Specialties::class)
     ->middleware(['can:page.view.specialties'])
     ->name('admin.specialties');
+
+Route::livewire('body-regions', BodyRegions::class)
+    ->middleware(['can:page.view.body-regions'])
+    ->name('admin.body-regions');
 
 Route::livewire('professionals', Professionals::class)
     ->middleware(['can:page.view.professionals'])

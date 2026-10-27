@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Livewire\Admin\Consultation\PainMap;
 use App\Livewire\Admin\Consultation\Show as ConsultationForm;
 use App\Livewire\Admin\Patient\Show;
 use App\Models\Admin\User;
@@ -11,11 +12,15 @@ use App\Models\Cita;
 use App\Models\Consulta;
 use App\Models\Especialidad;
 use App\Models\EvaluacionIntegralMbi;
+use App\Models\MapaCorporal;
 use App\Models\Paciente;
 use App\Models\Profesional;
+use App\Models\RegionCorporal;
 use App\Models\Sucursal;
+use App\Models\ZonaDolor;
 use App\Services\ConsultationService;
 use Database\Seeders\CatalogosClinicosSeeder;
+use Database\Seeders\RegionesCorporalesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -119,6 +124,35 @@ class ConsultationTest extends TestCase
         ]);
     }
 
+    public function test_pain_zone_history_is_comparable_per_region_across_consultations(): void
+    {
+        $this->seed(RegionesCorporalesSeeder::class);
+        $region = RegionCorporal::where('codigo', 'lumbar')->firstOrFail();
+        [$patient, $first, $specialist, $specialty, $branch] = $this->createConfirmedAppointment();
+        $second = $this->createAppointment($patient, $branch, $specialist, $specialty, 'confirmada');
+
+        Livewire::actingAs($this->clinician)
+            ->test(Show::class, ['patient' => $patient])
+            ->call('startConsultation', $first->id)
+            ->call('startConsultation', $second->id);
+
+        $niveles = [];
+        foreach (Consulta::query()->orderBy('numero_consulta')->get() as $i => $consulta) {
+            $eva = [8, 5][$i];
+            $mapa = MapaCorporal::create(['consulta_id' => $consulta->id, 'estado' => 'con_dolor', 'eva_maximo' => $eva]);
+            $niveles[] = ZonaDolor::create([
+                'mapa_id' => $mapa->id,
+                'region_id' => $region->id,
+                'lateralidad' => 'central',
+                'eva' => $eva,
+                'tipos' => ['punzante'],
+            ])->nivel;
+        }
+
+        $this->assertSame(['intenso', 'moderado'], $niveles);
+        $this->assertSame(2, $region->zonasDolor()->count());
+    }
+
     public function test_non_confirmed_appointments_cannot_start_consultations(): void
     {
         [$patient, $appointment, $specialist, $specialty, $branch] = $this->createConfirmedAppointment();
@@ -168,9 +202,13 @@ class ConsultationTest extends TestCase
             ->call('openAnamnesis', 'general')
             ->set('form.motivo_consulta', 'Dolor de prueba')
             ->set('form.historia_padecimiento', 'Comenzó hace dos días')
-            ->set('form.antecedentes_patologicos', "Asma\nHipertensión")
-            ->set('form.habitos', "Camina diariamente\nNo fuma")
-            ->set('form.presion_arterial', '120/80')
+            ->set('form.antecedentes_estados.alergias.estado', 'si')
+            ->set('form.antecedentes_estados.alergias.detalle', 'Penicilina')
+            ->set('form.revision_sistemas.respiratorio.estado', 'con_sintomas')
+            ->set('form.revision_sistemas.respiratorio.detalle', 'Tos nocturna')
+            ->set('form.intensidad_dolor', '6')
+            ->set('form.presion_sistolica', '120')
+            ->set('form.presion_diastolica', '80')
             ->set('form.frecuencia_cardiaca', '72')
             ->set('form.temperatura', '36.5')
             ->set('form.peso_kg', '70')
@@ -181,8 +219,10 @@ class ConsultationTest extends TestCase
 
         $anamnesis = AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->firstOrFail();
         $this->assertSame('Dolor de prueba', $anamnesis->motivo_consulta);
-        $this->assertSame(['Asma', 'Hipertensión'], $anamnesis->antecedentes_patologicos);
-        $this->assertSame(['Camina diariamente', 'No fuma'], $anamnesis->habitos);
+        $this->assertSame('si', $anamnesis->antecedentes_estados['alergias']['estado']);
+        $this->assertSame('Penicilina', $anamnesis->antecedentes_estados['alergias']['detalle']);
+        $this->assertSame('con_sintomas', $anamnesis->revision_sistemas['respiratorio']['estado']);
+        $this->assertSame(120, $anamnesis->presion_sistolica);
         $this->assertEquals(24.22, (float) $anamnesis->imc);
         $this->assertDatabaseCount('anamnesis_homeopatica', 0);
         $this->assertDatabaseCount('anamnesis_quiropraxia', 0);
@@ -230,7 +270,7 @@ class ConsultationTest extends TestCase
 
         Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation->fresh()])
-            ->assertSet('form.antecedentes_patologicos', implode(PHP_EOL, ['Asma', 'Hipertensión']))
+            ->assertSet('form.antecedentes_estados.alergias.detalle', 'Penicilina')
             ->assertSet('assessmentForms.homeopatia.aspecto_paciente', 'Aspecto sereno')
             ->assertSet('assessmentForms.quiropraxia.diagnostico', 'Sin hallazgos musculoesqueléticos')
             ->assertSet('assessmentForms.acupuntura.diagnostico_energetico', 'Qi equilibrado')
@@ -265,11 +305,11 @@ class ConsultationTest extends TestCase
             ->set('form.motivo_consulta', 'Dolor lumbar')
             ->set('form.datos_formulario.consulta_actual.inicio', 'Hace dos semanas')
             ->set('form.datos_formulario.antecedentes_habitos.tabaco', 'No fuma')
-            ->set('form.datos_formulario.revision_sistemas.neurologico', 'Sin hallazgos')
+            ->set('form.datos_formulario.examen_general.examenes_complementarios', 'Sin hallazgos')
             ->set('assessmentForms.homeopatia.sintomas_mentales', 'Sueño inquieto')
             ->set('assessmentForms.homeopatia.datos_complementarios.sensibilidad_termica', 'Sensible al frío')
             ->set('assessmentForms.quiropraxia.diagnostico', 'Dolor lumbar mecánico')
-            ->set('assessmentForms.quiropraxia.datos_complementarios.alerta_deficit_neurologico', 'Ausente')
+            ->set('assessmentForms.quiropraxia.seguridad.deficit_neurologico.estado', 'no')
             ->set('form.datos_formulario.resultado_evaluador.resumen_clinico', 'Síntomas y hallazgos documentados')
             ->set('form.datos_formulario.resultado_evaluador.diagnostico_diferenciales', 'Hipótesis clínica')
             ->set('form.datos_formulario.resultado_evaluador.plan_seguimiento', 'Reevaluar en seguimiento')
@@ -280,15 +320,12 @@ class ConsultationTest extends TestCase
         $anamnesis = AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->firstOrFail();
         $this->assertSame('Hace dos semanas', $anamnesis->datos_formulario['consulta_actual']['inicio']);
         $this->assertSame('No fuma', $anamnesis->datos_formulario['antecedentes_habitos']['tabaco']);
-        $this->assertSame('Sin hallazgos', $anamnesis->datos_formulario['revision_sistemas']['neurologico']);
+        $this->assertSame('Sin hallazgos', $anamnesis->datos_formulario['examen_general']['examenes_complementarios']);
         $this->assertSame(
             'Sensible al frío',
             $anamnesis->datos_formulario['homeopatia']['sensibilidad_termica'],
         );
-        $this->assertSame(
-            'Ausente',
-            $anamnesis->datos_formulario['quiropraxia']['alerta_deficit_neurologico'],
-        );
+        $this->assertSame('no', $anamnesis->quiropraxia->seguridad['deficit_neurologico']['estado']);
         $this->assertDatabaseHas('anamnesis_homeopatica', [
             'anamnesis_id' => $anamnesis->id,
             'sintomas_mentales' => 'Sueño inquieto',
@@ -399,78 +436,236 @@ class ConsultationTest extends TestCase
         $this->assertDatabaseCount('auditoria', 1);
     }
 
-    public function test_chiropractic_anamnesis_persists_boolean_enum_and_optional_details(): void
+    public function test_pain_map_saves_zones_derives_max_eva_and_audits(): void
+    {
+        $this->seed(RegionesCorporalesSeeder::class);
+        [$patient, $appointment] = $this->createConfirmedAppointment();
+        $consultation = app(ConsultationService::class)->openFromAppointment($appointment->id, $patient->id);
+        $this->clinician->givePermissionTo('consultations.edit');
+        $lumbar = RegionCorporal::where('codigo', 'lumbar')->firstOrFail();
+        $biceps = RegionCorporal::where('codigo', 'biceps')->firstOrFail();
+
+        Livewire::actingAs($this->clinician)
+            ->test(PainMap::class, ['consultationId' => $consultation->id, 'editable' => true])
+            ->call('select', $lumbar->id, 'central')
+            ->set('zone.eva', 8)
+            ->set('zone.tipos', ['punzante', 'rigidez'])
+            ->set('zone.irradiacion', ['gluteos'])
+            ->call('applyZone')
+            ->assertHasNoErrors()
+            ->call('select', $biceps->id, 'derecha')
+            ->set('zone.eva', 3)
+            ->call('applyZone')
+            ->call('save')
+            ->assertDispatched('pain-map-saved', eva: 8, zona: 'Lumbar');
+
+        $mapa = MapaCorporal::where('consulta_id', $consultation->id)->firstOrFail();
+        $this->assertSame('con_dolor', $mapa->estado);
+        $this->assertSame(8, $mapa->eva_maximo);
+        $this->assertSame(2, $mapa->zonasDolor()->count());
+        $this->assertSame('intenso', $mapa->zonasDolor()->where('region_id', $lumbar->id)->first()->nivel);
+        $this->assertDatabaseHas('auditoria', ['tabla_afectada' => 'mapas_corporales', 'accion' => 'crear']);
+
+        Livewire::actingAs($this->clinician)
+            ->test(PainMap::class, ['consultationId' => $consultation->id, 'editable' => true])
+            ->assertSet('zones.'.$lumbar->id.'-central.eva', 8)
+            ->call('removeZone', $biceps->id.'-derecha')
+            ->call('save');
+        $this->assertSame(1, $mapa->zonasDolor()->count());
+    }
+
+    public function test_pain_map_rejects_invalid_eva_and_lateral_side(): void
+    {
+        $this->seed(RegionesCorporalesSeeder::class);
+        [$patient, $appointment] = $this->createConfirmedAppointment();
+        $consultation = app(ConsultationService::class)->openFromAppointment($appointment->id, $patient->id);
+        $this->clinician->givePermissionTo('consultations.edit');
+        $lumbar = RegionCorporal::where('codigo', 'lumbar')->firstOrFail();
+
+        Livewire::actingAs($this->clinician)
+            ->test(PainMap::class, ['consultationId' => $consultation->id, 'editable' => true])
+            ->call('select', $lumbar->id, 'central')
+            ->set('zone.eva', 11)
+            ->call('applyZone')
+            ->assertHasErrors('zone.eva');
+
+        Livewire::actingAs($this->clinician)
+            ->test(PainMap::class, ['consultationId' => $consultation->id, 'editable' => true])
+            ->call('select', $lumbar->id, 'derecha')
+            ->assertStatus(422);
+    }
+
+    public function test_pain_map_shows_history_and_comparison_with_previous_sessions(): void
+    {
+        $this->seed(RegionesCorporalesSeeder::class);
+        [$patient, $first, $specialist, $specialty, $branch] = $this->createConfirmedAppointment();
+        $second = $this->createAppointment($patient, $branch, $specialist, $specialty, 'confirmada');
+        $service = app(ConsultationService::class);
+        $previous = $service->openFromAppointment($first->id, $patient->id);
+        $current = $service->openFromAppointment($second->id, $patient->id);
+        $this->clinician->givePermissionTo('consultations.edit');
+        $lumbar = RegionCorporal::where('codigo', 'lumbar')->firstOrFail();
+
+        $service->savePainMap($previous->id, false, null, [[
+            'region_id' => $lumbar->id, 'lateralidad' => 'central', 'eva' => 8,
+            'tipos' => [], 'irradiacion' => [], 'inicio' => '', 'patron' => [], 'comentario' => '',
+        ]]);
+
+        $component = Livewire::actingAs($this->clinician)
+            ->test(PainMap::class, ['consultationId' => $current->id, 'editable' => true])
+            ->call('select', $lumbar->id, 'central')
+            ->set('zone.eva', 5)
+            ->call('applyZone')
+            ->call('select', $lumbar->id, 'central')
+            ->set('compareId', $previous->id);
+
+        $this->assertSame([8, 5], array_column($component->instance()->history(), 'eva'));
+        $this->assertSame([$lumbar->id.'-central' => 8], $component->instance()->compareZones());
+    }
+
+    public function test_pain_map_cannot_be_saved_for_a_closed_consultation(): void
+    {
+        [$patient, $appointment] = $this->createConfirmedAppointment();
+        $consultation = app(ConsultationService::class)->openFromAppointment($appointment->id, $patient->id);
+        $consultation->update(['estado' => 'cerrada']);
+        $this->clinician->givePermissionTo('consultations.edit');
+
+        Livewire::actingAs($this->clinician)
+            ->test(PainMap::class, ['consultationId' => $consultation->id, 'editable' => true])
+            ->set('noPain', true)
+            ->call('save')
+            ->assertHasErrors('mapa');
+
+        $this->assertDatabaseCount('mapas_corporales', 0);
+    }
+
+    public function test_consultation_form_opens_pain_map_section(): void
+    {
+        $this->seed(RegionesCorporalesSeeder::class);
+        [$patient, $appointment] = $this->createConfirmedAppointment();
+        $consultation = app(ConsultationService::class)->openFromAppointment($appointment->id, $patient->id);
+        $this->clinician->givePermissionTo('consultations.edit');
+
+        Livewire::actingAs($this->clinician)
+            ->test(ConsultationForm::class, ['consultation' => $consultation])
+            ->assertSee('Mapa de dolor')
+            ->call('openAnamnesis', 'mapa_dolor')
+            ->assertSee('Guardar mapa de dolor')
+            ->dispatch('pain-map-saved', eva: 7, zona: 'Lumbar')
+            ->assertSet('form.intensidad_dolor', '7')
+            ->assertSet('form.zona_dolor_principal', 'Lumbar');
+    }
+
+    public function test_chiropractic_anamnesis_persists_structured_blocks_and_safety_rule(): void
     {
         [$patient, $appointment] = $this->createConfirmedAppointment('homeopatia');
         $consultation = app(ConsultationService::class)
             ->openFromAppointment($appointment->id, $patient->id);
         $this->clinician->givePermissionTo('consultations.edit');
 
-        Livewire::actingAs($this->clinician)
+        $component = Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
-            ->set('assessmentForms.quiropraxia.implantes_metales', true)
-            ->set('assessmentForms.quiropraxia.embarazo', true)
-            ->set('assessmentForms.quiropraxia.semanas_gestacion', '20')
-            ->set('assessmentForms.quiropraxia.ciatica', true)
-            ->set('assessmentForms.quiropraxia.calidad_sueno', 'moderado')
-            ->set('assessmentForms.quiropraxia.desplazamiento', 'ligero')
-            ->set('assessmentForms.quiropraxia.diagnostico', 'Limitación de movilidad lumbar')
             ->call('openAnamnesis', 'quiropraxia')
+            ->set('assessmentForms.quiropraxia.sintomas.cervicalgia.estado', 'con_sintomas')
+            ->set('assessmentForms.quiropraxia.pruebas_neuro_ortopedicas.lasegue.estado', 'alterado')
+            ->set('assessmentForms.quiropraxia.pruebas_neuro_ortopedicas.lasegue.lado', 'derecha')
+            ->set('assessmentForms.quiropraxia.pruebas_neuro_ortopedicas.fuerza_muscular.fuerza', '4')
+            ->set('assessmentForms.quiropraxia.indice_funcional.sueno.estado', 'moderado')
+            ->set('assessmentForms.quiropraxia.seguridad.trauma_fractura.estado', 'si')
+            ->set('assessmentForms.quiropraxia.decision_manipulacion', 'indicada')
+            ->set('assessmentForms.quiropraxia.diagnostico', 'Limitación de movilidad lumbar')
+            ->call('saveAssessment', 'quiropraxia')
+            ->assertHasErrors('assessmentForms.quiropraxia.decision_manipulacion')
+            ->assertSeeHtml('data-testid="safety-alert"');
+
+        $this->assertDatabaseCount('anamnesis_quiropraxia', 0);
+
+        $component
+            ->set('assessmentForms.quiropraxia.decision_manipulacion', 'diferida')
             ->call('saveAssessment', 'quiropraxia')
             ->assertHasNoErrors();
 
         $anamnesis = AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->firstOrFail();
         $this->assertNull($anamnesis->motivo_consulta);
-        $this->assertDatabaseHas('anamnesis_quiropraxia', [
-            'anamnesis_id' => $anamnesis->id,
-            'implantes_metales' => true,
-            'embarazo' => true,
-            'semanas_gestacion' => 20,
-            'ciatica' => true,
-            'calidad_sueno' => 'moderado',
-            'desplazamiento' => 'ligero',
-            'diagnostico' => 'Limitación de movilidad lumbar',
-        ]);
-        $specialtyRecord = $anamnesis->quiropraxia;
+        $record = $anamnesis->quiropraxia;
+        $this->assertSame('con_sintomas', $record->sintomas['cervicalgia']['estado']);
+        $this->assertSame('derecha', $record->pruebas_neuro_ortopedicas['lasegue']['lado']);
+        $this->assertSame('4', (string) $record->pruebas_neuro_ortopedicas['fuerza_muscular']['fuerza']);
+        $this->assertSame('moderado', $record->indice_funcional['sueno']['estado']);
+        $this->assertSame('diferida', $record->decision_manipulacion);
+        $this->assertContains('trauma_fractura', array_keys(array_filter(
+            $record->seguridad,
+            fn (array $item): bool => $item['estado'] === 'si',
+        )));
         $this->assertDatabaseHas('auditoria', [
             'tabla_afectada' => 'anamnesis_quiropraxia',
-            'registro_id' => $specialtyRecord->id,
+            'registro_id' => $record->id,
             'accion' => 'crear',
             'user_id' => $this->clinician->id,
         ]);
     }
 
-    public function test_acupuncture_json_fields_are_saved_as_arrays_and_reloaded_as_lines(): void
+    public function test_acupuncture_structured_blocks_are_saved_reloaded_and_validated(): void
     {
         [$patient, $appointment] = $this->createConfirmedAppointment('homeopatia');
         $consultation = app(ConsultationService::class)
             ->openFromAppointment($appointment->id, $patient->id);
         $this->clinician->givePermissionTo('consultations.edit');
 
+        // Sin capturar nada no se crea el registro.
         Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
-            ->set('assessmentForms.acupuntura.pulso_cun_der_superficial', 'Tenso')
-            ->set('assessmentForms.acupuntura.humedad', 'humeda')
-            ->set('assessmentForms.acupuntura.lengua_color', "Rojo\nPálido")
-            ->set('assessmentForms.acupuntura.diagnostico_8_reglas', "Interior\nCalor")
-            ->set('assessmentForms.acupuntura.puntos_sugeridos', "LI4\nGB20")
             ->call('openAnamnesis', 'acupuntura')
+            ->call('saveAssessment', 'acupuntura')
+            ->assertHasNoErrors();
+        $this->assertDatabaseCount('anamnesis_acupuntura', 0);
+
+        $component = Livewire::actingAs($this->clinician)
+            ->test(ConsultationForm::class, ['consultation' => $consultation])
+            ->call('openAnamnesis', 'acupuntura')
+            ->set('assessmentForms.acupuntura.pulsos.cun_der_superficial.calidad', 'Tenso')
+            ->set('assessmentForms.acupuntura.humedad', 'humeda')
+            ->set('assessmentForms.acupuntura.lengua_movimiento', 'temblorosa')
+            ->set('assessmentForms.acupuntura.lengua_color', ['roja', 'purpura'])
+            ->set('assessmentForms.acupuntura.diagnostico_8_reglas.temperatura', 'calor')
+            ->set('assessmentForms.acupuntura.diagnostico_6_niveles', ['pie_yang_tai_yang'])
+            ->set('assessmentForms.acupuntura.organos_zang_fu', ['higado'])
+            ->set('assessmentForms.acupuntura.puntos_sugeridos.distal.puntos', 'IG4, H3')
+            ->assertSeeHtml('data-testid="zangfu-relations"')
             ->call('saveAssessment', 'acupuntura')
             ->assertHasNoErrors();
 
         $anamnesis = AnamnesisGeneral::query()->where('consulta_id', $consultation->id)->firstOrFail();
         $record = $anamnesis->acupuntura;
         $this->assertNull($anamnesis->motivo_consulta);
-        $this->assertSame(['Rojo', 'Pálido'], $record->lengua_color);
-        $this->assertSame(['Interior', 'Calor'], $record->diagnostico_8_reglas);
-        $this->assertSame(['LI4', 'GB20'], $record->puntos_sugeridos);
-        $this->assertSame('Tenso', $record->pulso_cun_der_superficial);
+        $this->assertSame(['roja', 'purpura'], $record->lengua_color);
+        $this->assertSame('calor', $record->diagnostico_8_reglas['temperatura']);
+        $this->assertNull($record->diagnostico_8_reglas['fuerza']);
+        $this->assertSame('Tenso', $record->pulsos['cun_der_superficial']['calidad']);
+        $this->assertSame('IG4, H3', $record->puntosPorCategoria('distal')['puntos']);
         $this->assertSame('humeda', $record->humedad);
+        $this->assertSame('temblorosa', $record->lengua_movimiento);
+        $this->assertNull($record->saburra_color);
+        $this->assertSame(
+            ['organo' => 'Hígado', 'elemento' => 'Madera', 'generacion' => 'Agua', 'control' => 'Metal'],
+            $record->relacionesZangFu()[0],
+        );
 
-        Livewire::actingAs($this->clinician)
+        $reloaded = Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation->fresh()])
-            ->assertSet('assessmentForms.acupuntura.lengua_color', implode(PHP_EOL, ['Rojo', 'Pálido']))
-            ->assertSet('assessmentForms.acupuntura.puntos_sugeridos', implode(PHP_EOL, ['LI4', 'GB20']));
+            ->assertSet('assessmentForms.acupuntura.lengua_color', ['roja', 'purpura'])
+            ->assertSet('assessmentForms.acupuntura.pulsos.cun_der_superficial.calidad', 'Tenso')
+            ->assertSet('assessmentForms.acupuntura.pulsos.chi_izq_profundo.calidad', '')
+            ->assertSet('assessmentForms.acupuntura.puntos_sugeridos.distal.puntos', 'IG4, H3');
+
+        $component
+            ->set('assessmentForms.acupuntura.lengua_forma', ['inexistente'])
+            ->set('assessmentForms.acupuntura.diagnostico_8_reglas.fuerza', 'otro')
+            ->call('saveAssessment', 'acupuntura')
+            ->assertHasErrors([
+                'assessmentForms.acupuntura.lengua_forma.0',
+                'assessmentForms.acupuntura.diagnostico_8_reglas.fuerza',
+            ]);
     }
 
     public function test_specialty_anamnesis_rejects_enum_values_outside_schema(): void
@@ -483,9 +678,9 @@ class ConsultationTest extends TestCase
         Livewire::actingAs($this->clinician)
             ->test(ConsultationForm::class, ['consultation' => $consultation])
             ->call('openAnamnesis', 'quiropraxia')
-            ->set('assessmentForms.quiropraxia.calidad_sueno', 'excelente')
+            ->set('assessmentForms.quiropraxia.seguridad.trauma_fractura.estado', 'quizas')
             ->call('saveAssessment', 'quiropraxia')
-            ->assertHasErrors('assessmentForms.quiropraxia.calidad_sueno');
+            ->assertHasErrors('assessmentForms.quiropraxia.seguridad.trauma_fractura.estado');
 
         $this->assertDatabaseCount('anamnesis_generales', 0);
     }

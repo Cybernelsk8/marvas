@@ -26,6 +26,7 @@ return new class extends Migration
             $table->string('religion', 60)->nullable();
             $table->string('numero_dpi', 20)->nullable();
             $table->string('telefono', 20)->nullable();
+            $table->string('contacto_emergencia', 120)->nullable()->comment('Nombre y parentesco');
             $table->string('telefono_emergencia', 20)->nullable();
             $table->string('email', 191)->nullable();
             $table->text('direccion')->nullable();

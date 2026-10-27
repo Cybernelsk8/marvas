@@ -16,19 +16,8 @@ return new class extends Migration
                 ->restrictOnUpdate();
             $table->text('diagnostico_energetico')->nullable();
 
-            // Pulso: 12 lecturas (cun/guan/chi x superficial/profundo x mano der/izq)
-            $table->string('pulso_cun_der_superficial', 60)->nullable();
-            $table->string('pulso_cun_der_profundo', 60)->nullable();
-            $table->string('pulso_guan_der_superficial', 60)->nullable();
-            $table->string('pulso_guan_der_profundo', 60)->nullable();
-            $table->string('pulso_chi_der_superficial', 60)->nullable();
-            $table->string('pulso_chi_der_profundo', 60)->nullable();
-            $table->string('pulso_cun_izq_superficial', 60)->nullable();
-            $table->string('pulso_cun_izq_profundo', 60)->nullable();
-            $table->string('pulso_guan_izq_superficial', 60)->nullable();
-            $table->string('pulso_guan_izq_profundo', 60)->nullable();
-            $table->string('pulso_chi_izq_superficial', 60)->nullable();
-            $table->string('pulso_chi_izq_profundo', 60)->nullable();
+            $table->json('pulsos')->nullable()
+                ->comment('12 posiciones (cun/guan/chi x superficial/profundo x mano der/izq): {calidad}');
 
             // Lengua: JSON array por campo, permite multi-selección (ver README)
             $table->json('lengua_forma')->nullable();
@@ -38,6 +27,8 @@ return new class extends Migration
             $table->json('saburra_espesor')->nullable();
             $table->json('saburra_distribucion')->nullable();
             $table->enum('humedad', ['seca', 'humeda', 'pegajosa'])->nullable();
+            $table->enum('lengua_movimiento', ['normal', 'rigida', 'temblorosa', 'debil', 'desviada', 'retraida'])
+                ->nullable();
 
             // Marcos diagnósticos de Medicina Tradicional China
             $table->json('diagnostico_8_reglas')->nullable();
@@ -47,7 +38,7 @@ return new class extends Migration
 
             $table->text('principio_terapeutico')->nullable();
             $table->json('puntos_sugeridos')->nullable()
-                ->comment('categoria: distal|local|maestro dentro de cada elemento del array');
+                ->comment('Protocolo por bloque distal|local|maestro: {puntos, tecnica, observaciones}');
             $table->text('observaciones')->nullable();
 
             $table->unique('anamnesis_id', 'uq_anamnesis_acupuntura');

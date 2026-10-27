@@ -24,6 +24,7 @@ class ClinicalCatalogAccessSeeder extends Seeder
             ['label' => 'Sedes', 'route' => 'admin.branches', 'permission' => 'page.view.branches', 'order' => 1, 'icon' => 'building-office'],
             ['label' => 'Especialidades', 'route' => 'admin.specialties', 'permission' => 'page.view.specialties', 'order' => 2, 'icon' => 'clipboard-document-list'],
             ['label' => 'Profesionales', 'route' => 'admin.professionals', 'permission' => 'page.view.professionals', 'order' => 3, 'icon' => 'user-group'],
+            ['label' => 'Regiones corporales', 'route' => 'admin.body-regions', 'permission' => 'page.view.body-regions', 'order' => 4, 'icon' => 'map'],
         ] as $page) {
             $this->savePage($page['label'], [
                 'icon' => $page['icon'],

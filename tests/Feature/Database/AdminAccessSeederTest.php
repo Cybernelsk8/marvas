@@ -25,7 +25,7 @@ class AdminAccessSeederTest extends TestCase
 
         $this->assertDatabaseCount('areas', 1);
         $this->assertDatabaseCount('pages', 5);
-        $this->assertDatabaseCount('permissions', 47);
+        $this->assertDatabaseCount('permissions', 48);
         $this->assertNotSoftDeleted('pages', ['label' => 'Roles']);
         $this->assertDatabaseHas('pages', [
             'label' => 'Usuarios',

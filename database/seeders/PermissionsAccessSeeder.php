@@ -31,6 +31,7 @@ class PermissionsAccessSeeder extends Seeder
         'page.view.branches',
         'page.view.specialties',
         'page.view.professionals',
+        'page.view.body-regions',
     ];
 
     /** Permisos para acciones, con formato `{modulo}.{accion}`. */

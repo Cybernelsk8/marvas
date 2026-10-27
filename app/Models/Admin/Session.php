@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Session extends Model
 {
     public $timestamps = false;
+
     protected $fillable = [
         'user_id',
         'ip_address',
@@ -20,13 +21,15 @@ class Session extends Model
         'last_activity' => 'datetime',
     ];
 
-    protected $appends = ['browser','os'];
+    protected $appends = ['browser', 'os'];
 
-    public function user() : BelongsTo {
+    public function user(): BelongsTo
+    {
         return $this->belongsTo(User::class);
     }
 
-    public function getBrowserAttribute(): string {
+    public function getBrowserAttribute(): string
+    {
         $ua = $this->user_agent ?? '';
 
         if (stripos($ua, 'Chrome') !== false && stripos($ua, 'Brave') === false) {
@@ -52,7 +55,8 @@ class Session extends Model
         return 'Desconocido';
     }
 
-    public function getOsAttribute(): string {
+    public function getOsAttribute(): string
+    {
         $ua = $this->user_agent ?? '';
 
         if (stripos($ua, 'Windows') !== false) {

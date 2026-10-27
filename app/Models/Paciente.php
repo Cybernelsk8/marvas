@@ -5,9 +5,9 @@ namespace App\Models;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Paciente extends Model
 {
@@ -24,6 +24,7 @@ class Paciente extends Model
         'religion',
         'numero_dpi',
         'telefono',
+        'contacto_emergencia',
         'telefono_emergencia',
         'email',
         'direccion',
@@ -57,6 +58,12 @@ class Paciente extends Model
     public function getNombreCompletoAttribute(): string
     {
         return trim("{$this->nombres} {$this->apellidos}");
+    }
+
+    // Edad en años calculada desde fecha_nacimiento; null si no hay fecha. Ej.: $paciente->edad // 34
+    public function getEdadAttribute(): ?int
+    {
+        return $this->fecha_nacimiento?->age;
     }
 
     // --- Relaciones ---

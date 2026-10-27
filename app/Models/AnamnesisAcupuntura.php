@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AcupunctureCatalog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,18 +18,6 @@ class AnamnesisAcupuntura extends Model
     protected $fillable = [
         'anamnesis_id',
         'diagnostico_energetico',
-        'pulso_cun_der_superficial',
-        'pulso_cun_der_profundo',
-        'pulso_guan_der_superficial',
-        'pulso_guan_der_profundo',
-        'pulso_chi_der_superficial',
-        'pulso_chi_der_profundo',
-        'pulso_cun_izq_superficial',
-        'pulso_cun_izq_profundo',
-        'pulso_guan_izq_superficial',
-        'pulso_guan_izq_profundo',
-        'pulso_chi_izq_superficial',
-        'pulso_chi_izq_profundo',
         'lengua_forma',
         'lengua_color',
         'lengua_otros_rasgos',
@@ -36,6 +25,8 @@ class AnamnesisAcupuntura extends Model
         'saburra_espesor',
         'saburra_distribucion',
         'humedad',
+        'lengua_movimiento',
+        'pulsos',
         'diagnostico_8_reglas',
         'diagnostico_6_niveles',
         'diagnostico_4_capas',
@@ -49,6 +40,7 @@ class AnamnesisAcupuntura extends Model
     {
         return [
             'lengua_forma' => 'array',
+            'pulsos' => 'array',
             'lengua_color' => 'array',
             'lengua_otros_rasgos' => 'array',
             'saburra_color' => 'array',
@@ -71,12 +63,15 @@ class AnamnesisAcupuntura extends Model
 
     // --- Helpers ---
 
-    /** Puntos filtrados por categoría: distal|local|maestro. */
+    /** Bloque del protocolo por categoría (distal|local|maestro): ['puntos', 'tecnica', 'observaciones']. */
     public function puntosPorCategoria(string $categoria): array
     {
-        return collect($this->puntos_sugeridos ?? [])
-            ->where('categoria', $categoria)
-            ->values()
-            ->all();
+        return $this->puntos_sugeridos[$categoria] ?? [];
+    }
+
+    /** Elemento, generación y control de los órganos Zang-Fu afectados. */
+    public function relacionesZangFu(): array
+    {
+        return AcupunctureCatalog::relaciones($this->organos_zang_fu ?? []);
     }
 }

@@ -20,21 +20,20 @@ return new class extends Migration
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
             $table->text('motivo_consulta')->nullable();
+            $table->unsignedTinyInteger('intensidad_dolor')->nullable()
+                ->comment('EVA 0-10 del inciso 02; se alimenta del EVA máximo del mapa de dolor');
+            $table->string('zona_dolor_principal', 120)->nullable();
+            $table->json('antecedentes_estados')->nullable()
+                ->comment('Inciso 03: {bloque: {estado: si|no|no_evaluado, detalle}}');
+            $table->json('revision_sistemas')->nullable()
+                ->comment('Inciso 04: 15 sistemas {estado: sin_sintomas|con_sintomas|no_evaluado, hallazgos}');
             $table->text('historia_padecimiento')->nullable();
-            $table->json('antecedentes_patologicos')->nullable();
-            $table->text('antecedentes_quirurgicos')->nullable();
-            $table->text('antecedentes_traumaticos')->nullable();
-            // antecedentes_familiares (JSON genérico) se elimina: reemplazado
-            // por la tabla antecedentes_familiares_detalle (parentesco + enfermedad).
-            $table->text('alergias')->nullable();
-            $table->text('medicamentos_actuales')->nullable();
-            $table->json('habitos')->nullable();
-            $table->text('sueno')->nullable();
-            $table->text('alimentacion')->nullable();
-            $table->text('estado_emocional')->nullable();
+            // Los antecedentes (03) y hábitos viven en antecedentes_estados y datos_formulario;
+            // antecedentes_familiares en antecedentes_familiares_detalle (parentesco + enfermedad).
 
             // Signos vitales: comunes a varias especialidades (ver README de datos)
-            $table->string('presion_arterial', 20)->nullable()->comment('Formato libre "120/80"');
+            $table->unsignedSmallInteger('presion_sistolica')->nullable()->comment('mmHg');
+            $table->unsignedSmallInteger('presion_diastolica')->nullable()->comment('mmHg');
             $table->unsignedSmallInteger('frecuencia_cardiaca')->nullable()->comment('Latidos por minuto');
             $table->unsignedSmallInteger('frecuencia_respiratoria')->nullable()->comment('Respiraciones por minuto');
             $table->decimal('temperatura', 4, 1)->nullable()->comment('Grados Celsius');

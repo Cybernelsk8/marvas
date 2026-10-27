@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Area extends Model
 {
     use Searchable, SoftDeletes;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -16,7 +17,8 @@ class Area extends Model
         'area_id',
     ];
 
-    public function dependency(){
+    public function dependency()
+    {
         return $this->belongsTo(Area::class, 'area_id');
     }
 }

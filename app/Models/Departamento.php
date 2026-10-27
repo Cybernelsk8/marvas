@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Departamento extends Model
 {
     public $timestamps = false;
+
     protected $fillable = [
-        'nombre'
+        'nombre',
     ];
 
-    public function municipios() : HasMany {
+    public function municipios(): HasMany
+    {
         return $this->hasMany(Municipio::class);
     }
 }

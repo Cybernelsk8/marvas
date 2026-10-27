@@ -7,7 +7,11 @@
                     en la ficha autorizada.</flux:text>
             </div>
             @can('patients.create')
-                <flux:button variant="primary" icon="plus" wire:click="createPatient">
+                <flux:button
+                    variant="primary"
+                    icon="plus"
+                    wire:click="createPatient"
+                >
                     Nuevo paciente
                 </flux:button>
             @endcan
@@ -15,16 +19,40 @@
     </header>
 
     <div class="flex justify-end">
-        <flux:select label="Estado" wire:model.live="status">
+        <flux:select
+            label="Estado"
+            wire:model.live="status"
+        >
             <flux:select.option value="active">Activos</flux:select.option>
             <flux:select.option value="inactive">Inactivos</flux:select.option>
             <flux:select.option value="all">Todos</flux:select.option>
         </flux:select>
     </div>
 
-    <x-data-table :headers="$this->headers" :rows="$this->rows">
+    <x-data-table
+        :headers="$this->headers"
+        :rows="$this->rows"
+    >
         @interact('nombre_completo', $row)
-            <div class="font-medium">{{ $row->nombre_completo }}</div>
+            <div class="flex items-center gap-2">
+                <flux:avatar
+                    :name="$row->nombre_completo"
+                    size="xl"
+                    circle
+                />
+                <div class="flex flex-col">
+                    <span class="font-medium">
+                        {{ $row->nombre_completo }}
+                    </span>
+                    <span class="text-sm text-zinc-500">
+                        {{ $row->email ?? '' }}
+                    </span>
+                    <span class="text-sm text-zinc-500">
+                        {{ $row->telefono ?? '' }}
+                    </span>
+                </div>
+
+            </div>
         @endinteract
 
         @interact('activo', $row)
@@ -35,19 +63,34 @@
 
         @interact('actions', $row)
             <flux:dropdown>
-                <flux:button size="sm" icon="ellipsis-vertical" class="cursor-pointer" variant="ghost" />
+                <flux:button
+                    size="sm"
+                    icon="ellipsis-vertical"
+                    class="cursor-pointer"
+                    variant="ghost"
+                />
                 <flux:menu>
-                    <flux:menu.item icon="eye" :href="route('admin.patients.show', $row)" wire:navigate>
+                    <flux:menu.item
+                        icon="eye"
+                        :href="route('admin.patients.show', $row)"
+                        wire:navigate
+                    >
                         Ver ficha
                     </flux:menu.item>
                     @can('patients.edit')
-                        <flux:menu.item icon="pencil-square" wire:click="editPatient({{ $row->id }})">
+                        <flux:menu.item
+                            icon="pencil-square"
+                            wire:click="editPatient({{ $row->id }})"
+                        >
                             Editar
                         </flux:menu.item>
                     @endcan
                     @can('patients.merge')
-                        @if ($row->activo && ! $row->fusionado_en_paciente_id)
-                            <flux:menu.item icon="arrow-path-rounded-square" wire:click="startPatientMerge({{ $row->id }})">
+                        @if ($row->activo && !$row->fusionado_en_paciente_id)
+                            <flux:menu.item
+                                icon="arrow-path-rounded-square"
+                                wire:click="startPatientMerge({{ $row->id }})"
+                            >
                                 Fusionar expediente
                             </flux:menu.item>
                         @endif
@@ -57,25 +100,60 @@
         @endinteract
     </x-data-table>
 
-    <flux:modal name="patient-form" class="w-full max-w-3xl">
-        <form wire:submit="savePatient" class="space-y-5">
+    <flux:modal
+        name="patient-form"
+        class="w-full max-w-3xl"
+    >
+        <form
+            wire:submit="savePatient"
+            class="space-y-5"
+        >
             <flux:heading size="lg">
                 {{ $editingPatientId ? 'Editar paciente' : 'Nuevo paciente' }}
             </flux:heading>
 
             <div class="grid gap-4 sm:grid-cols-2">
-                <flux:input label="Nombres *" wire:model.live.debounce.400ms="patientForm.nombres" required />
-                <flux:input label="Apellidos *" wire:model.live.debounce.400ms="patientForm.apellidos" required />
-                <flux:input label="DPI" wire:model.live.debounce.400ms="patientForm.numero_dpi" />
-                <flux:input label="Teléfono" wire:model.live.debounce.400ms="patientForm.telefono" />
-                <flux:input label="Correo" type="email" wire:model.live.debounce.400ms="patientForm.email" />
-                <flux:input label="Fecha de nacimiento" type="date" wire:model="patientForm.fecha_nacimiento" />
-                <flux:select label="Sexo *" wire:model="patientForm.sexo" required>
+                <flux:input
+                    label="Nombres *"
+                    wire:model.live.debounce.400ms="patientForm.nombres"
+                    required
+                />
+                <flux:input
+                    label="Apellidos *"
+                    wire:model.live.debounce.400ms="patientForm.apellidos"
+                    required
+                />
+                <flux:input
+                    label="DPI"
+                    wire:model.live.debounce.400ms="patientForm.numero_dpi"
+                />
+                <flux:input
+                    label="Teléfono"
+                    wire:model.live.debounce.400ms="patientForm.telefono"
+                />
+                <flux:input
+                    label="Correo"
+                    type="email"
+                    wire:model.live.debounce.400ms="patientForm.email"
+                />
+                <flux:input
+                    label="Fecha de nacimiento"
+                    type="date"
+                    wire:model="patientForm.fecha_nacimiento"
+                />
+                <flux:select
+                    label="Sexo *"
+                    wire:model="patientForm.sexo"
+                    required
+                >
                     <flux:select.option value="otro">No especificado</flux:select.option>
                     <flux:select.option value="F">Femenino</flux:select.option>
                     <flux:select.option value="M">Masculino</flux:select.option>
                 </flux:select>
-                <flux:select label="Estado civil" wire:model="patientForm.estado_civil">
+                <flux:select
+                    label="Estado civil"
+                    wire:model="patientForm.estado_civil"
+                >
                     <flux:select.option value="">No especificado</flux:select.option>
                     <flux:select.option value="soltero">Soltero/a</flux:select.option>
                     <flux:select.option value="casado">Casado/a</flux:select.option>
@@ -84,17 +162,36 @@
                     <flux:select.option value="union_libre">Unión libre</flux:select.option>
                     <flux:select.option value="otro">Otro</flux:select.option>
                 </flux:select>
-                <flux:input label="Teléfono de emergencia" wire:model="patientForm.telefono_emergencia" />
-                <flux:input label="Religión" wire:model="patientForm.religion" />
-                <flux:input label="Ocupación" wire:model="patientForm.ocupacion" />
-                <flux:input label="Cómo nos conoció" wire:model="patientForm.como_nos_conocio" />
+                <flux:input
+                    label="Teléfono de emergencia"
+                    wire:model="patientForm.telefono_emergencia"
+                />
+                <flux:input
+                    label="Religión"
+                    wire:model="patientForm.religion"
+                />
+                <flux:input
+                    label="Ocupación"
+                    wire:model="patientForm.ocupacion"
+                />
+                <flux:input
+                    label="Cómo nos conoció"
+                    wire:model="patientForm.como_nos_conocio"
+                />
                 <div class="sm:col-span-2">
-                    <flux:textarea label="Dirección" wire:model="patientForm.direccion" rows="2" />
+                    <flux:textarea
+                        label="Dirección"
+                        wire:model="patientForm.direccion"
+                        rows="2"
+                    />
                 </div>
             </div>
 
             @if ($errors->isNotEmpty())
-                <div class="space-y-2" role="alert">
+                <div
+                    class="space-y-2"
+                    role="alert"
+                >
                     @foreach ($errors->all() as $message)
                         <flux:error>{{ $message }}</flux:error>
                     @endforeach
@@ -102,7 +199,10 @@
             @endif
 
             @if ($this->possibleMatches->isNotEmpty())
-                <flux:callout variant="warning" icon="exclamation-triangle">
+                <flux:callout
+                    variant="warning"
+                    icon="exclamation-triangle"
+                >
                     <flux:callout.heading>Posibles pacientes existentes</flux:callout.heading>
                     <flux:callout.text>
                         Revisa las coincidencias. Puedes abrir la ficha de una persona existente; no se fusionan
@@ -118,8 +218,12 @@
                                         {{ $match->telefono ?: 'Sin teléfono' }} · {{ $match->email ?: 'Sin correo' }}
                                     </div>
                                 </div>
-                                <flux:button :href="route('admin.patients.show', $match)" size="sm" variant="ghost"
-                                    wire:navigate>
+                                <flux:button
+                                    :href="route('admin.patients.show', $match)"
+                                    size="sm"
+                                    variant="ghost"
+                                    wire:navigate
+                                >
                                     Abrir ficha
                                 </flux:button>
                             </div>
@@ -128,16 +232,25 @@
                 </flux:callout>
 
                 @if (!$editingPatientId)
-                    <flux:checkbox wire:model="confirmDistinctPatient"
-                        label="Revisé las coincidencias y confirmo que esta persona es distinta." />
+                    <flux:checkbox
+                        wire:model="confirmDistinctPatient"
+                        label="Revisé las coincidencias y confirmo que esta persona es distinta."
+                    />
                 @endif
             @endif
 
             <div class="flex justify-end gap-3">
                 <flux:modal.close>
-                    <flux:button type="button" variant="ghost" wire:click="resetPatientForm">Cancelar</flux:button>
+                    <flux:button
+                        type="button"
+                        variant="ghost"
+                        wire:click="resetPatientForm"
+                    >Cancelar</flux:button>
                 </flux:modal.close>
-                <flux:button type="submit" variant="primary">
+                <flux:button
+                    type="submit"
+                    variant="primary"
+                >
                     {{ $editingPatientId ? 'Guardar cambios' : 'Crear paciente y expediente' }}
                 </flux:button>
             </div>
@@ -145,10 +258,16 @@
     </flux:modal>
 
     @can('patients.merge')
-        <flux:modal name="patient-merge" class="w-full max-w-4xl">
+        <flux:modal
+            name="patient-merge"
+            class="w-full max-w-4xl"
+        >
             <div class="space-y-5">
                 <flux:heading size="lg">Fusionar expedientes de pacientes</flux:heading>
-                <flux:callout variant="danger" icon="exclamation-triangle">
+                <flux:callout
+                    variant="danger"
+                    icon="exclamation-triangle"
+                >
                     <flux:callout.heading>Esta acción no se puede deshacer desde el directorio</flux:callout.heading>
                     <flux:callout.text>
                         El paciente de origen quedará inactivo y vinculado al principal. Sus citas, consultas, planes,
@@ -158,7 +277,11 @@
 
                 @if ($mergeSourcePatientId)
                     @php($mergeSource = \App\Models\Paciente::query()->find($mergeSourcePatientId))
-                    <flux:input label="Paciente de origen" :value="$mergeSource?->nombre_completo" readonly />
+                    <flux:input
+                        label="Paciente de origen"
+                        :value="$mergeSource?->nombre_completo"
+                        readonly
+                    />
                 @endif
 
                 <flux:input
@@ -215,10 +338,14 @@
                     </div>
 
                     @if ($this->mergePreview['profileConflicts'] !== [] || $this->mergePreview['expedienteConflicts'] !== [])
-                        <flux:callout variant="warning" icon="exclamation-triangle">
+                        <flux:callout
+                            variant="warning"
+                            icon="exclamation-triangle"
+                        >
                             <flux:callout.heading>Revisa los datos en conflicto</flux:callout.heading>
                             <flux:callout.text>
-                                Para cada diferencia elige qué valor conservar. Los valores sin conflicto completarán los campos vacíos del paciente principal.
+                                Para cada diferencia elige qué valor conservar. Los valores sin conflicto completarán los
+                                campos vacíos del paciente principal.
                             </flux:callout.text>
                         </flux:callout>
 
@@ -227,11 +354,13 @@
                                 label="{{ $this->mergeProfileFieldLabel($field) }} — Principal: {{ $conflict['principal'] }} / Origen: {{ $conflict['origen'] }}"
                                 wire:model="mergeProfileChoices.{{ $field }}"
                             >
-                                <flux:select.option value="">Selecciona el valor que se conservará</flux:select.option>
-                                <flux:select.option value="target">Conservar el dato del paciente principal</flux:select.option>
+                                <flux:select.option value="">Selecciona el valor que se conservará
+                                </flux:select.option>
+                                <flux:select.option value="target">Conservar el dato del paciente principal
+                                </flux:select.option>
                                 <flux:select.option value="source">Usar el dato del paciente de origen</flux:select.option>
                             </flux:select>
-                            @error('mergeProfileChoices.'.$field)
+                            @error('mergeProfileChoices.' . $field)
                                 <flux:error>{{ $message }}</flux:error>
                             @enderror
                         @endforeach
@@ -241,21 +370,31 @@
                                 label="{{ $this->mergeProfileFieldLabel($field) }} — Principal: {{ $conflict['principal'] }} / Origen: {{ $conflict['origen'] }}"
                                 wire:model="mergeExpedienteChoices.{{ $field }}"
                             >
-                                <flux:select.option value="">Selecciona el valor que se conservará</flux:select.option>
-                                <flux:select.option value="target">Conservar el dato del expediente principal</flux:select.option>
-                                <flux:select.option value="source">Usar el dato del expediente de origen</flux:select.option>
+                                <flux:select.option value="">Selecciona el valor que se conservará
+                                </flux:select.option>
+                                <flux:select.option value="target">Conservar el dato del expediente principal
+                                </flux:select.option>
+                                <flux:select.option value="source">Usar el dato del expediente de origen
+                                </flux:select.option>
                             </flux:select>
-                            @error('mergeExpedienteChoices.'.$field)
+                            @error('mergeExpedienteChoices.' . $field)
                                 <flux:error>{{ $message }}</flux:error>
                             @enderror
                         @endforeach
                     @else
-                        <flux:callout variant="info" icon="information-circle">
-                            <flux:callout.text>No hay conflictos entre los perfiles ni los resúmenes de expediente.</flux:callout.text>
+                        <flux:callout
+                            variant="info"
+                            icon="information-circle"
+                        >
+                            <flux:callout.text>No hay conflictos entre los perfiles ni los resúmenes de expediente.
+                            </flux:callout.text>
                         </flux:callout>
                     @endif
 
-                    <flux:callout variant="info" icon="clipboard-document-list">
+                    <flux:callout
+                        variant="info"
+                        icon="clipboard-document-list"
+                    >
                         <flux:callout.heading>Historial que se trasladará</flux:callout.heading>
                         <flux:callout.text>
                             Citas: {{ $this->mergePreview['counts']['citas'] }},
@@ -277,7 +416,11 @@
 
                     <div class="flex justify-end gap-3">
                         <flux:modal.close>
-                            <flux:button type="button" variant="ghost" wire:click="resetMergeForm">Cancelar</flux:button>
+                            <flux:button
+                                type="button"
+                                variant="ghost"
+                                wire:click="resetMergeForm"
+                            >Cancelar</flux:button>
                         </flux:modal.close>
                         <flux:button
                             type="button"

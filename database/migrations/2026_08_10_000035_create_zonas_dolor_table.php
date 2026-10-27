@@ -15,27 +15,27 @@ return new class extends Migration
                 ->constrained('mapas_corporales')
                 ->restrictOnDelete()
                 ->restrictOnUpdate();
-            $table->string('zona', 60)->comment('cervical, lumbar, hombro_der, etc.');
-            $table->enum('lateralidad', ['derecha', 'izquierda', 'bilateral', 'central'])
-                ->default('central');
-            $table->unsignedTinyInteger('intensidad')->default(1)->comment('Escala 1-10');
-            $tiposDolor = ['punzante', 'quemante', 'opresivo', 'irradiado', 'constante', 'intermitente'];
-            if (DB::getDriverName() === 'sqlite') {
-                $table->string('tipo_dolor');
-            } else {
-                $table->set('tipo_dolor', $tiposDolor);
-            }
-            $table->text('descripcion')->nullable();
-            $table->decimal('coord_x', 5, 2)->nullable()
-                ->comment('Coordenada X en el SVG del mapa (0-100%)');
-            $table->decimal('coord_y', 5, 2)->nullable()
-                ->comment('Coordenada Y en el SVG del mapa (0-100%)');
+            $table->foreignId('region_id')
+                ->constrained('regiones_corporales')
+                ->restrictOnDelete()
+                ->restrictOnUpdate();
+            $table->enum('lateralidad', ['derecha', 'izquierda', 'central'])->default('central');
+            $table->unsignedTinyInteger('eva')->comment('Escala visual analógica 0-10');
+            $table->enum('nivel', ['sin_dolor', 'leve', 'moderado', 'intenso', 'muy_intenso'])
+                ->comment('Derivado del EVA: 0, 1-3, 4-6, 7-8, 9-10');
+            $table->json('tipos')->nullable()->comment('Lista: punzante, quemante, opresivo...');
+            $table->json('irradiacion')->nullable();
+            $table->string('inicio', 120)->nullable();
+            $table->json('patron')->nullable()->comment('Lista: constante, nocturno, en reposo...');
+            $table->text('comentario')->nullable();
+            $table->timestamps();
 
-            $table->index('mapa_id', 'idx_zona_mapa');
+            $table->unique(['mapa_id', 'region_id', 'lateralidad'], 'uq_zona_mapa_region_lado');
+            $table->index('region_id', 'idx_zona_region');
         });
 
         if (DB::getDriverName() !== 'sqlite') {
-            DB::statement('ALTER TABLE zonas_dolor ADD CONSTRAINT chk_intensidad CHECK (intensidad BETWEEN 1 AND 10)');
+            DB::statement('ALTER TABLE zonas_dolor ADD CONSTRAINT chk_eva CHECK (eva BETWEEN 0 AND 10)');
         }
     }
 

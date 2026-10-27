@@ -14,18 +14,19 @@ class MapaCorporal extends Model
     protected $table = 'mapas_corporales';
 
     protected $fillable = [
-        'anamnesis_id',
         'consulta_id',
-        'imagen_path',
+        'estado',
+        'eva_maximo',
+        'zona_mayor_dolor',
         'observaciones',
     ];
 
-    // --- Relaciones ---
-
-    public function anamnesis(): BelongsTo
+    protected function casts(): array
     {
-        return $this->belongsTo(AnamnesisGeneral::class, 'anamnesis_id');
+        return ['eva_maximo' => 'integer'];
     }
+
+    // --- Relaciones ---
 
     public function consulta(): BelongsTo
     {

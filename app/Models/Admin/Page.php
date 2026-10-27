@@ -16,6 +16,7 @@ class Page extends Model
     ];
 
     public $timestamps = false;
+
     protected $fillable = [
         'label',
         'icon',
@@ -23,9 +24,8 @@ class Page extends Model
         'order',
         'page_id',
         'type',
-        'permission_name'
+        'permission_name',
     ];
-
 
     public function parent()
     {
@@ -42,7 +42,7 @@ class Page extends Model
         if ($this->type == 'parent') {
             return $this->order;
         } else {
-            return $this->parent?->order . '.' . $this->order;
+            return $this->parent?->order.'.'.$this->order;
         }
     }
 }

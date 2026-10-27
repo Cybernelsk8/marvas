@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,40 +12,47 @@ class ZonaDolor extends Model
 
     protected $table = 'zonas_dolor';
 
-    public $timestamps = false;
-
     protected $fillable = [
         'mapa_id',
-        'zona',
+        'region_id',
         'lateralidad',
-        'intensidad',
-        'tipo_dolor',
-        'descripcion',
-        'coord_x',
-        'coord_y',
+        'eva',
+        'nivel',
+        'tipos',
+        'irradiacion',
+        'inicio',
+        'patron',
+        'comentario',
     ];
 
     protected function casts(): array
     {
         return [
-            'intensidad' => 'integer',
-            'coord_x' => 'decimal:2',
-            'coord_y' => 'decimal:2',
+            'eva' => 'integer',
+            'tipos' => 'array',
+            'irradiacion' => 'array',
+            'patron' => 'array',
         ];
     }
 
-    /**
-     * tipo_dolor es un SET de MariaDB (no un tipo nativo de Eloquent, a
-     * diferencia de JSON no hay cast automático). Se expone como array de
-     * PHP y se guarda como lista separada por comas, tal como MariaDB
-     * almacena internamente un SET.
-     */
-    protected function tipoDolor(): Attribute
+    // Deriva el nivel de dolor desde el EVA. Ej.: nivelDesdeEva(7) => 'intenso'.
+    public static function nivelDesdeEva(int $eva): string
     {
-        return Attribute::make(
-            get: fn (?string $value) => $value ? explode(',', $value) : [],
-            set: fn ($value) => is_array($value) ? implode(',', $value) : $value,
-        );
+        return match (true) {
+            $eva <= 0 => 'sin_dolor',
+            $eva <= 3 => 'leve',
+            $eva <= 6 => 'moderado',
+            $eva <= 8 => 'intenso',
+            default => 'muy_intenso',
+        };
+    }
+
+    // Mantiene `nivel` siempre coherente con `eva`.
+    protected static function booted(): void
+    {
+        static::saving(function (self $zona) {
+            $zona->nivel = self::nivelDesdeEva((int) $zona->eva);
+        });
     }
 
     // --- Relaciones ---
@@ -54,5 +60,10 @@ class ZonaDolor extends Model
     public function mapa(): BelongsTo
     {
         return $this->belongsTo(MapaCorporal::class, 'mapa_id');
+    }
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(RegionCorporal::class, 'region_id');
     }
 }

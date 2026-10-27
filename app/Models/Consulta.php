@@ -71,16 +71,6 @@ class Consulta extends Model
         return $this->hasOne(EvaluacionIntegralMbi::class, 'consulta_id');
     }
 
-    public function informeSistemas(): HasOne
-    {
-        return $this->hasOne(InformeSistema::class, 'consulta_id');
-    }
-
-    public function testIntoxicacion(): HasOne
-    {
-        return $this->hasOne(TestIntoxicacion::class, 'consulta_id');
-    }
-
     public function evolucionesClinicas(): HasMany
     {
         return $this->hasMany(EvolucionClinica::class, 'consulta_id');
@@ -101,9 +91,9 @@ class Consulta extends Model
         return $this->hasMany(ConsumoProductoConsulta::class, 'consulta_id');
     }
 
-    public function mapasCorporales(): HasMany
+    public function mapaCorporal(): HasOne
     {
-        return $this->hasMany(MapaCorporal::class, 'consulta_id');
+        return $this->hasOne(MapaCorporal::class, 'consulta_id');
     }
 
     // --- Helpers ---
