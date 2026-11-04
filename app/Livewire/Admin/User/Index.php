@@ -113,7 +113,7 @@ class Index extends Component
             'user.information.nombres' => 'required|string|max:255',
             'user.information.apellidos' => 'required|string|max:255',
             'user.information.cui' => 'required|digits:13|unique:user_information,cui',
-            'user.information.telefono' => 'required|max:9|regex:/^\d{4}-\d{4}$/',
+            'user.information.telefono' => 'required|max:9|regex:/^\d{4}-?\d{4}$/',
             'user.information.fecha_nacimiento' => 'required|date|date_format:Y-m-d',
             'user.information.correo' => 'required|string|email',
             'user.information.sexo' => 'required|in:M,F',

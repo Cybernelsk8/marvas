@@ -40,7 +40,7 @@
             <flux:error name="nombre" />
             <flux:textarea label="Dirección" wire:model="direccion" />
             <flux:error name="direccion" />
-            <flux:input label="Teléfono" wire:model="telefono" />
+            <flux:input label="Teléfono" type="tel" mask="9999-9999" maxlength="9" placeholder="0000-0000" wire:model="telefono" />
             <flux:error name="telefono" />
             <flux:checkbox label="Sede activa" wire:model="activa" />
             <div class="flex justify-end gap-2">

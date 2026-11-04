@@ -30,18 +30,20 @@
                     </flux:select>
                     <flux:select label="Estado civil" wire:model="paciente.estado_civil">
                         <flux:select.option value="">Selecciona una opción</flux:select.option>
-                        <flux:select.option value="soltero">Soltero</flux:select.option>
-                        <flux:select.option value="casado">Casado</flux:select.option>
-                        <flux:select.option value="divorciado">Divorciado</flux:select.option>
-                        <flux:select.option value="viudo">Viudo</flux:select.option>
-                        <flux:select.option value="union_libre">Unión libre</flux:select.option>
-                        <flux:select.option value="otro">Otro</flux:select.option>
+                        @foreach (\App\Models\Paciente::estadosCiviles() as $estado)
+                            <flux:select.option value="{{ $estado }}">{{ $estado }}</flux:select.option>
+                        @endforeach
                     </flux:select>
                     <flux:input label="DPI" wire:model="paciente.numero_dpi" />
-                    <flux:input label="Teléfono" type="tel" wire:model="paciente.telefono" />
-                    <flux:input label="Teléfono de emergencia" type="tel" wire:model="paciente.telefono_emergencia" />
+                    <flux:input label="Teléfono" type="tel" mask="9999-9999" maxlength="9" placeholder="0000-0000" wire:model="paciente.telefono" />
+                    <flux:input label="Teléfono de emergencia" type="tel" mask="9999-9999" maxlength="9" placeholder="0000-0000" wire:model="paciente.telefono_emergencia" />
                     <flux:input label="Correo electrónico" type="email" wire:model="paciente.email" />
-                    <flux:input label="Religión" wire:model="paciente.religion" />
+                    <flux:select label="Religión" wire:model="paciente.religion">
+                        <flux:select.option value="">Selecciona una opción</flux:select.option>
+                        @foreach (\App\Models\Paciente::religiones() as $religion)
+                            <flux:select.option value="{{ $religion }}">{{ $religion }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
                     <flux:input label="Ocupación" wire:model="paciente.ocupacion" />
                     <flux:input label="Dirección" wire:model="paciente.direccion" />
                 </div>

@@ -141,8 +141,8 @@
                         <flux:input
                             wire:model="usuario.information.telefono"
                             label="Teléfono *"
-                            type="phone"
-                            placeholder="55555555"
+                            type="tel"
+                            placeholder="5555-5555"
                             mask="9999-9999"
                             maxlength="9"
                             icon="phone"

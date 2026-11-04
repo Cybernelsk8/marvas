@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Telefono;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,7 @@ class Sucursal extends Model
     {
         return [
             'activa' => 'boolean',
+            'telefono' => Telefono::class,
         ];
     }
 

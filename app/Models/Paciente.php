@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Telefono;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -44,8 +45,33 @@ class Paciente extends Model
         return [
             'fecha_nacimiento' => 'date',
             'activo' => 'boolean',
+            'telefono' => Telefono::class,
+            'telefono_emergencia' => Telefono::class,
         ];
     }
+
+    /** Estados civiles disponibles en todos los formularios. Ej.: Paciente::estadosCiviles()[0] // 'Soltero' */
+    public const ESTADOS_CIVILES = ['Soltero', 'Casado', 'Divorciado', 'Viudo', 'Unión libre', 'Otro'];
+
+    /** Religiones disponibles en todos los formularios. Ej.: Paciente::religiones() */
+    public const RELIGIONES = [
+        'Católico', 'Protestante', 'Evangélico', 'Ortodoxo', 'Musulmán', 'Judío', 'Budista', 'Ninguna', 'Otro',
+    ];
+
+    /** Lista de estados civiles para selects y reglas `Rule::in()`. */
+    public static function estadosCiviles(): array
+    {
+        return self::ESTADOS_CIVILES;
+    }
+
+    /** Lista de religiones para selects y reglas `Rule::in()`. */
+    public static function religiones(): array
+    {
+        return self::RELIGIONES;
+    }
+
+    /** Regla de validación de teléfono de 8 dígitos, con o sin guion. Ej.: '4884-0150' o '48840150'. */
+    public const REGLA_TELEFONO = 'regex:/^\d{4}-?\d{4}$/';
 
     public function getAccessorMap(): array
     {

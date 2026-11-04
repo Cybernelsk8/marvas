@@ -129,6 +129,10 @@
                 />
                 <flux:input
                     label="Teléfono"
+                    type="tel"
+                    mask="9999-9999"
+                    maxlength="9"
+                    placeholder="0000-0000"
                     wire:model.live.debounce.400ms="patientForm.telefono"
                 />
                 <flux:input
@@ -155,21 +159,27 @@
                     wire:model="patientForm.estado_civil"
                 >
                     <flux:select.option value="">No especificado</flux:select.option>
-                    <flux:select.option value="soltero">Soltero/a</flux:select.option>
-                    <flux:select.option value="casado">Casado/a</flux:select.option>
-                    <flux:select.option value="divorciado">Divorciado/a</flux:select.option>
-                    <flux:select.option value="viudo">Viudo/a</flux:select.option>
-                    <flux:select.option value="union_libre">Unión libre</flux:select.option>
-                    <flux:select.option value="otro">Otro</flux:select.option>
+                    @foreach (\App\Models\Paciente::estadosCiviles() as $estado)
+                        <flux:select.option value="{{ $estado }}">{{ $estado }}</flux:select.option>
+                    @endforeach
                 </flux:select>
                 <flux:input
                     label="Teléfono de emergencia"
+                    type="tel"
+                    mask="9999-9999"
+                    maxlength="9"
+                    placeholder="0000-0000"
                     wire:model="patientForm.telefono_emergencia"
                 />
-                <flux:input
+                <flux:select
                     label="Religión"
                     wire:model="patientForm.religion"
-                />
+                >
+                    <flux:select.option value="">No especificado</flux:select.option>
+                    @foreach (\App\Models\Paciente::religiones() as $religion)
+                        <flux:select.option value="{{ $religion }}">{{ $religion }}</flux:select.option>
+                    @endforeach
+                </flux:select>
                 <flux:input
                     label="Ocupación"
                     wire:model="patientForm.ocupacion"

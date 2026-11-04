@@ -15,15 +15,8 @@ return new class extends Migration
             $table->date('fecha_nacimiento')->nullable();
             $table->enum('sexo', ['M', 'F', 'otro'])
                 ->default('otro');
-            $table->enum('estado_civil', [
-                'soltero',
-                'casado',
-                'divorciado',
-                'viudo',
-                'union_libre',
-                'otro',
-            ])->nullable();
-            $table->string('religion', 60)->nullable();
+            $table->string('estado_civil', 30)->nullable()->comment('Lista en Paciente::ESTADOS_CIVILES');
+            $table->string('religion', 60)->nullable()->comment('Lista en Paciente::RELIGIONES');
             $table->string('numero_dpi', 20)->nullable();
             $table->string('telefono', 20)->nullable();
             $table->string('contacto_emergencia', 120)->nullable()->comment('Nombre y parentesco');

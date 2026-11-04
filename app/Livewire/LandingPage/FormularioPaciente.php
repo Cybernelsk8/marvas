@@ -3,6 +3,7 @@
 namespace App\Livewire\LandingPage;
 
 use App\Models\Cita;
+use App\Models\Paciente;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -51,16 +52,16 @@ class FormularioPaciente extends Component
             'paciente.apellidos' => ['required', 'string', 'max:150'],
             'paciente.fecha_nacimiento' => ['nullable', 'date', 'before_or_equal:today'],
             'paciente.sexo' => ['nullable', 'in:M,F,otro'],
-            'paciente.estado_civil' => ['nullable', 'in:soltero,casado,divorciado,viudo,union_libre,otro'],
-            'paciente.religion' => ['nullable', 'string', 'max:60'],
+            'paciente.estado_civil' => ['nullable', Rule::in(Paciente::estadosCiviles())],
+            'paciente.religion' => ['nullable', Rule::in(Paciente::religiones())],
             'paciente.numero_dpi' => [
                 'nullable',
                 'string',
                 'max:20',
                 Rule::unique('pacientes', 'numero_dpi')->ignore($paciente->id),
             ],
-            'paciente.telefono' => ['nullable', 'string', 'max:20'],
-            'paciente.telefono_emergencia' => ['nullable', 'string', 'max:20'],
+            'paciente.telefono' => ['nullable', 'max:9', Paciente::REGLA_TELEFONO],
+            'paciente.telefono_emergencia' => ['nullable', 'max:9', Paciente::REGLA_TELEFONO],
             'paciente.email' => ['nullable', 'email', 'max:191'],
             'paciente.direccion' => ['nullable', 'string'],
             'paciente.ocupacion' => ['nullable', 'string', 'max:100'],

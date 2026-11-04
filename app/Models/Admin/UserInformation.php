@@ -2,6 +2,7 @@
 
 namespace App\Models\Admin;
 
+use App\Casts\Telefono;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +29,11 @@ class UserInformation extends Model
         'nombre_corto',
         'url_photo',
     ];
+
+    protected function casts(): array
+    {
+        return ['telefono' => Telefono::class];
+    }
 
     public function getAccessorMap(): array
     {

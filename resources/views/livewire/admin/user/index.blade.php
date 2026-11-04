@@ -23,25 +23,25 @@
                 <div class="flex items-center gap-3">
                     <flux:avatar
                         circle
-                        name="{{ $row->information->nombre_corto }}"
+                        name="{{ $row->nombre_corto ?? '' }}"
                         size="lg"
-                        initials="{{ $row->information->initials }}"
+                        initials="{{ $row->information->initials ?? '' }}"
                         :src="$row->url_photo"
                     />
                     <div class="grid">
                         <span class="font-medium text-nowrap">
-                            {{ $row->information->nombre_completo }}
+                            {{ $row->information->nombre_completo ?? '' }}
                         </span>
                         <div class="flex gap-2 items-center">
                             <flux:icon.envelope class="size-4" />
                             <span class="text-xs opacity-60">
-                                {{ $row->information->correo }}
+                                {{ $row->information->correo ?? '' }}
                             </span>
                         </div>
                         <div class="flex gap-2 items-center">
                             <flux:icon.phone class="size-4" />
                             <span class="text-xs opacity-60">
-                                {{ $row->information->telefono }}
+                                {{ $row->information->telefono ?? '' }}
                             </span>
                         </div>
                     </div>

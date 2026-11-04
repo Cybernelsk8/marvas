@@ -115,7 +115,7 @@ class Show extends Component
             'usuario.information.nombres' => 'required|string|max:255',
             'usuario.information.apellidos' => 'required|string|max:255',
             'usuario.information.cui' => 'required|digits:13|unique:user_information,cui,' . ($this->usuario['information']['id'] ?? 'NULL') . ',id',
-            'usuario.information.telefono' => 'required|max:9|regex:/^\d{4}-\d{4}$/',
+            'usuario.information.telefono' => 'required|max:9|regex:/^\d{4}-?\d{4}$/',
             'usuario.information.fecha_nacimiento' => 'required|date|date_format:Y-m-d',
             'usuario.information.correo' => 'required|string|email',
             'usuario.information.sexo' => 'required|in:M,F',

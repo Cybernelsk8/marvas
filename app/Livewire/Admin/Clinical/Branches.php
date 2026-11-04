@@ -83,7 +83,7 @@ class Branches extends Component
         $data = $this->validate([
             'nombre' => ['required', 'string', 'max:150'],
             'direccion' => ['nullable', 'string', 'max:10000'],
-            'telefono' => ['nullable', 'string', 'max:20'],
+            'telefono' => ['nullable', 'max:9', 'regex:/^\d{4}-?\d{4}$/'],
             'activa' => ['required', 'boolean'],
         ]);
 

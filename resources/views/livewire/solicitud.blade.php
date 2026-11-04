@@ -453,24 +453,9 @@
                         <flux:select.option value="">
                             -- Seleccion estado --
                         </flux:select.option>
-                        <flux:select.option value="soltero">
-                            Soltero
-                        </flux:select.option>
-                        <flux:select.option value="casado">
-                            Casado
-                        </flux:select.option>
-                        <flux:select.option value="divorciado">
-                            Divorcido
-                        </flux:select.option>
-                        <flux:select.option value="viudo">
-                            Viudo
-                        </flux:select.option>
-                        <flux:select.option value="union_libre">
-                            Union libre
-                        </flux:select.option>
-                        <flux:select.option value="otro">
-                            Otro
-                        </flux:select.option>
+                        @foreach (\App\Models\Paciente::estadosCiviles() as $estado)
+                            <flux:select.option value="{{ $estado }}">{{ $estado }}</flux:select.option>
+                        @endforeach
                     </flux:select>
 
                     <flux:select
@@ -481,27 +466,9 @@
                         <flux:select.option value="">
                             -- Seleccion religión --
                         </flux:select.option>
-                        <flux:select.option value="catolico">
-                            Católico
-                        </flux:select.option>
-                        <flux:select.option value="protestante">
-                            Protestante
-                        </flux:select.option>
-                        <flux:select.option value="musulman">
-                            Musulman
-                        </flux:select.option>
-                        <flux:select.option value="budista">
-                            Budista
-                        </flux:select.option>
-                        <flux:select.option value="ortodoxo">
-                            Ortodoxo
-                        </flux:select.option>
-                        <flux:select.option value="judio">
-                            Judío
-                        </flux:select.option>
-                        <flux:select.option value="otro">
-                            Otro
-                        </flux:select.option>
+                        @foreach (\App\Models\Paciente::religiones() as $religion)
+                            <flux:select.option value="{{ $religion }}">{{ $religion }}</flux:select.option>
+                        @endforeach
                     </flux:select>
 
                     <flux:input
@@ -512,12 +479,20 @@
                     />
                     <flux:input
                         label="Teléfono"
+                        type="tel"
+                        mask="9999-9999"
+                        maxlength="9"
+                        placeholder="0000-0000"
                         wire:model.live.debounce.400ms="solicitud.expediente.paciente.telefono"
                         icon="phone"
                         :disabled="!auth()->user()->can('requests.edit')"
                     />
                     <flux:input
                         label="Teléfono Emergencia"
+                        type="tel"
+                        mask="9999-9999"
+                        maxlength="9"
+                        placeholder="0000-0000"
                         wire:model="solicitud.expediente.paciente.telefono_emergencia"
                         icon="device-phone-mobile"
                         :disabled="!auth()->user()->can('requests.edit')"
