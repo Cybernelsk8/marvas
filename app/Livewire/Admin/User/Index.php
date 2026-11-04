@@ -119,7 +119,7 @@ class Index extends Component
             'user.information.sexo' => 'required|in:M,F',
             'municipio_id' => 'required|exists:municipios,id',
             'user.information.domicilio.municipio_id' => 'required|exists:municipios,id',
-            'user.information.domicilio.zona_id' => 'nullable|exists:zonas,id',
+            'user.information.domicilio.zona_id' => 'nullable|integer|between:1,25',
             'user.information.domicilio.colonia' => 'nullable|string|max:255',
             'user.information.domicilio.direccion' => 'required|string|max:255',
         ];
