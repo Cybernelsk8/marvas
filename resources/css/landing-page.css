@@ -2,7 +2,7 @@
    1. HEADER / NAVBAR
 ========================================================= */
 .header {
-  @apply relative flex items-center justify-between gap-4 px-5 py-2 bg-[#F7F1E8] md:gap-8 md:px-10 lg:px-4;
+  @apply relative z-50 flex items-center justify-between gap-4 px-5 py-2 bg-[#F7F1E8] md:gap-8 md:px-10 lg:px-4;
 }
 
 .header__brand {
@@ -26,7 +26,7 @@
 }
 
 .nav {
-  @apply hidden absolute left-0 top-full w-full flex-col gap-2 bg-[#F7F1E8] px-5 py-4 shadow-lg lg:static lg:flex lg:w-auto lg:flex-row lg:shadow-none lg:p-0;
+  @apply hidden absolute left-0 top-full z-50 w-full flex-col gap-2 bg-[#F7F1E8] px-5 py-4 shadow-lg lg:static lg:flex lg:w-auto lg:flex-row lg:shadow-none lg:p-0;
 }
 
 .nav--open {
@@ -35,6 +35,10 @@
 
 .nav__list {
   @apply flex flex-col uppercase gap-3 lg:flex-row lg:items-center lg:gap-5;
+}
+
+.nav__actions {
+  @apply mt-1 flex flex-col gap-2 border-t border-cyan-950/10 pt-4 sm:hidden;
 }
 
 .nav__link {
