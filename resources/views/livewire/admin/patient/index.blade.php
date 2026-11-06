@@ -1,4 +1,4 @@
-<section class="mx-auto w-full max-w-7xl space-y-6 p-6">
+<section class="mx-auto w-full max-w-7xl space-y-6 py-6 px-1 lg:px-6 ">
     <header>
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>

@@ -10,6 +10,8 @@ use App\Models\Profesional;
 use App\Models\Sucursal;
 use App\Models\SucursalEvaluadorMbi;
 use App\Services\AppointmentManagementService;
+use App\Services\PatientMatchService;
+use App\Services\PatientRegistrationService;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
 use Flux\Flux;
@@ -75,6 +77,13 @@ class Schedule extends Component
 
     public string $bookingNotes = '';
 
+    /** Modo del modal de nueva cita: 'existente' (buscar) o 'nuevo' (crear paciente junto con la cita). */
+    public string $bookingMode = 'existente';
+
+    public array $bookingNewPatient = [];
+
+    public bool $bookingConfirmDistinct = false;
+
     /**
      * Livewire lo ejecuta al montar el componente.
      *
@@ -88,6 +97,7 @@ class Schedule extends Component
         $this->authorize('page.view.schedule');
 
         $this->selectedDate = today()->toDateString();
+        $this->bookingNewPatient = $this->emptyNewPatient();
     }
 
     /**
@@ -262,12 +272,35 @@ class Schedule extends Component
     public function createDirectAppointment(): void
     {
         $this->authorize('appointments.create');
-        $validated = $this->validate([
-            'bookingPatientId' => [
-                'required',
-                'integer',
-                Rule::exists('pacientes', 'id')->where('activo', true)->whereNull('fusionado_en_paciente_id'),
-            ],
+        $isNew = $this->bookingMode === 'nuevo';
+        if ($isNew) {
+            $this->authorize('patients.create');
+        }
+
+        $patientRules = $isNew
+            ? [
+                'bookingNewPatient.nombres' => ['required', 'string', 'max:150'],
+                'bookingNewPatient.apellidos' => ['required', 'string', 'max:150'],
+                'bookingNewPatient.telefono' => ['required', 'max:9', Paciente::REGLA_TELEFONO],
+                'bookingNewPatient.email' => ['required', 'email', 'max:191'],
+                'bookingNewPatient.numero_dpi' => ['nullable', 'string', 'max:20', Rule::unique('pacientes', 'numero_dpi')],
+                'bookingNewPatient.fecha_nacimiento' => ['nullable', 'date', 'before_or_equal:today'],
+                'bookingNewPatient.sexo' => ['required', Rule::in(['M', 'F', 'otro'])],
+                'bookingNewPatient.estado_civil' => ['nullable', Rule::in(Paciente::estadosCiviles())],
+                'bookingNewPatient.religion' => ['nullable', Rule::in(Paciente::religiones())],
+                'bookingNewPatient.telefono_emergencia' => ['nullable', 'max:9', Paciente::REGLA_TELEFONO],
+                'bookingNewPatient.direccion' => ['nullable', 'string'],
+                'bookingNewPatient.ocupacion' => ['nullable', 'string', 'max:100'],
+            ]
+            : [
+                'bookingPatientId' => [
+                    'required',
+                    'integer',
+                    Rule::exists('pacientes', 'id')->where('activo', true)->whereNull('fusionado_en_paciente_id'),
+                ],
+            ];
+
+        $validated = $this->validate($patientRules + [
             'bookingType' => ['required', Rule::in(['primera_vez', 'seguimiento', 'control', 'evaluacion_integral', 'procedimiento'])],
             'bookingDate' => ['required', 'date_format:Y-m-d'],
             'bookingTime' => ['required', 'date_format:H:i'],
@@ -277,9 +310,19 @@ class Schedule extends Component
             'bookingNotes' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $newPatient = null;
+        if ($isNew) {
+            $newPatient = app(PatientRegistrationService::class)->normalize($validated['bookingNewPatient']);
+            if ($this->bookingMatches->isNotEmpty() && ! $this->bookingConfirmDistinct) {
+                $this->addError('bookingConfirmDistinct', 'Revisa las coincidencias: usa un paciente existente o confirma que es otra persona.');
+
+                return;
+            }
+        }
+
         $start = Carbon::createFromFormat('!Y-m-d H:i', "{$validated['bookingDate']} {$validated['bookingTime']}");
         $result = app(AppointmentManagementService::class)->createDirect(
-            (int) $validated['bookingPatientId'],
+            $isNew ? null : (int) $validated['bookingPatientId'],
             (int) $validated['bookingBranchId'],
             (int) Auth::id(),
             (int) $validated['bookingProfessionalId'],
@@ -287,6 +330,7 @@ class Schedule extends Component
             $validated['bookingType'],
             $start,
             $validated['bookingNotes'] ?: null,
+            $newPatient,
         );
 
         if ($result !== 'confirmada') {
@@ -330,9 +374,75 @@ class Schedule extends Component
             'bookingProfessionalId',
             'bookingSpecialtyId',
             'bookingNotes',
+            'bookingNewPatient',
+            'bookingConfirmDistinct',
+            'bookingMode',
         ]);
         $this->bookingType = 'primera_vez';
+        $this->bookingMode = 'existente';
+        $this->bookingNewPatient = $this->emptyNewPatient();
         $this->resetValidation();
+    }
+
+    /**
+     * Campos vacíos del paciente nuevo del modal de cita.
+     * Ej.: `$this->bookingNewPatient = $this->emptyNewPatient();` deja el formulario limpio con sexo `otro`.
+     */
+    private function emptyNewPatient(): array
+    {
+        return [
+            'nombres' => '', 'apellidos' => '', 'telefono' => '', 'email' => '',
+            'numero_dpi' => '', 'fecha_nacimiento' => null, 'sexo' => 'otro',
+            'estado_civil' => null, 'religion' => null, 'telefono_emergencia' => '',
+            'direccion' => '', 'ocupacion' => '',
+        ];
+    }
+
+    /**
+     * Cambia entre buscar un paciente existente y crear uno nuevo junto con la cita.
+     * Ej.: `wire:click="setBookingMode('nuevo')"`.
+     */
+    public function setBookingMode(string $mode): void
+    {
+        $this->authorize('appointments.create');
+        if ($mode === 'nuevo') {
+            $this->authorize('patients.create');
+        }
+        $this->bookingMode = $mode === 'nuevo' ? 'nuevo' : 'existente';
+        $this->bookingPatientId = null;
+        $this->bookingConfirmDistinct = false;
+        $this->resetValidation();
+    }
+
+    /** Cualquier cambio en los datos del paciente nuevo obliga a revisar de nuevo las coincidencias. */
+    public function updatedBookingNewPatient(): void
+    {
+        $this->bookingConfirmDistinct = false;
+    }
+
+    /**
+     * Pacientes existentes que podrían ser la persona que se está registrando (nombre, DPI, teléfono o correo).
+     * Ej.: nombres 'Ana', apellidos 'Pérez' => lista de Anas Pérez ya registradas.
+     */
+    #[Computed]
+    public function bookingMatches(): Collection
+    {
+        if ($this->bookingMode !== 'nuevo') {
+            return new Collection;
+        }
+
+        return app(PatientMatchService::class)->matchingCandidates($this->bookingNewPatient);
+    }
+
+    /**
+     * Usa un posible duplicado como paciente de la cita y vuelve al modo existente.
+     * Ej.: `wire:click="useMatchedPatient({{ $match->id }})"`.
+     */
+    public function useMatchedPatient(int $id): void
+    {
+        $this->authorize('appointments.create');
+        $this->setBookingMode('existente');
+        $this->selectBookingPatient($id);
     }
 
     /**

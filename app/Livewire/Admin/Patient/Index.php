@@ -4,8 +4,9 @@ namespace App\Livewire\Admin\Patient;
 
 use App\Models\Auditoria;
 use App\Models\Paciente;
-use App\Services\PatientMergeService;
 use App\Services\PatientMatchService;
+use App\Services\PatientMergeService;
+use App\Services\PatientRegistrationService;
 use App\Traits\DataTable;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Builder;
@@ -390,7 +391,7 @@ class Index extends Component
             'patientForm.como_nos_conocio' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $patientData = $this->normalizePatientData($data['patientForm']);
+        $patientData = app(PatientRegistrationService::class)->normalize($data['patientForm']);
         $matches = app(PatientMatchService::class)->matchingCandidates($patientData, $patientId);
 
         if ($patientId === null && $matches->isNotEmpty() && ! $this->confirmDistinctPatient) {
@@ -401,20 +402,7 @@ class Index extends Component
 
         $patient = DB::transaction(function () use ($patientId, $patientData): Paciente {
             if ($patientId === null) {
-                $patient = Paciente::query()->create($patientData);
-                $patient->expediente()->firstOrCreate([]);
-
-                Auditoria::query()->create([
-                    'user_id' => Auth::id(),
-                    'tabla_afectada' => 'pacientes',
-                    'registro_id' => $patient->id,
-                    'accion' => 'crear',
-                    'datos_nuevos' => $patientData,
-                    'ip' => request()->ip(),
-                    'user_agent' => mb_substr((string) request()->userAgent(), 0, 255),
-                ]);
-
-                return $patient;
+                return app(PatientRegistrationService::class)->create($patientData, Auth::id());
             }
 
             $patient = Paciente::query()->lockForUpdate()->findOrFail($patientId);
@@ -536,28 +524,5 @@ class Index extends Component
     public function render()
     {
         return view('livewire.admin.patient.index');
-    }
-
-    /**
-     * @param array $data
-     * @return array
-     */
-    // Recorta textos, convierte cadenas vacías a null y normaliza nombres y correo antes de guardar.
-    //   Uso:
-    //     $patientData = $this->normalizePatientData($data);
-    //   Resultado: Devuelve los datos limpios con nombres capitalizados y correo en minúsculas.
-    private function normalizePatientData(array $data): array
-    {
-        foreach ($data as $field => $value) {
-            if (is_string($value)) {
-                $data[$field] = trim($value) === '' ? null : trim($value);
-            }
-        }
-
-        $data['nombres'] = ucwords(mb_strtolower($data['nombres']));
-        $data['apellidos'] = ucwords(mb_strtolower($data['apellidos']));
-        $data['email'] = filled($data['email']) ? mb_strtolower($data['email']) : null;
-
-        return $data;
     }
 }

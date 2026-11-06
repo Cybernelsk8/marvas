@@ -57,15 +57,18 @@
     <div class="grid gap-6 {{ $viewMode === 'month' ? 'lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]' : '' }}">
         @if ($viewMode === 'month')
             <flux:card>
-                <x-calendar
-                    label="Calendario mensual"
-                    :events="$events"
-                    event-name="calendar-day-selected"
-                    initial-month="{{ substr($selectedDate, 0, 7) }}"
-                    size="auto"
-                    min-size="md"
-                    max-preview="2"
-                />
+                {{-- La llave cambia cuando cambian las citas; así el calendario (Alpine) se vuelve a montar con los eventos nuevos. --}}
+                <div wire:key="schedule-calendar-{{ md5(json_encode($events)) }}">
+                    <x-calendar
+                        label="Calendario mensual"
+                        :events="$events"
+                        event-name="calendar-day-selected"
+                        initial-month="{{ substr($selectedDate, 0, 7) }}"
+                        size="auto"
+                        min-size="md"
+                        max-preview="2"
+                    />
+                </div>
             </flux:card>
             @error('selectedDate')
                 <flux:error>{{ $message }}</flux:error>
@@ -267,7 +270,76 @@
             <flux:text>Esta cita se registrará como confirmada por recepción y ocupará el horario global de la clínica.
             </flux:text>
 
-            @if ($selectedBookingPatient)
+            @can('patients.create')
+                <div class="flex gap-2">
+                    <flux:button type="button" size="sm" :variant="$bookingMode === 'existente' ? 'primary' : 'ghost'" wire:click="setBookingMode('existente')">Paciente existente</flux:button>
+                    <flux:button type="button" size="sm" :variant="$bookingMode === 'nuevo' ? 'primary' : 'ghost'" wire:click="setBookingMode('nuevo')">Paciente nuevo</flux:button>
+                </div>
+            @endcan
+
+            @if ($bookingMode === 'nuevo')
+                <div class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <flux:heading size="sm">Datos del paciente nuevo</flux:heading>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input label="Nombres *" wire:model.live.debounce.400ms="bookingNewPatient.nombres" />
+                        <flux:input label="Apellidos *" wire:model.live.debounce.400ms="bookingNewPatient.apellidos" />
+                        <flux:input label="Teléfono *" type="tel" mask="9999-9999" maxlength="9" placeholder="0000-0000" wire:model.live.debounce.400ms="bookingNewPatient.telefono" />
+                        <flux:input label="Correo *" type="email" wire:model.live.debounce.400ms="bookingNewPatient.email" />
+                        <flux:input label="DPI" wire:model.live.debounce.400ms="bookingNewPatient.numero_dpi" />
+                        <flux:input label="Fecha de nacimiento" type="date" wire:model="bookingNewPatient.fecha_nacimiento" />
+                        <flux:select label="Sexo *" wire:model="bookingNewPatient.sexo">
+                            <flux:select.option value="otro">No especificado</flux:select.option>
+                            <flux:select.option value="F">Femenino</flux:select.option>
+                            <flux:select.option value="M">Masculino</flux:select.option>
+                        </flux:select>
+                        <flux:select label="Estado civil" wire:model="bookingNewPatient.estado_civil">
+                            <flux:select.option value="">No especificado</flux:select.option>
+                            @foreach (\App\Models\Paciente::estadosCiviles() as $estado)
+                                <flux:select.option value="{{ $estado }}">{{ $estado }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        <flux:select label="Religión" wire:model="bookingNewPatient.religion">
+                            <flux:select.option value="">No especificado</flux:select.option>
+                            @foreach (\App\Models\Paciente::religiones() as $religion)
+                                <flux:select.option value="{{ $religion }}">{{ $religion }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        <flux:input label="Teléfono de emergencia" type="tel" mask="9999-9999" maxlength="9" placeholder="0000-0000" wire:model="bookingNewPatient.telefono_emergencia" />
+                        <flux:input label="Ocupación" wire:model="bookingNewPatient.ocupacion" />
+                        <flux:input label="Dirección" wire:model="bookingNewPatient.direccion" />
+                    </div>
+                    @foreach (['nombres', 'apellidos', 'telefono', 'email', 'numero_dpi', 'fecha_nacimiento', 'sexo', 'estado_civil', 'religion', 'telefono_emergencia', 'direccion', 'ocupacion'] as $field)
+                        <flux:error name="bookingNewPatient.{{ $field }}" />
+                    @endforeach
+
+                    @if ($this->bookingMatches->isNotEmpty())
+                        <flux:callout variant="warning" icon="exclamation-triangle">
+                            <flux:callout.heading>Posibles pacientes ya registrados</flux:callout.heading>
+                            <flux:callout.text>Si es la misma persona, úsala para no duplicar el expediente.</flux:callout.text>
+                        </flux:callout>
+                        <div class="space-y-1 rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
+                            @foreach ($this->bookingMatches as $match)
+                                <div class="flex items-center justify-between gap-2 rounded-md p-2" wire:key="booking-match-{{ $match->id }}">
+                                    <div>
+                                        <div class="font-medium">{{ $match->nombre_completo }}</div>
+                                        <div class="text-sm text-zinc-500">
+                                            {{ $match->numero_dpi ?: 'Sin DPI' }} · {{ $match->telefono ?: 'Sin teléfono' }}
+                                        </div>
+                                    </div>
+                                    <flux:button type="button" size="sm" wire:click="useMatchedPatient({{ $match->id }})">
+                                        Usar este paciente
+                                    </flux:button>
+                                </div>
+                            @endforeach
+                        </div>
+                        <flux:checkbox
+                            wire:model="bookingConfirmDistinct"
+                            label="Confirmo que es otra persona y deseo crear un nuevo registro"
+                        />
+                        <flux:error name="bookingConfirmDistinct" />
+                    @endif
+                </div>
+            @elseif ($selectedBookingPatient)
                 <div
                     class="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                     <div>

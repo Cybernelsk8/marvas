@@ -14,8 +14,13 @@ use Illuminate\Support\Facades\DB;
 
 class AppointmentManagementService
 {
+    /**
+     * Crea una cita confirmada para un paciente existente o, si se pasa `$nuevoPaciente`
+     * (datos ya normalizados), crea paciente, expediente y cita en la misma transacción.
+     * El paciente nuevo se crea al final, solo si sede, asignación y horario son válidos.
+     */
     public function createDirect(
-        int $pacienteId,
+        ?int $pacienteId,
         int $sucursalId,
         int $userId,
         int $profesionalId,
@@ -23,6 +28,7 @@ class AppointmentManagementService
         string $tipoCita,
         CarbonInterface $inicio,
         ?string $notasRecepcion = null,
+        ?array $nuevoPaciente = null,
     ): string {
         if (! in_array($tipoCita, ['primera_vez', 'seguimiento', 'control', 'evaluacion_integral', 'procedimiento'], true)) {
             return 'tipo_no_disponible';
@@ -37,6 +43,7 @@ class AppointmentManagementService
             $tipoCita,
             $inicio,
             $notasRecepcion,
+            $nuevoPaciente,
         ): string {
             $sucursalActiva = Sucursal::query()
                 ->whereKey($sucursalId)
@@ -48,16 +55,19 @@ class AppointmentManagementService
                 return 'sede_no_disponible';
             }
 
-            $patient = Paciente::query()
-                ->whereKey($pacienteId)
-                ->where('activo', true)
-                ->whereNull('fusionado_en_paciente_id')
-                ->lockForUpdate()
-                ->first();
-            $expediente = $patient?->expediente()->lockForUpdate()->first();
+            $expediente = null;
+            if ($nuevoPaciente === null) {
+                $patient = Paciente::query()
+                    ->whereKey($pacienteId)
+                    ->where('activo', true)
+                    ->whereNull('fusionado_en_paciente_id')
+                    ->lockForUpdate()
+                    ->first();
+                $expediente = $patient?->expediente()->lockForUpdate()->first();
 
-            if (! $expediente) {
-                return 'paciente_no_disponible';
+                if (! $expediente) {
+                    return 'paciente_no_disponible';
+                }
             }
 
             $configuration = app(ClinicAvailabilityService::class)->configuration(lockForUpdate: true);
@@ -79,6 +89,10 @@ class AppointmentManagementService
                 || ! $availability->isSlotAllowed($inicio, $duration, $configuration)
                 || Cita::existeTraslapeGlobal($inicio, $end)) {
                 return 'no_disponible';
+            }
+
+            if ($nuevoPaciente !== null) {
+                $expediente = app(PatientRegistrationService::class)->create($nuevoPaciente, $userId)->expediente;
             }
 
             $appointment = $expediente->citas()->create([

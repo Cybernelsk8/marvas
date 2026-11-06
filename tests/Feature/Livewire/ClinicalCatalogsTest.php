@@ -206,6 +206,75 @@ class ClinicalCatalogsTest extends TestCase
         ]);
     }
 
+    public function test_reception_creates_a_new_patient_and_appointment_in_one_step(): void
+    {
+        $branch = Sucursal::query()->firstOrFail();
+        $evaluator = $branch->evaluadorMbi()->firstOrFail()->profesional;
+        $mbi = Especialidad::query()->where('slug', 'evaluacion-mbi')->firstOrFail();
+        $date = $this->nextWeekday();
+
+        $component = Livewire::actingAs($this->receptionist)->test(Schedule::class);
+        $component->call('prepareBooking')
+            ->call('setBookingMode', 'nuevo')
+            ->set('bookingNewPatient.nombres', 'MARIA')
+            ->set('bookingNewPatient.apellidos', 'lópez')
+            ->set('bookingNewPatient.telefono', '48840150')
+            ->set('bookingNewPatient.email', 'Maria@Example.com')
+            ->set('bookingNewPatient.estado_civil', 'Casado')
+            ->set('bookingDate', $date->toDateString())
+            ->set('bookingTime', '09:00')
+            ->set('bookingBranchId', (string) $branch->id)
+            ->set('bookingProfessionalId', (string) $evaluator->id)
+            ->set('bookingSpecialtyId', (string) $mbi->id)
+            ->call('createDirectAppointment')
+            ->assertHasNoErrors();
+
+        $patient = Paciente::query()->where('email', 'maria@example.com')->firstOrFail();
+        $this->assertSame('Maria López', $patient->nombre_completo);
+        $this->assertSame('4884-0150', $patient->telefono);
+        $this->assertDatabaseHas('citas', ['expediente_id' => $patient->expediente->id, 'estado' => 'confirmada']);
+        $this->assertDatabaseHas('auditoria', ['tabla_afectada' => 'pacientes', 'accion' => 'crear', 'registro_id' => $patient->id]);
+    }
+
+    public function test_new_patient_from_schedule_requires_confirming_possible_duplicates_and_rolls_back_on_conflict(): void
+    {
+        $branch = Sucursal::query()->firstOrFail();
+        $evaluator = $branch->evaluadorMbi()->firstOrFail()->profesional;
+        $mbi = Especialidad::query()->where('slug', 'evaluacion-mbi')->firstOrFail();
+        $date = $this->nextWeekday();
+        $existing = Paciente::create(['nombres' => 'Ana', 'apellidos' => 'Pérez', 'telefono' => '5555-0000', 'activo' => true]);
+        $existing->expediente()->create();
+
+        $fill = fn ($c) => $c->call('prepareBooking')
+            ->call('setBookingMode', 'nuevo')
+            ->set('bookingNewPatient.nombres', 'Ana')
+            ->set('bookingNewPatient.apellidos', 'Pérez')
+            ->set('bookingNewPatient.telefono', '5555-0000')
+            ->set('bookingNewPatient.email', 'ana2@example.com')
+            ->set('bookingDate', $date->toDateString())
+            ->set('bookingTime', '09:00')
+            ->set('bookingBranchId', (string) $branch->id)
+            ->set('bookingProfessionalId', (string) $evaluator->id)
+            ->set('bookingSpecialtyId', (string) $mbi->id);
+
+        $component = $fill(Livewire::actingAs($this->receptionist)->test(Schedule::class));
+        $component->call('createDirectAppointment')->assertHasErrors('bookingConfirmDistinct');
+        $this->assertSame(1, Paciente::query()->count());
+
+        // Ocupa el horario y confirma que es otra persona: el paciente nuevo no debe quedar guardado.
+        $start = Carbon::parse($date->toDateString().' 09:00');
+        $existing->expediente->citas()->create([
+            'fecha_hora_inicio' => $start,
+            'fecha_hora_fin' => $start->copy()->addHour(),
+            'tipo_cita' => 'seguimiento',
+            'estado' => 'confirmada',
+        ]);
+        $component->set('bookingConfirmDistinct', true)
+            ->call('createDirectAppointment')
+            ->assertHasErrors('bookingTime');
+        $this->assertSame(1, Paciente::query()->count());
+    }
+
     public function test_direct_appointment_rechecks_global_slot_conflicts(): void
     {
         $branch = Sucursal::query()->firstOrFail();
