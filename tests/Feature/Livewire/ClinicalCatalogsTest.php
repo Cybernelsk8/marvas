@@ -132,6 +132,37 @@ class ClinicalCatalogsTest extends TestCase
             ->assertSee($specialty->nombre);
     }
 
+    public function test_professional_form_assigns_and_replaces_the_branch_mbi_evaluator(): void
+    {
+        $branch = Sucursal::query()->firstOrFail();
+        $mbi = Especialidad::query()->where('slug', 'evaluacion-mbi')->firstOrFail();
+        $other = Especialidad::query()->where('slug', 'homeopatia')->firstOrFail();
+
+        $create = function (string $name, Especialidad $specialty, array $mbiBranches) use ($branch) {
+            return Livewire::actingAs($this->sysadmin)
+                ->test(Professionals::class)
+                ->set('userId', (string) User::factory()->create()->id)
+                ->set('nombreCompleto', $name)
+                ->set('branchIds', [(string) $branch->id])
+                ->set('primaryBranchId', (string) $branch->id)
+                ->set('specialtyIds', [(string) $specialty->id])
+                ->set('primarySpecialtyId', (string) $specialty->id)
+                ->set('mbiBranchIds', $mbiBranches)
+                ->call('save');
+        };
+
+        $create('No evaluador', $other, [(string) $branch->id])->assertHasErrors('mbiBranchIds');
+
+        $create('Evaluador uno', $mbi, [(string) $branch->id])->assertHasNoErrors();
+        $first = Profesional::query()->where('nombre_completo', 'Evaluador uno')->firstOrFail();
+        $this->assertDatabaseHas('sucursal_evaluadores_mbi', ['sucursal_id' => $branch->id, 'profesional_id' => $first->id]);
+
+        $create('Evaluador dos', $mbi, [(string) $branch->id])->assertHasNoErrors();
+        $second = Profesional::query()->where('nombre_completo', 'Evaluador dos')->firstOrFail();
+        $this->assertDatabaseHas('sucursal_evaluadores_mbi', ['sucursal_id' => $branch->id, 'profesional_id' => $second->id]);
+        $this->assertDatabaseMissing('sucursal_evaluadores_mbi', ['profesional_id' => $first->id]);
+    }
+
     public function test_reception_can_create_a_confirmed_appointment_for_an_existing_patient(): void
     {
         $branch = Sucursal::query()->firstOrFail();

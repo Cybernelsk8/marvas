@@ -50,6 +50,12 @@ class Profesional extends Model
             ->withPivot('es_principal');
     }
 
+    /** Sedes donde este profesional es el evaluador MBI asignado. */
+    public function sedesEvaluadorMbi(): HasMany
+    {
+        return $this->hasMany(SucursalEvaluadorMbi::class);
+    }
+
     public function citas(): HasMany
     {
         return $this->hasMany(Cita::class);

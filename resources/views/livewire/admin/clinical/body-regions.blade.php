@@ -90,7 +90,7 @@
                         },
                         undo() { this.set(this.pts().slice(0, -1)) },
                         clear() { this.set([]) },
-                        box() { return $wire.vista === 'posterior' ? '585 45 460 1260' : '95 45 580 1260' },
+                        box() { return $wire.vista === 'posterior' ? '540 0 582 1402' : '0 0 640 1402' },
                     }"
                     x-effect="if (!lados().includes(lado)) lado = lados()[0]"
                 >
@@ -106,7 +106,8 @@
                         <flux:button type="button" size="sm" variant="ghost" icon="trash" x-on:click="clear()">Limpiar lado</flux:button>
                     </div>
 
-                    <svg x-ref="svg" x-bind:viewBox="box()" class="h-[34rem] w-full cursor-crosshair rounded border border-zinc-200 bg-white dark:border-zinc-700" x-on:click="add($event)">
+                    <div class="max-h-[75vh] overflow-auto rounded border border-zinc-200 bg-white dark:border-zinc-700">
+                    <svg x-ref="svg" x-bind:viewBox="box()" x-bind:style="'width: ' + (box().split(' ')[2] * 0.8) + 'px; aspect-ratio: ' + box().split(' ').slice(2).join(' / ')" class="mx-auto block h-auto max-w-none cursor-crosshair" x-on:click="add($event)">
                         <image href="{{ asset('img/mapa-corporal.png') }}" x="0" y="0" width="1122" height="1402" />
                         @foreach ($this->referencias as $ref)
                             @foreach ($ref['paths'] as $d)
@@ -120,6 +121,7 @@
                             <circle x-bind:cx="p[0]" x-bind:cy="p[1]" r="5" fill="#dc2626" pointer-events="none" />
                         </template>
                     </svg>
+                    </div>
                 </div>
             </div>
 

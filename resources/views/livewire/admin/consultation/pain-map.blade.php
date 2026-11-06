@@ -14,7 +14,7 @@
             class="space-y-3"
             x-data="{
                 hover: null,
-                boxes: { ambas: '95 45 950 1260', anterior: '95 45 580 1260', posterior: '585 45 460 1260' },
+                boxes: { ambas: '0 0 1122 1402', anterior: '0 0 640 1402', posterior: '540 0 582 1402' },
             }"
         >
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -26,9 +26,11 @@
                 <div class="min-h-6 text-sm font-medium" x-text="hover ?? 'Pasa el mouse sobre una región'"></div>
             </div>
 
+            <div class="max-h-[75vh] overflow-auto rounded border border-zinc-200 bg-white dark:border-zinc-700">
             <svg
                 x-bind:viewBox="boxes[$wire.view]"
-                class="mx-auto h-[36rem] w-full rounded border border-zinc-200 bg-white dark:border-zinc-700"
+                x-bind:style="'width: ' + (boxes[$wire.view].split(' ')[2] * 0.8) + 'px; aspect-ratio: ' + boxes[$wire.view].split(' ').slice(2).join(' / ')"
+                class="mx-auto block h-auto max-w-none"
                 role="group"
                 aria-label="Mapa corporal de dolor"
             >
@@ -64,7 +66,8 @@
                         </path>
                     @endforeach
                 @endforeach
-            </svg>
+                </svg>
+            </div>
 
             <div class="flex flex-wrap items-center gap-3 text-xs text-zinc-600 dark:text-zinc-300">
                 @foreach ([0 => 'Sin dolor', 2 => 'Leve', 5 => 'Moderado', 8 => 'Intenso', 10 => 'Muy intenso'] as $eva => $name)

@@ -43,6 +43,13 @@
 
         @interact('sucursales', $row)
             {{ $row->sucursales->pluck('nombre')->join(', ') ?: '' }}
+            @if ($row->sedesEvaluadorMbi->isNotEmpty())
+                <div class="mt-1">
+                    <flux:badge size="sm" color="teal">Evaluador MBI:
+                        {{ $row->sedesEvaluadorMbi->map(fn ($a) => $row->sucursales->firstWhere('id', $a->sucursal_id)?->nombre)->filter()->join(', ') }}
+                    </flux:badge>
+                </div>
+            @endif
         @endinteract
 
         @interact('especialidades', $row)
@@ -178,6 +185,27 @@
                 @endforeach
             </flux:select>
             <flux:error name="primarySpecialtyId" />
+
+            @php
+                $mbiSpecialty = $specialties->firstWhere('slug', 'evaluacion-mbi');
+                $isMbi = $mbiSpecialty && in_array((string) $mbiSpecialty->id, array_map('strval', $specialtyIds), true);
+            @endphp
+            @if ($isMbi)
+                <div class="space-y-2">
+                    <flux:heading size="sm">Evaluador MBI de las sedes</flux:heading>
+                    <flux:text size="sm">Marca las sedes en las que será el evaluador MBI. Cada sede tiene un solo
+                        evaluador: si ya tenía otro, será reemplazado.</flux:text>
+                    @foreach ($branches->whereIn('id', $branchIds) as $branch)
+                        <flux:checkbox
+                            wire:model="mbiBranchIds"
+                            value="{{ $branch->id }}"
+                            label="{{ $branch->nombre }}"
+                        />
+                    @endforeach
+                    <flux:error name="mbiBranchIds" />
+                    <flux:error name="mbiBranchIds.*" />
+                </div>
+            @endif
             <flux:checkbox
                 label="Profesional activo"
                 wire:model="activo"

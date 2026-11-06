@@ -6,6 +6,7 @@ use App\Models\Admin\User;
 use App\Models\Especialidad;
 use App\Models\Profesional;
 use App\Models\Sucursal;
+use App\Models\SucursalEvaluadorMbi;
 use App\Traits\DataTable;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,8 @@ class Professionals extends Component
 
     public array $specialtyIds = [];
 
+    /** IDs de sedes donde el profesional será el evaluador MBI. */
+    public array $mbiBranchIds = [];
     public ?string $primaryBranchId = null;
 
     public ?string $primarySpecialtyId = null;
@@ -76,7 +79,7 @@ class Professionals extends Component
     public function rows()
     {
         return Profesional::query()
-            ->with(['user', 'sucursales', 'especialidades'])
+            ->with(['user', 'sucursales', 'especialidades', 'sedesEvaluadorMbi'])
             ->filterAdvance($this->headers, [
                 'search' => $this->search,
                 'sort' => ['field' => $this->sortBy, 'direction' => $this->sortDirection],
@@ -164,7 +167,17 @@ class Professionals extends Component
             'specialtyIds.*' => ['required', 'integer', 'distinct', 'exists:especialidades,id,activa,1'],
             'primaryBranchId' => ['required', 'integer', Rule::in($this->branchIds)],
             'primarySpecialtyId' => ['required', 'integer', Rule::in($this->specialtyIds)],
+            'mbiBranchIds' => ['array'],
+            'mbiBranchIds.*' => ['integer', 'distinct', Rule::in($this->branchIds)],
         ]);
+
+        $mbiSpecialtyId = Especialidad::query()->where('slug', 'evaluacion-mbi')->where('activa', true)->value('id');
+        $isMbi = $mbiSpecialtyId && in_array((string) $mbiSpecialtyId, array_map('strval', $this->specialtyIds), true);
+        if ($this->mbiBranchIds && (! $isMbi || ! $this->activo)) {
+            $this->addError('mbiBranchIds', 'Para ser evaluador MBI el profesional debe estar activo y tener la especialidad Evaluación MBI.');
+
+            return;
+        }
 
         DB::transaction(function (): void {
             $professional = $this->editingId
@@ -184,6 +197,19 @@ class Professionals extends Component
             $professional->especialidades()->sync(collect($this->specialtyIds)->mapWithKeys(
                 fn(string|int $id): array => [(int) $id => ['es_principal' => (int) $id === (int) $this->primarySpecialtyId]],
             )->all());
+
+            // Quita las sedes desmarcadas y reasigna las marcadas (una sede tiene un solo evaluador MBI).
+            $mbiIds = array_map('intval', $this->mbiBranchIds);
+            SucursalEvaluadorMbi::query()
+                ->where('profesional_id', $professional->id)
+                ->whereNotIn('sucursal_id', $mbiIds)
+                ->delete();
+            foreach ($mbiIds as $branchId) {
+                SucursalEvaluadorMbi::query()->updateOrCreate(
+                    ['sucursal_id' => $branchId],
+                    ['profesional_id' => $professional->id],
+                );
+            }
         });
 
         Flux::modal('professional-form')->close();
@@ -214,6 +240,7 @@ class Professionals extends Component
         $this->specialtyIds = $professional->especialidades->pluck('id')->map(fn(int $id): string => (string) $id)->all();
         $this->primaryBranchId = (string) ($professional->sucursalPrincipal()?->id ?? '');
         $this->primarySpecialtyId = (string) ($professional->especialidadPrincipal()?->id ?? '');
+        $this->mbiBranchIds = $professional->sedesEvaluadorMbi()->pluck('sucursal_id')->map(fn(int $id): string => (string) $id)->all();
         Flux::modal('professional-form')->show();
     }
 
@@ -253,7 +280,7 @@ class Professionals extends Component
             'activo',
             'branchIds',
             'specialtyIds',
-            'primaryBranchId',
+            'mbiBranchIds',
             'primarySpecialtyId',
         ]);
         $this->resetValidation();
@@ -280,7 +307,7 @@ class Professionals extends Component
         return view('livewire.admin.clinical.professionals', [
             'users' => $users->unique('id')->values(),
             'branches' => Sucursal::query()->where('activa', true)->orderBy('nombre')->get(['id', 'nombre']),
-            'specialties' => Especialidad::query()->where('activa', true)->orderBy('nombre')->get(['id', 'nombre']),
+            'specialties' => Especialidad::query()->where('activa', true)->orderBy('nombre')->get(['id', 'nombre', 'slug']),
         ]);
     }
 }
