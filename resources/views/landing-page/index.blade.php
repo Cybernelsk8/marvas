@@ -291,4 +291,6 @@
             </div>
         </div>
     </section>
+
+    <livewire:landing-page.sedes />
 </div>

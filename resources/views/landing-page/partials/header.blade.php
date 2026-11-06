@@ -39,7 +39,7 @@
             </li>
             <li class="nav__item">
                 <a
-                    href="#contacto"
+                    href="{{ route('home') }}#contacto"
                     class="nav__link"
                 >
                     Contacto

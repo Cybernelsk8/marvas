@@ -4,8 +4,8 @@
 
 ## Estado general
 
-- **Última actualización:** 2026-10-24.
-- **Estado de fase:** además de las funciones clínicas y del Evaluador MBI por sede ya descritas, se implementaron CRUD administrativos para sedes, especialidades y profesionales, así como la creación de citas desde Agenda. La cita interna requiere paciente activo con expediente, se revalida en transacción y queda `confirmada`; primera visita exige al Evaluador MBI de la sede. Sysadmin gestiona los catálogos y las cuentas/roles; Recepción y Sysadmin pueden crear citas. Las pruebas enfocadas de catálogos, agenda y seeder pasaron: 27 pruebas y 112 assertions.
+- **Última actualización:** 2026-11-05.
+- **Estado de fase:** además de las funciones clínicas y del Evaluador MBI por sede ya descritas, se implementaron CRUD administrativos para sedes, especialidades y profesionales, así como la creación de citas desde Agenda. La cita interna requiere paciente activo con expediente, se revalida en transacción y queda `confirmada`; primera visita exige al Evaluador MBI de la sede. Sysadmin gestiona los catálogos y las cuentas/roles; Recepción y Sysadmin pueden crear citas. Las pruebas enfocadas de catálogos, agenda y seeder pasaron: 27 pruebas y 112 assertions. La landing incorpora un directorio público de sedes activas (consulta a `sucursales`) con teléfono, WhatsApp y mapa desplegable por card; el footer enlaza Instagram, Facebook y WhatsApp reales desde configuración.
 - **Resumen:** Recepción gestiona solicitudes desde la bandeja o la agenda, asigna sede y profesional al confirmar y filtra por periodo/estado/sede/profesional. Disponibilidad global usa duración configurable; al reprogramar se elige fecha y una hora libre, se permite el horario de la cita actual sin auto-traslape y solo se ofrecen inicios futuros. El directorio usa `DataTable` y `Searchable`; alta/edición y recepción sugieren coincidencias. Reutilizar desde solicitudes o fusionar manualmente requiere confirmación; el sistema traslada relaciones/historial en transacción, deja el origen inactivo y enlazado y audita los cambios y las decisiones sobre conflictos. Las evaluaciones integrales se guardan con auditoría; el cierre no persiste borradores de formularios sin guardar; el IMC se calcula en base de datos; reabrir devuelve la consulta a `en_proceso`.
 - **Importante:** este resumen refleja los archivos observados en el árbol de trabajo al crear la bitácora, no implica que los cambios estén confirmados en Git ni que la aplicación esté desplegada.
 
@@ -26,7 +26,7 @@
 | 8. Inventario y compras | Parcial en datos / pendiente en pantallas | Existen productos, lotes, stock por sucursal, órdenes y movimientos. | Acordar reglas de existencias y construir recepción de compra con movimientos atómicos. |
 | 9. Notificaciones y recordatorios | Parcial en datos / pendiente en pantallas | Hay tabla/modelo de notificaciones, flag de recordatorio en citas e ideas en `IDEAS.txt`; no se encontró envío operativo. | Elegir canal/proveedor y diseñar registro de intentos y seguridad de enlaces. |
 | 10. Dashboard/reportes | Pendiente | `resources/views/dashboard.blade.php` mantiene contenido placeholder. | Definir indicadores por perfil y reemplazar placeholders con datos autorizados. |
-| 11. Landing y reserva | Implementado y validado por pruebas | La landing no presenta selector de tipo y fuerza `primera_vez`; valida fecha futura y horarios/traslapes dentro de una transacción, y crea una cita `solicitada`. El seguimiento se agenda únicamente por personal. | Decidir detección asistida de pacientes existentes y futura asignación de sede/profesional. |
+| 11. Landing y reserva | Implementado y validado por pruebas | La landing no presenta selector de tipo y fuerza `primera_vez`; valida fecha futura y horarios/traslapes dentro de una transacción, y crea una cita `solicitada`. El seguimiento se agenda únicamente por personal. Incluye una sección `#contacto` con las sedes activas, teléfono, WhatsApp y mapa desplegable, y el footer enlaza Instagram, Facebook y WhatsApp. | Validar visualmente la sección de contacto y decidir detección asistida de pacientes existentes y futura asignación de sede/profesional. |
 | 12. Catálogos clínicos administrativos | Implementado y validado automáticamente | Hay páginas Livewire de sedes, especialidades y profesionales. Se conservan historiales al desactivar; profesionales enlazan una cuenta ya existente y sincronizan sede/especialidad principal. Sysadmin gestiona el catálogo y la cuenta/rol fuera del CRUD. | Validar visualmente con Sysadmin. |
 
 ## Implementado u observado en el repositorio
@@ -38,6 +38,9 @@
 - Formulario Livewire `App\Livewire\LandingPage\AgendarCita`.
 - Trait `App\Livewire\Traits\HasCitas` para horarios, eventos, fechas completas y disponibilidad.
 - Prueba unitaria existente: `tests/Unit/Livewire/HasCitasTest.php`.
+- Sección `#contacto` en `resources/views/landing-page/index.blade.php` mediante `<livewire:landing-page.sedes />`, implementada en `App\Livewire\LandingPage\Sedes` y `resources/views/livewire/landing-page/sedes.blade.php`. Lista solo `sucursales.activa = true` con nombre, dirección, teléfono (`tel:`), WhatsApp por sede, “Ver mapa” desplegable (iframe de Google Maps cargado al abrir) y “Cómo llegar”. Si no hay sedes activas muestra un estado vacío con WhatsApp general.
+- Los enlaces se centralizan en `App\Support\ContactLinks` y la configuración pública en `config/marvas.php`, respaldada por variables `MARVAS_*` de `.env`. Los teléfonos locales de 8 dígitos se prefijan con `MARVAS_COUNTRY_CODE` (502) para `tel:` y `wa.me`.
+- El footer usa `MARVAS_INSTAGRAM_URL`, `MARVAS_FACEBOOK_URL` y `MARVAS_WHATSAPP_NUMBER`; cada icono se oculta si su URL no está configurada y los enlaces abren en pestaña nueva con `rel="noopener noreferrer"`.
 
 ### Solicitudes internas
 
@@ -82,7 +85,7 @@
 
 1. **Módulo 4:** validar visualmente cierre y reapertura; definir los formularios clínicos que seguirán.
 2. **Asignaciones:** la confirmación desde agenda/solicitudes asigna sede, profesional y especialidad; si ya hay citas confirmadas con asignación incompleta, la agenda ofrece «Completar asignación» sin cambiar su estado.
-3. **Contacto y recordatorios:** faltan historial de contacto y envío automatizado por un canal aprobado.
+3. **Contacto y recordatorios:** faltan historial de contacto y envío automatizado por un canal aprobado; la landing ya ofrece WhatsApp manual por sede y en el footer.
 4. **Operación administrativa:** verificar visualmente los tres CRUD y el modal de cita interna con usuarios autorizados.
 
 ## Pruebas y verificaciones conocidas
@@ -97,6 +100,7 @@
 | Asignación al confirmar citas | `ScheduleTest` y `SolicitudTest` | Pasaron tras resolver la selección de opciones únicas: 28 pruebas y 123 assertions. |
 | Ficha de pacientes y aislamiento de secciones | `PatientDirectoryTest` y `CatalogosClinicosSeederTest` | Pasaron en la entrega anterior: 16 pruebas y 118 assertions; Pint, caché de vistas Blade y `git diff --check` también pasaron. El usuario confirmó verificación visual. |
 | Catálogos, cita directa y regresión de agenda/seeders | `tests/Feature/Livewire/ClinicalCatalogsTest.php`, `ScheduleTest.php`, `tests/Feature/Database/CatalogosClinicosSeederTest.php` | Pasaron: 27 pruebas y 112 assertions; Pint, PHP lint, caché de vistas y `git diff --check` también pasaron. |
+| Contacto/sedes de la landing y footer social | `tests/Feature/Livewire/LandingSedesTest.php` | Pasaron 4 pruebas y 19 assertions: solo sedes activas, enlaces `tel:`/WhatsApp/Google Maps, estado vacío, footer social y sección `#contacto` en `/`. Suite completa: 157 pruebas, 155 pasaron; los 2 fallos son los casos ajenos ya conocidos de `ClinicalCatalogsTest` (profesionales) y `PatientDirectoryTest` (búsqueda por nombre completo). |
 
 ## Decisiones de negocio
 
@@ -129,6 +133,7 @@
 2. Rediseño de anamnesis/acupuntura/mapa de dolor: Etapas 1 a 4 hechas; falta revisión visual del mapa, ajustar contornos con el trazador y ejecutar `migrate:fresh --seed`. Ver Módulo 4, paso 10.
 3. Definir con el equipo clínico catálogos de sistemas y la selección operativa del Modelo 6+.
 4. Definir historial de contacto y canal de comunicación antes de automatizar confirmaciones/recordatorios.
+5. Validar visualmente la sección `#contacto` de la landing (mapa desplegable, enlaces del footer y responsive) con la sede real cargada.
 
 ## Registro cronológico de sesiones/agentes
 
@@ -551,6 +556,18 @@
 - **Pendientes o bloqueos:** afinar los contornos con el trazador (son aproximados); verificación visual en navegador; el mapa se muestra editable solo con `consultations.edit` (no hay vista de solo lectura en la ficha cerrada).
 - **Próximo paso recomendado:** revisión visual del mapa y ajuste de contornos; luego `migrate:fresh --seed`.
 - **Estado del trabajo:** Etapa 4 completa.
+
+### 2026-11-05 — Landing: sección de contacto con sedes y enlaces sociales
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** convertir la sección de contacto de la landing en un directorio de sedes activas y conectar el footer con los perfiles reales de Instagram, Facebook y WhatsApp.
+- **Cambios realizados:** nueva sección `#contacto` después de “Nosotros”, con una card por sede activa de `sucursales` (nombre, dirección, teléfono como `tel:`, WhatsApp por sede, “Ver mapa” y “Cómo llegar”). El mapa de Google se construye con la dirección escrita, se despliega dentro de la card y el iframe se carga solo al abrirla (Alpine + `x-cloak`); si no hay sedes activas se muestra un estado vacío con WhatsApp general. Los enlaces se generan en `App\Support\ContactLinks` y los datos públicos se leen de `config/marvas.php` (`MARVAS_*`). El footer ahora enlaza Instagram, Facebook y `wa.me` con mensaje precargado, ocultando el icono sin URL configurada. Se corrigió el ancla `#contacto` del header para funcionar desde otras páginas y el `id="nosotros"` duplicado del footer pasó a `id="valores"`.
+- **Archivos modificados:** `config/marvas.php`, `app/Support/ContactLinks.php`, `app/Livewire/LandingPage/Sedes.php`, `resources/views/livewire/landing-page/sedes.blade.php`, `resources/views/landing-page/index.blade.php`, `resources/views/landing-page/partials/foot.blade.php`, `resources/views/landing-page/partials/header.blade.php`, `resources/css/landing-page.css`, `.env`, `.env.example`, `tests/Feature/Livewire/LandingSedesTest.php`, `AVANCES.md`.
+- **Pruebas/comandos y resultado:** `LandingSedesTest` 4/4 (19 assertions); suite completa 155/157; los 2 fallos son `ClinicalCatalogsTest` (profesionales) y `PatientDirectoryTest` (búsqueda), ajenos a esta entrega. `php -l`, Pint, `php artisan view:cache`, `npm.cmd run build` y `git diff --check` pasaron.
+- **Decisiones tomadas (responsable/fecha):** solo se publican sedes con `activa = true`; el mapa usa la dirección escrita (sin latitud/longitud) y se abre dentro de la card; el WhatsApp de cada card usa el teléfono de la sede y el general sale de `MARVAS_WHATSAPP_NUMBER`; los teléfonos locales de 8 dígitos se prefijan con el código de país 502 (usuario/2026-11-05).
+- **Pendientes o bloqueos:** el HTML real de `/` se verificó con una sede cargada (card, `tel:+502…`, WhatsApp, “Cómo llegar” y binding del iframe); falta probar en navegador la apertura del mapa y el responsive. Si se requiere pin exacto, agregar `latitud`/`longitud` a `sucursales` y al CRUD de Sedes.
+- **Próximo paso recomendado:** levantar `composer dev` y revisar la landing en escritorio y móvil con la sede real cargada.
+- **Estado del trabajo:** completo, pendiente la validación visual.
 
 ## Plantilla para registrar una entrega
 
