@@ -55,7 +55,12 @@ class HeaderMap
                 $familyConfig = config("datatable.families.{$family}", []);
 
                 $isRelation = Str::contains($index, '.');
-                $isExcluded = ! empty($header['exclude']) || in_array($index, $excludedIndexes) || $isCount;
+                // Un campo 'search_only' participa en el buscador de texto libre
+                // pero no se ofrece en la tabla ni en el dropdown de filtros/orden.
+                // Útil para columnas visibles dentro de otra celda (p. ej. correo)
+                // o para columnas que solo deben localizar registros.
+                $isSearchOnly = ! empty($header['search_only']);
+                $isExcluded = $isSearchOnly || ! empty($header['exclude']) || in_array($index, $excludedIndexes) || $isCount;
                 $isVirtual = ! empty($header['virtual']) || in_array($index, $definitelyVirtual);
 
                 return [
@@ -75,6 +80,8 @@ class HeaderMap
                     'count_relation' => $isCount ? Str::beforeLast($index, '_count') : null,
                     // is_excluded: fuera del dropdown de filtros/orden.
                     'is_excluded' => $isExcluded,
+                    // is_search_only: solo participa en el buscador de texto libre.
+                    'is_search_only' => $isSearchOnly,
                     // is_virtual: no es una columna real de BD (no debe pedirse en SELECT).
                     'is_virtual' => $isVirtual,
                     'raw' => $header,
@@ -132,7 +139,7 @@ class HeaderMap
     public function fieldsForSearchTerm(string $term): array
     {
         return collect($this->entries)
-            ->reject(fn ($e) => $e['is_excluded'])
+            ->reject(fn ($e) => $e['is_excluded'] && ! $e['is_search_only'])
             ->filter(function ($e) use ($term) {
                 return match ($e['searchable_global']) {
                     true => true,

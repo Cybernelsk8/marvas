@@ -24,6 +24,7 @@ class Professionals extends Component
     public array $headers = [
         ['index' => 'id', 'label' => '#', 'align' => 'center'],
         ['index' => 'nombre_completo', 'label' => 'Profesional'],
+        ['index' => 'user.email', 'label' => 'Correo', 'search_only' => true],
         ['index' => 'sucursales', 'label' => 'Sedes', 'exclude' => true],
         ['index' => 'especialidades', 'label' => 'Especialidades', 'exclude' => true],
         ['index' => 'activo', 'label' => 'Estado', 'exclude' => true],

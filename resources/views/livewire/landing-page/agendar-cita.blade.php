@@ -30,7 +30,9 @@
                                 class="cursor-pointer"
                             />
                         @empty
-                            {{ $fecha ? 'No hay horarios disponibles para esta fecha.' : 'Selecciona una fecha para ver los horarios disponibles.' }}
+                            <span class="text-red-400">
+                                {{ $fecha ? 'No hay horarios disponibles para esta fecha.' : 'Selecciona una fecha para ver los horarios disponibles.' }}
+                            </span>
                         @endforelse
 
                     </flux:radio.group>

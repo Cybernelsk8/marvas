@@ -4,7 +4,7 @@
 
 ## Estado general
 
-- **Última actualización:** 2026-11-05.
+- **Última actualización:** 2026-11-13.
 - **Estado de fase:** además de las funciones clínicas y del Evaluador MBI por sede ya descritas, se implementaron CRUD administrativos para sedes, especialidades y profesionales, así como la creación de citas desde Agenda. La cita interna requiere paciente activo con expediente, se revalida en transacción y queda `confirmada`; primera visita exige al Evaluador MBI de la sede. Sysadmin gestiona los catálogos y las cuentas/roles; Recepción y Sysadmin pueden crear citas. Las pruebas enfocadas de catálogos, agenda y seeder pasaron: 27 pruebas y 112 assertions. La landing incorpora un directorio público de sedes activas (consulta a `sucursales`) con teléfono, WhatsApp y mapa desplegable por card; el footer enlaza Instagram, Facebook y WhatsApp reales desde configuración.
 - **Resumen:** Recepción gestiona solicitudes desde la bandeja o la agenda, asigna sede y profesional al confirmar y filtra por periodo/estado/sede/profesional. Disponibilidad global usa duración configurable; al reprogramar se elige fecha y una hora libre, se permite el horario de la cita actual sin auto-traslape y solo se ofrecen inicios futuros. El directorio usa `DataTable` y `Searchable`; alta/edición y recepción sugieren coincidencias. Reutilizar desde solicitudes o fusionar manualmente requiere confirmación; el sistema traslada relaciones/historial en transacción, deja el origen inactivo y enlazado y audita los cambios y las decisiones sobre conflictos. Las evaluaciones integrales se guardan con auditoría; el cierre no persiste borradores de formularios sin guardar; el IMC se calcula en base de datos; reabrir devuelve la consulta a `en_proceso`.
 - **Importante:** este resumen refleja los archivos observados en el árbol de trabajo al crear la bitácora, no implica que los cambios estén confirmados en Git ni que la aplicación esté desplegada.
@@ -568,6 +568,31 @@
 - **Pendientes o bloqueos:** el HTML real de `/` se verificó con una sede cargada (card, `tel:+502…`, WhatsApp, “Cómo llegar” y binding del iframe); falta probar en navegador la apertura del mapa y el responsive. Si se requiere pin exacto, agregar `latitud`/`longitud` a `sucursales` y al CRUD de Sedes.
 - **Próximo paso recomendado:** levantar `composer dev` y revisar la landing en escritorio y móvil con la sede real cargada.
 - **Estado del trabajo:** completo, pendiente la validación visual.
+
+### 2026-11-05 — Agenda: alta de paciente nuevo y cita confirmada en un paso
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** evitar que Recepción tenga que salir de la Agenda para registrar un paciente nuevo antes de agendar su cita.
+- **Cambios realizados:** el modal de nueva cita de `Schedule` incorpora `bookingMode` (`existente`/`nuevo`) y el formulario `bookingNewPatient`. En modo `nuevo` reutiliza `PatientRegistrationService::normalize/create`; `PatientMatchService` advierte coincidencias y `useMatchedPatient` permite cambiar al paciente existente. La cita y el paciente se confirman en una sola transacción: si falla la validación de sede, asignación u horario no se crea el paciente, y si la cita falla después del alta, la transacción revierte ambos. La cita resultante queda `confirmada` y respeta las reglas de primera visita/Evaluador MBI.
+- **Archivos modificados:** `app/Livewire/Admin/Schedule.php`, `app/Services/AppointmentManagementService.php`, `app/Services/PatientRegistrationService.php`, `resources/views/livewire/admin/schedule.blade.php`, `resources/views/livewire/admin/patient/index.blade.php`, `tests/Feature/Livewire/ClinicalCatalogsTest.php`.
+- **Pruebas/comandos y resultado:** `ClinicalCatalogsTest` incluye 2 pruebas nuevas (alta de paciente + cita en un paso, y rechazo/rollback con duplicados), además de las pruebas de cita existentes; pasan junto con el directorio de pacientes.
+- **Decisiones tomadas (responsable/fecha):** el alta de paciente desde Agenda exige nombres, apellidos, teléfono, correo y sexo; el DPI es opcional y único; ante coincidencias se debe elegir explícitamente paciente existente o confirmar uno nuevo (usuario/2026-11-05).
+- **Pendientes o bloqueos:** validación visual del modal en Agenda.
+- **Próximo paso recomendado:** probar el flujo completo en navegador con un paciente nuevo y con un posible duplicado.
+- **Estado del trabajo:** completo, pendiente la validación visual.
+
+### 2026-11-13 — Búsqueda por correo en directorio de pacientes y profesionales
+
+- **Agente/persona:** Copilot.
+- **Objetivo:** corregir los 2 fallos de la suite que impedían buscar por correo en el directorio de pacientes y en el catálogo de profesionales.
+- **Cambios realizados:** `HeaderMap` admite el flag `search_only` en un header: el campo participa en el buscador de texto libre, pero no se pinta como columna ni aparece en el dropdown de filtros/orden. `Patient/Index` declara `email` y `Professionals` declara `user.email` con ese flag. La búsqueda por nombre completo, DPI, teléfono y correo vuelve a funcionar; ordenar por `user.email` también queda disponible si se solicita.
+- **Archivos modificados:** `app/Support/DataTable/HeaderMap.php`, `app/Livewire/Admin/Patient/Index.php`, `app/Livewire/Admin/Clinical/Professionals.php`, `AVANCES.md`.
+- **Pruebas/comandos y resultado:** `PatientDirectoryTest` + `ClinicalCatalogsTest` 25/25 (145 assertions); suite completa 159/159 (723 assertions).
+- **Decisiones tomadas (responsable/fecha):** el correo se busca pero no se agrega como columna visible porque la vista ya lo muestra dentro de la celda del paciente/profesional (Copilot/2026-11-13).
+- **Pendientes o bloqueos:** ninguno.
+- **Próximo paso recomendado:** continuar con el Módulo 5 (clasificación, plan terapéutico y evolución).
+- **Estado del trabajo:** completo.
+
 
 ## Plantilla para registrar una entrega
 

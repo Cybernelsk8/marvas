@@ -48,6 +48,7 @@ class Index extends Component
         ['index' => 'expediente.id', 'label' => 'Expediente #', 'type' => 'numeric'],
         ['index' => 'nombre_completo', 'label' => 'Paciente'],
         ['index' => 'numero_dpi', 'label' => 'DPI'],
+        ['index' => 'email', 'label' => 'Correo', 'search_only' => true],
         ['index' => 'activo', 'label' => 'Estado', 'type' => 'boolean'],
         ['index' => 'actions', 'label' => ''],
     ];
