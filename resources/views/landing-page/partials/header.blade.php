@@ -1,4 +1,9 @@
-<header class="header">
+<header
+    class="header"
+    x-data="{ open: false }"
+    @keydown.escape.window="open = false"
+    @click.outside="open = false"
+>
     <div class="header__brand">
         <img
             src="{{ asset('img/logo.png') }}"
@@ -10,6 +15,9 @@
     <nav
         class="nav"
         id="nav"
+        aria-label="Navegación principal"
+        :class="{ 'nav--open': open }"
+        @click="open = false"
     >
         <ul class="nav__list">
             <li class="nav__item">
@@ -46,6 +54,25 @@
                 </a>
             </li>
         </ul>
+
+        <div class="nav__actions">
+            <flux:button
+                icon="calendar"
+                iconTrailing="chevron-right"
+                class="btn--primary w-full justify-center"
+                href="{{ route('agendar-cita') }}"
+            >
+                SOLICITA TU CITA
+            </flux:button>
+            <flux:button
+                icon="arrow-right-end-on-rectangle"
+                class="btn--primary w-full justify-center"
+                :href="route('login')"
+                wire:navigate
+            >
+                INICIAR SESIÓN
+            </flux:button>
+        </div>
     </nav>
 
     <div>
@@ -70,12 +97,22 @@
         class="header__toggle"
         id="navToggle"
         aria-label="Abrir menú"
-        aria-expanded="false"
+        :aria-label="open ? 'Cerrar menú' : 'Abrir menú'"
+        :aria-expanded="open.toString()"
         aria-controls="nav"
+        @click="open = !open"
     >
         <flux:icon
             name="menu"
             class="header__toggle-icon"
+            x-show="!open"
+            x-cloak
+        />
+        <flux:icon
+            name="x-mark"
+            class="header__toggle-icon"
+            x-show="open"
+            x-cloak
         />
     </button>
 </header>
