@@ -20,6 +20,8 @@ class Sucursal extends Model
         'nombre',
         'direccion',
         'telefono',
+        'latitud',
+        'longitud',
         'activa',
     ];
 
@@ -28,6 +30,8 @@ class Sucursal extends Model
         return [
             'activa' => 'boolean',
             'telefono' => Telefono::class,
+            'latitud' => 'decimal:7',
+            'longitud' => 'decimal:7',
         ];
     }
 

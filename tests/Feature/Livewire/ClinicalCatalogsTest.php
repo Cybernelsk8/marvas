@@ -71,6 +71,51 @@ class ClinicalCatalogsTest extends TestCase
         $this->assertDatabaseHas('especialidades', ['id' => $specialty->id, 'activa' => false]);
     }
 
+    public function test_sysadmin_can_save_and_update_branch_coordinates(): void
+    {
+        Livewire::actingAs($this->sysadmin)
+            ->test(Branches::class)
+            ->set('nombre', 'Sede con coordenadas')
+            ->set('latitud', '14.6343000')
+            ->set('longitud', '-90.5123000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $branch = Sucursal::query()->where('nombre', 'Sede con coordenadas')->firstOrFail();
+        $this->assertDatabaseHas('sucursales', [
+            'id' => $branch->id,
+            'latitud' => '14.6343000',
+            'longitud' => '-90.5123000',
+        ]);
+
+        Livewire::actingAs($this->sysadmin)
+            ->test(Branches::class)
+            ->call('edit', $branch->id)
+            ->assertSet('latitud', '14.6343000')
+            ->assertSet('longitud', '-90.5123000');
+    }
+
+    public function test_branch_coordinates_validate_ranges_and_require_a_complete_pair(): void
+    {
+        Livewire::actingAs($this->sysadmin)
+            ->test(Branches::class)
+            ->set('nombre', 'Sede con latitud inválida')
+            ->set('latitud', '100')
+            ->set('longitud', '-90.5123')
+            ->call('save')
+            ->assertHasErrors('latitud');
+
+        Livewire::actingAs($this->sysadmin)
+            ->test(Branches::class)
+            ->set('nombre', 'Sede con coordenada parcial')
+            ->set('latitud', '14.6343')
+            ->call('save')
+            ->assertHasErrors('longitud');
+
+        $this->assertDatabaseMissing('sucursales', ['nombre' => 'Sede con latitud inválida']);
+        $this->assertDatabaseMissing('sucursales', ['nombre' => 'Sede con coordenada parcial']);
+    }
+
     public function test_specialty_slug_must_be_unique(): void
     {
         $existing = Especialidad::query()->firstOrFail();

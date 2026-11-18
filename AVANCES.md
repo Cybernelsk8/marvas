@@ -4,8 +4,8 @@
 
 ## Estado general
 
-- **Última actualización:** 2026-11-13.
-- **Estado de fase:** además de las funciones clínicas y del Evaluador MBI por sede ya descritas, se implementaron CRUD administrativos para sedes, especialidades y profesionales, así como la creación de citas desde Agenda. La cita interna requiere paciente activo con expediente, se revalida en transacción y queda `confirmada`; primera visita exige al Evaluador MBI de la sede. Sysadmin gestiona los catálogos y las cuentas/roles; Recepción y Sysadmin pueden crear citas. Las pruebas enfocadas de catálogos, agenda y seeder pasaron: 27 pruebas y 112 assertions. La landing incorpora un directorio público de sedes activas (consulta a `sucursales`) con teléfono, WhatsApp y mapa desplegable por card; el footer enlaza Instagram, Facebook y WhatsApp reales desde configuración.
+- **Última actualización:** 2026-11-18.
+- **Estado de fase:** además de las funciones clínicas y del Evaluador MBI por sede ya descritas, se completó el rediseño de la anamnesis integral, la acupuntura y el mapa de dolor (Etapas 1–4, 2026-10-26/27; el informe por sistemas es el inciso 04 y el test de intoxicación se eliminó). También se implementaron CRUD administrativos para sedes, especialidades y profesionales, así como la creación de citas desde Agenda. La cita interna requiere paciente activo con expediente, se revalida en transacción y queda `confirmada`; primera visita exige al Evaluador MBI de la sede. Sysadmin gestiona los catálogos y las cuentas/roles; Recepción y Sysadmin pueden crear citas. La suite completa pasó con 164 pruebas y 745 assertions (2026-11-18); las pruebas enfocadas de sedes y catálogos pasaron con 20 pruebas y 92 assertions. La landing incorpora un directorio público de sedes activas (consulta a `sucursales`) con teléfono, WhatsApp y mapa desplegable por card; el mapa y «Cómo llegar» usan coordenadas por sede cuando ambas están capturadas y caen a la dirección cuando no. El footer enlaza Instagram, Facebook y WhatsApp reales desde configuración.
 - **Resumen:** Recepción gestiona solicitudes desde la bandeja o la agenda, asigna sede y profesional al confirmar y filtra por periodo/estado/sede/profesional. Disponibilidad global usa duración configurable; al reprogramar se elige fecha y una hora libre, se permite el horario de la cita actual sin auto-traslape y solo se ofrecen inicios futuros. El directorio usa `DataTable` y `Searchable`; alta/edición y recepción sugieren coincidencias. Reutilizar desde solicitudes o fusionar manualmente requiere confirmación; el sistema traslada relaciones/historial en transacción, deja el origen inactivo y enlazado y audita los cambios y las decisiones sobre conflictos. Las evaluaciones integrales se guardan con auditoría; el cierre no persiste borradores de formularios sin guardar; el IMC se calcula en base de datos; reabrir devuelve la consulta a `en_proceso`.
 - **Importante:** este resumen refleja los archivos observados en el árbol de trabajo al crear la bitácora, no implica que los cambios estén confirmados en Git ni que la aplicación esté desplegada.
 
@@ -19,15 +19,15 @@
 | 1. Solicitudes y recepción | Implementado y validado | `App\Livewire\Solicitud` permite editar datos, asignar sede y Evaluador MBI en primera visita, reprogramar y cancelar. | Hacer prueba visual con usuarios reales; después decidir historial de llamadas y automatización de mensajes. |
 | 2. Agenda y disponibilidad | Implementado y validado automáticamente | `admin.schedule` permite confirmar solicitudes y citas directas. Recepción crea citas confirmadas desde la agenda; el servicio revalida horario global, expediente y asignaciones en transacción. Primera visita requiere Evaluador MBI configurado por sede. | Hacer prueba visual en recepción y atender incidencias operativas. |
 | 3. Pacientes y expediente | Implementado; cierre de módulo pendiente | `/admin/patients` ofrece directorio/ficha y fusión manual; el expediente tiene citas y secciones clínicas, documentos/consentimientos y pagos/paquetes protegidos por permisos. El usuario confirmó visualmente las secciones. | Completar pruebas visuales de integración y cerrar el módulo con el flujo clínico inicial. |
-| 4. Consultas y evaluación | Implementado parcialmente; pruebas dirigidas pasan | La anamnesis integral guarda los incisos 01–06; Acupuntura es individual; el resultado del evaluador y la evaluación MBI se muestran en la ficha. MBI se edita por consulta, guarda listas JSON y audita nombres de campos sin registrar valores clínicos. Cierre/reapertura conservan permisos y comportamiento. | Construir el mapa de dolor y rediseñar la anamnesis integral según la especificación (informe por sistemas ya es el inciso 04; el test de intoxicación se eliminó); definir catálogos clínicos del Modelo 6+ antes de restringir esas selecciones. |
+| 4. Consultas y evaluación | Implementado parcialmente; pruebas dirigidas pasan | Rediseño según la especificación completado en Etapas 1–4 (2026-10-26/27): anamnesis integral con incisos 01–06 y selectores de tres estados, acupuntura con catálogos propios, mapa de dolor SVG con historial y comparación por sesión, e intensidad/zona principal prellenadas desde el EVA máximo. El resultado del evaluador y la evaluación MBI se muestran en la ficha; MBI se edita por consulta, guarda listas JSON y audita nombres de campos sin registrar valores clínicos. Cierre/reapertura conservan permisos y comportamiento. | El usuario validó visualmente cierre, reapertura y mapa de dolor; `migrate:fresh --seed` se ejecutó el 2026-11-18 en base local autorizada. Siguen pendientes el ajuste de contornos con el trazador y definir catálogos clínicos del Modelo 6+ antes de restringir esas selecciones. Detalles menores: exclusividad «Normal»/«Ausente» en pulsos, tabla maestra de 5 elementos, catálogo de puntos de acupuntura, protocolo por confirmar con el terapeuta y vista de solo lectura del mapa en consultas cerradas. |
 | 5. Clasificación y tratamiento | Parcial en datos / pendiente en pantallas | Existen clasificación, plan terapéutico, paquete asociado y evolución en esquema/modelos. | Definir Modelo 6+ con el equipo y crear flujo de clasificación/plan/evolución. |
 | 6. Consentimientos y archivos | Parcial en datos / pendiente en pantallas | Hay plantillas/registros de consentimiento, archivos y campos de trazabilidad. | Definir política legal/de almacenamiento y crear pantallas seguras. |
 | 7. Paquetes, pagos y facturación | Parcial en datos / pendiente en pantallas | Existen paquetes clínicos/paciente, pagos y datos de facturación. | Acordar reglas financieras e implementar catálogo/registro de cobro. |
 | 8. Inventario y compras | Parcial en datos / pendiente en pantallas | Existen productos, lotes, stock por sucursal, órdenes y movimientos. | Acordar reglas de existencias y construir recepción de compra con movimientos atómicos. |
 | 9. Notificaciones y recordatorios | Parcial en datos / pendiente en pantallas | Hay tabla/modelo de notificaciones, flag de recordatorio en citas e ideas en `IDEAS.txt`; no se encontró envío operativo. | Elegir canal/proveedor y diseñar registro de intentos y seguridad de enlaces. |
 | 10. Dashboard/reportes | Pendiente | `resources/views/dashboard.blade.php` mantiene contenido placeholder. | Definir indicadores por perfil y reemplazar placeholders con datos autorizados. |
-| 11. Landing y reserva | Implementado y validado por pruebas | La landing no presenta selector de tipo y fuerza `primera_vez`; valida fecha futura y horarios/traslapes dentro de una transacción, y crea una cita `solicitada`. El seguimiento se agenda únicamente por personal. Incluye una sección `#contacto` con las sedes activas, teléfono, WhatsApp y mapa desplegable, y el footer enlaza Instagram, Facebook y WhatsApp. | Validar visualmente la sección de contacto y decidir detección asistida de pacientes existentes y futura asignación de sede/profesional. |
-| 12. Catálogos clínicos administrativos | Implementado y validado automáticamente | Hay páginas Livewire de sedes, especialidades y profesionales. Se conservan historiales al desactivar; profesionales enlazan una cuenta ya existente y sincronizan sede/especialidad principal. Sysadmin gestiona el catálogo y la cuenta/rol fuera del CRUD. | Validar visualmente con Sysadmin. |
+| 11. Landing y reserva | Implementado y validado por pruebas | La landing no presenta selector de tipo y fuerza `primera_vez`; valida fecha futura y horarios/traslapes dentro de una transacción, y crea una cita `solicitada`. El seguimiento se agenda únicamente por personal. Incluye una sección `#contacto` con las sedes activas, teléfono, WhatsApp y mapa desplegable, y el footer enlaza Instagram, Facebook y WhatsApp. Con coordenadas capturadas, el mapa y «Cómo llegar» usan el pin exacto; si falta alguna, caen a la dirección escrita. | Validar visualmente el pin en la sección de contacto y capturar las coordenadas reales; decidir detección asistida de pacientes existentes y futura asignación de sede/profesional. |
+| 12. Catálogos clínicos administrativos | Implementado y validado | Hay páginas Livewire de sedes, especialidades y profesionales. Se conservan historiales al desactivar; profesionales enlazan una cuenta ya existente y sincronizan sede/especialidad principal. Sysadmin gestiona el catálogo y la cuenta/rol fuera del CRUD. El CRUD de sedes captura `latitud`/`longitud` opcionales en pareja con validación de rangos. | Sin pendiente inmediato: el usuario validó visualmente los tres CRUD. |
 
 ## Implementado u observado en el repositorio
 
@@ -38,8 +38,8 @@
 - Formulario Livewire `App\Livewire\LandingPage\AgendarCita`.
 - Trait `App\Livewire\Traits\HasCitas` para horarios, eventos, fechas completas y disponibilidad.
 - Prueba unitaria existente: `tests/Unit/Livewire/HasCitasTest.php`.
-- Sección `#contacto` en `resources/views/landing-page/index.blade.php` mediante `<livewire:landing-page.sedes />`, implementada en `App\Livewire\LandingPage\Sedes` y `resources/views/livewire/landing-page/sedes.blade.php`. Lista solo `sucursales.activa = true` con nombre, dirección, teléfono (`tel:`), WhatsApp por sede, “Ver mapa” desplegable (iframe de Google Maps cargado al abrir) y “Cómo llegar”. Si no hay sedes activas muestra un estado vacío con WhatsApp general.
-- Los enlaces se centralizan en `App\Support\ContactLinks` y la configuración pública en `config/marvas.php`, respaldada por variables `MARVAS_*` de `.env`. Los teléfonos locales de 8 dígitos se prefijan con `MARVAS_COUNTRY_CODE` (502) para `tel:` y `wa.me`.
+- Sección `#contacto` en `resources/views/landing-page/index.blade.php` mediante `<livewire:landing-page.sedes />`, implementada en `App\Livewire\LandingPage\Sedes` y `resources/views/livewire/landing-page/sedes.blade.php`. Lista solo `sucursales.activa = true` con nombre, dirección, teléfono (`tel:`), WhatsApp por sede, “Ver mapa” desplegable (iframe de Google Maps cargado al abrir) y “Cómo llegar”. Si ambas coordenadas están capturadas, el mapa y las indicaciones apuntan al pin exacto; si falta alguna, se usa la dirección escrita. El mapa funciona incluso sin dirección cuando hay coordenadas válidas. Si no hay sedes activas muestra un estado vacío con WhatsApp general.
+- Los enlaces se centralizan en `App\Support\ContactLinks` y la configuración pública en `config/marvas.php`, respaldada por variables `MARVAS_*` de `.env`. `ContactLinks::coordinates()` normaliza la pareja `latitud,longitud` y `mapEmbed()`/`directions()` la prefieren antes que la dirección, conservando sus firmas originales. Los teléfonos locales de 8 dígitos se prefijan con `MARVAS_COUNTRY_CODE` (502) para `tel:` y `wa.me`.
 - El footer usa `MARVAS_INSTAGRAM_URL`, `MARVAS_FACEBOOK_URL` y `MARVAS_WHATSAPP_NUMBER`; cada icono se oculta si su URL no está configurada y los enlaces abren en pestaña nueva con `rel="noopener noreferrer"`.
 
 ### Solicitudes internas
@@ -65,6 +65,7 @@
 - `DatabaseSeeder` invoca `AdminAccessSeeder` y `CatalogosClinicosSeeder`; **no ejecutar el `DatabaseSeeder` completo en una base compartida o productiva**: conserva lógica anterior no idempotente y datos de desarrollo. Los nuevos seeders agrupados no hacen seguros los seeders preexistentes.
 - La disponibilidad ya no lee la configuración antigua `horarios_citas`; las reglas activas se almacenan en `disponibilidad_global_citas`. `settings.value` es `TEXT` desde `2026_10_09_213107_create_settings_table.php`, incluida la capacidad de guardar cierres.
 - El 2026-10-22, seis migraciones incrementales de columnas/ajustes se consolidaron en sus `create_*`. La base local se reconstruyó con `migrate:fresh --seed`; las referencias a migraciones incrementales en entradas cronológicas anteriores describen el momento en que se introdujeron, no archivos que sigan presentes.
+- El 2026-11-18 se agregaron `latitud` y `longitud` (`decimal(10,7)`, opcionales) a la migración `create_sucursales_table` y se volvió a ejecutar `migrate:fresh --seed` en la base MariaDB local autorizada; antes se respaldó `sucursales` en `/tmp/opencode/sucursales_antes_coordenadas_20261118.sql`. El seeder demo conserva la dirección y el teléfono reales configurados por el usuario; las coordenadas quedan vacías hasta capturarse desde el CRUD.
 
 ### Administración y plataforma
 
@@ -83,10 +84,10 @@
 
 ## Inconsistencias/pendientes inmediatos
 
-1. **Módulo 4:** validar visualmente cierre y reapertura; definir los formularios clínicos que seguirán.
+1. **Módulo 4:** definir catálogos del Modelo 6+ y los detalles menores de acupuntura (exclusividad «Normal»/«Ausente», tabla de 5 elementos, puntos y protocolo). El usuario validó visualmente cierre, reapertura y mapa de dolor; `migrate:fresh --seed` se ejecutó en base local autorizada el 2026-11-18.
 2. **Asignaciones:** la confirmación desde agenda/solicitudes asigna sede, profesional y especialidad; si ya hay citas confirmadas con asignación incompleta, la agenda ofrece «Completar asignación» sin cambiar su estado.
 3. **Contacto y recordatorios:** faltan historial de contacto y envío automatizado por un canal aprobado; la landing ya ofrece WhatsApp manual por sede y en el footer.
-4. **Operación administrativa:** verificar visualmente los tres CRUD y el modal de cita interna con usuarios autorizados.
+4. **Operación administrativa:** validado visualmente por el usuario (tres CRUD y modal de cita interna con alta de paciente y detección de duplicados); sin pendiente inmediato.
 
 ## Pruebas y verificaciones conocidas
 
@@ -100,7 +101,7 @@
 | Asignación al confirmar citas | `ScheduleTest` y `SolicitudTest` | Pasaron tras resolver la selección de opciones únicas: 28 pruebas y 123 assertions. |
 | Ficha de pacientes y aislamiento de secciones | `PatientDirectoryTest` y `CatalogosClinicosSeederTest` | Pasaron en la entrega anterior: 16 pruebas y 118 assertions; Pint, caché de vistas Blade y `git diff --check` también pasaron. El usuario confirmó verificación visual. |
 | Catálogos, cita directa y regresión de agenda/seeders | `tests/Feature/Livewire/ClinicalCatalogsTest.php`, `ScheduleTest.php`, `tests/Feature/Database/CatalogosClinicosSeederTest.php` | Pasaron: 27 pruebas y 112 assertions; Pint, PHP lint, caché de vistas y `git diff --check` también pasaron. |
-| Contacto/sedes de la landing y footer social | `tests/Feature/Livewire/LandingSedesTest.php` | Pasaron 4 pruebas y 19 assertions: solo sedes activas, enlaces `tel:`/WhatsApp/Google Maps, estado vacío, footer social y sección `#contacto` en `/`. Suite completa: 157 pruebas, 155 pasaron; los 2 fallos son los casos ajenos ya conocidos de `ClinicalCatalogsTest` (profesionales) y `PatientDirectoryTest` (búsqueda por nombre completo). |
+| Contacto/sedes de la landing, coordenadas y footer social | `tests/Feature/Livewire/LandingSedesTest.php` | Enfocado: 20 pruebas y 92 assertions entre sedes y catálogos; las 7 pruebas de sedes cubren solo activas, enlaces `tel:`/WhatsApp/Google Maps, pin por coordenadas en mapa y direcciones, coordenadas sin dirección, pareja incompleta con fallback, estado vacío, footer social y sección `#contacto` en `/`. Suite completa: 164 pruebas y 745 assertions, todas pasaron (2026-11-18). |
 
 ## Decisiones de negocio
 
@@ -118,6 +119,7 @@
 | Cuenta de profesional y reserva interna | Sysadmin crea la cuenta, asigna rol/permisos y luego la vincula al perfil profesional. La cita concertada directamente por recepción queda `confirmada`. | Usuario | 2026-10-24 |
 | Pagos, devoluciones y reglas fiscales | Pendiente de validación administrativa/contable. | Por definir | — |
 | Lotes, caducidad, FEFO y transferencias | Pendiente de validación operativa. | Por definir | — |
+| Precisión del mapa por sede | Dos columnas `latitud`/`longitud` `decimal(10,7)` opcionales en `sucursales`; se usan solo si ambas están completas y se validan por rango (−90…90, −180…180). Si falta alguna, mapa y «Cómo llegar» usan la dirección. Captura desde el CRUD de Sedes; se consolidó en `create_sucursales_table` y se aplicó con `migrate:fresh --seed` en base local autorizada. | Usuario | 2026-11-18 |
 
 ## Trabajo activo
 
@@ -129,11 +131,10 @@
 
 ## Próximos pasos recomendados
 
-1. Terminar la validación automatizada y probar visualmente los CRUD y el modal de cita interna con usuarios autorizados.
-2. Rediseño de anamnesis/acupuntura/mapa de dolor: Etapas 1 a 4 hechas; falta revisión visual del mapa, ajustar contornos con el trazador y ejecutar `migrate:fresh --seed`. Ver Módulo 4, paso 10.
-3. Definir con el equipo clínico catálogos de sistemas y la selección operativa del Modelo 6+.
-4. Definir historial de contacto y canal de comunicación antes de automatizar confirmaciones/recordatorios.
-5. Validar visualmente la sección `#contacto` de la landing (mapa desplegable, enlaces del footer y responsive) con la sede real cargada.
+1. Rediseño de anamnesis/acupuntura/mapa de dolor: Etapas 1 a 4 terminadas (2026-10-27), validación visual confirmada por el usuario y `migrate:fresh --seed` ejecutado el 2026-11-18. Siguen pendientes el ajuste de contornos con el trazador, definir catálogos del Modelo 6+ y los detalles menores de acupuntura antes de restringir selecciones. Ver Módulo 4, paso 10.
+2. Definir con el equipo clínico catálogos de sistemas y la selección operativa del Modelo 6+.
+3. Definir historial de contacto y canal de comunicación antes de automatizar confirmaciones/recordatorios.
+4. Validar visualmente la sección `#contacto` de la landing con el pin por coordenadas (mapa desplegable, «Cómo llegar», enlaces del footer y responsive); capturar las coordenadas reales de cada sede desde el CRUD.
 
 ## Registro cronológico de sesiones/agentes
 
@@ -565,7 +566,7 @@
 - **Archivos modificados:** `config/marvas.php`, `app/Support/ContactLinks.php`, `app/Livewire/LandingPage/Sedes.php`, `resources/views/livewire/landing-page/sedes.blade.php`, `resources/views/landing-page/index.blade.php`, `resources/views/landing-page/partials/foot.blade.php`, `resources/views/landing-page/partials/header.blade.php`, `resources/css/landing-page.css`, `.env`, `.env.example`, `tests/Feature/Livewire/LandingSedesTest.php`, `AVANCES.md`.
 - **Pruebas/comandos y resultado:** `LandingSedesTest` 4/4 (19 assertions); suite completa 155/157; los 2 fallos son `ClinicalCatalogsTest` (profesionales) y `PatientDirectoryTest` (búsqueda), ajenos a esta entrega. `php -l`, Pint, `php artisan view:cache`, `npm.cmd run build` y `git diff --check` pasaron.
 - **Decisiones tomadas (responsable/fecha):** solo se publican sedes con `activa = true`; el mapa usa la dirección escrita (sin latitud/longitud) y se abre dentro de la card; el WhatsApp de cada card usa el teléfono de la sede y el general sale de `MARVAS_WHATSAPP_NUMBER`; los teléfonos locales de 8 dígitos se prefijan con el código de país 502 (usuario/2026-11-05).
-- **Pendientes o bloqueos:** el HTML real de `/` se verificó con una sede cargada (card, `tel:+502…`, WhatsApp, “Cómo llegar” y binding del iframe); falta probar en navegador la apertura del mapa y el responsive. Si se requiere pin exacto, agregar `latitud`/`longitud` a `sucursales` y al CRUD de Sedes.
+- **Pendientes o bloqueos:** el HTML real de `/` se verificó con una sede cargada (card, `tel:+502…`, WhatsApp, “Cómo llegar” y binding del iframe); falta probar en navegador la apertura del mapa y el responsive. **Nota resuelta el 2026-11-18:** se agregaron `latitud`/`longitud` a `sucursales` y al CRUD de Sedes; queda capturar las coordenadas reales y probar el pin en navegador.
 - **Próximo paso recomendado:** levantar `composer dev` y revisar la landing en escritorio y móvil con la sede real cargada.
 - **Estado del trabajo:** completo, pendiente la validación visual.
 
@@ -593,6 +594,29 @@
 - **Próximo paso recomendado:** continuar con el Módulo 5 (clasificación, plan terapéutico y evolución).
 - **Estado del trabajo:** completo.
 
+### 2026-11-18 — Actualización documental de consistencia
+
+- **Agente/persona:** Asistente (OpenCode).
+- **Objetivo:** alinear `AVANCES.md` y `PLANIFICACION.md` con el estado real tras las Etapas 1–4 del rediseño clínico y la suite del 2026-11-13.
+- **Cambios realizados:** en `AVANCES.md` se actualizaron la fecha de última actualización, el estado de fase, la fila del Módulo 4, el pendiente inmediato 1 y el próximo paso 2; en `PLANIFICACION.md` se actualizó la sección «Estado actual» y se dio por cumplida la nota pendiente de la Etapa 2 del Módulo 4 (intensidad alimentada desde el EVA máximo).
+- **Archivos modificados:** `AVANCES.md`, `PLANIFICACION.md`.
+- **Pruebas/comandos y resultado:** no aplica, es un cambio solo documental. Referencia de esa fecha: suite completa de 159 pruebas y 723 assertions del 2026-11-13; al 2026-11-18 la referencia es 164 pruebas y 745 assertions.
+- **Decisiones tomadas (responsable/fecha):** se conserva el Módulo 5 como próximo paso, supeditado a definir el Modelo 6+ con el equipo clínico (Asistente/2026-11-18).
+- **Pendientes o bloqueos:** siguen vigentes las validaciones visuales y las decisiones de negocio registradas; no se modificó código.
+- **Próximo paso recomendado:** validar visualmente mapa de dolor, CRUD y modal de cita interna; definir el Modelo 6+ para iniciar el Módulo 5.
+- **Estado del trabajo:** completo.
+
+### 2026-11-18 — Precisión geográfica de sedes en el mapa y «Cómo llegar»
+
+- **Agente/persona:** Asistente (OpenCode).
+- **Objetivo:** dar precisión de pin a las sedes de `#contacto` sin romper el comportamiento actual basado en dirección.
+- **Cambios realizados:** `latitud`/`longitud` `decimal(10,7)` opcionales en `create_sucursales_table`; casts `decimal:7` y `$fillable` en `Sucursal`; `ContactLinks::coordinates()` normaliza la pareja y `mapEmbed()`/`directions()` la prefieren conservando sus firmas; `LandingPage\Sedes` calcula las coordenadas una vez por sede; el CRUD de Sedes captura ambos valores con `required_with` cruzado y validación de rangos; la vista del modal añade los dos campos y la nota sobre longitud negativa en Guatemala. Se actualizaron `AVANCES.md` y `PLANIFICACION.md`.
+- **Archivos modificados:** `database/migrations/2026_08_10_000001_create_sucursales_table.php`, `app/Models/Sucursal.php`, `app/Support/ContactLinks.php`, `app/Livewire/LandingPage/Sedes.php`, `app/Livewire/Admin/Clinical/Branches.php`, `resources/views/livewire/admin/clinical/branches.blade.php`, `tests/Feature/Livewire/LandingSedesTest.php`, `tests/Feature/Livewire/ClinicalCatalogsTest.php`, `AVANCES.md`, `PLANIFICACION.md`.
+- **Pruebas/comandos y resultado:** enfocadas 20/20 (92 assertions) contra MariaDB `marvas_test` (este entorno no tiene extensión SQLite); suite completa 164/164 (745 assertions); Pint, `view:cache` y `git diff --check` pasaron. `php artisan migrate:fresh --seed` se ejecutó en la base MariaDB local autorizada `marvas`, con respaldo previo de `sucursales` en `/tmp/opencode/sucursales_antes_coordenadas_20261118.sql`.
+- **Decisiones tomadas (responsable/fecha):** dos columnas separadas en vez de un campo de texto, consolidadas en `create_*` y aplicadas con `migrate:fresh --seed` en local (usuario/2026-11-18); coordenadas opcionales en pareja con fallback a la dirección (Asistente/2026-11-18).
+- **Pendientes o bloqueos:** capturar las coordenadas reales de cada sede y validar el pin en navegador; siguen pendientes las decisiones de negocio y el Modelo 6+. Se detectó un cambio ajeno en `app/Livewire/Admin/Pages.php` (header `id` con `type => integer`) que no se modificó.
+- **Próximo paso recomendado:** cargar coordenadas y revisar el mapa en escritorio/móvil; después definir el Modelo 6+ con el equipo clínico para iniciar el Módulo 5.
+- **Estado del trabajo:** completo, pendiente la captura de coordenadas reales y su validación visual.
 
 ## Plantilla para registrar una entrega
 

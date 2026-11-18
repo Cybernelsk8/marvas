@@ -16,8 +16,8 @@ class SucursalesDemoSeeder extends Seeder
         Sucursal::updateOrCreate(
             ['nombre' => 'Sede de demostración MARVAS'],
             [
-                'direccion' => null,
-                'telefono' => null,
+                'direccion' => '18 calle 29-54 zona 12 Colonia Miles Rock',
+                'telefono' => '58623352',
                 'activa' => true,
             ],
         );

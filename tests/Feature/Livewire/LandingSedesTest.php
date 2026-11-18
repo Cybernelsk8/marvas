@@ -47,6 +47,67 @@ class LandingSedesTest extends TestCase
     }
 
     /**
+     * Comprueba que las coordenadas desplazan a la dirección en el mapa y en las indicaciones.
+     */
+    public function test_branch_directory_uses_coordinates_for_map_and_directions(): void
+    {
+        Sucursal::create([
+            'nombre' => 'Sede con pin',
+            'direccion' => 'Dirección de respaldo',
+            'telefono' => '5862-3352',
+            'latitud' => '14.6343000',
+            'longitud' => '-90.5123000',
+            'activa' => true,
+        ]);
+
+        Livewire::test(Sedes::class)
+            ->assertSee('maps?q=14.6343%2C-90.5123', false)
+            ->assertSee('output=embed', false)
+            ->assertSee('destination=14.6343%2C-90.5123', false)
+            ->assertDontSee('q=Direcci%C3%B3n%20de%20respaldo', false);
+    }
+
+    /**
+     * Comprueba que unas coordenadas válidas permiten mostrar el mapa sin dirección escrita.
+     */
+    public function test_branch_directory_shows_map_with_coordinates_even_without_address(): void
+    {
+        Sucursal::create([
+            'nombre' => 'Sede sin dirección',
+            'direccion' => null,
+            'telefono' => null,
+            'latitud' => '14.6343000',
+            'longitud' => '-90.5123000',
+            'activa' => true,
+        ]);
+
+        Livewire::test(Sedes::class)
+            ->assertSee('Sede sin dirección')
+            ->assertSee('maps?q=14.6343%2C-90.5123', false)
+            ->assertSee('destination=14.6343%2C-90.5123', false)
+            ->assertSee('Cómo llegar');
+    }
+
+    /**
+     * Comprueba que una pareja incompleta de coordenadas no reemplaza la dirección.
+     */
+    public function test_branch_directory_ignores_incomplete_coordinates_and_uses_address(): void
+    {
+        Sucursal::create([
+            'nombre' => 'Sede con coordenada parcial',
+            'direccion' => '18 calle 29-54 zona 12',
+            'telefono' => null,
+            'latitud' => '14.6343000',
+            'longitud' => null,
+            'activa' => true,
+        ]);
+
+        Livewire::test(Sedes::class)
+            ->assertSee('maps?q=18%20calle%2029-54%20zona%2012', false)
+            ->assertDontSee('q=14.6343', false);
+    }
+
+    /**
      * Comprueba que el estado vacío ofrece el WhatsApp general y no inventa sedes.
      */
     public function test_branch_directory_shows_a_whatsapp_fallback_when_there_are_no_active_branches(): void

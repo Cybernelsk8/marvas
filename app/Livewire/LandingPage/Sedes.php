@@ -25,7 +25,8 @@ class Sedes extends Component
     // Consulta las sedes activas con sus enlaces públicos ya preparados.
     //   Ejemplo: desde la vista: @foreach ($this->sedes as $sede)
     //   Resultado: solo aparecen sedes con activa=true, ordenadas por nombre,
-    //   y cada una incluye teléfono, WhatsApp, mapa y ruta de llegada.
+    //   y cada una incluye teléfono, WhatsApp, mapa y ruta de llegada. El mapa
+    //   usa las coordenadas cuando ambas están capturadas; si no, usa la dirección.
     #[Computed]
     public function sedes()
     {
@@ -33,16 +34,21 @@ class Sedes extends Component
             ->where('activa', true)
             ->orderBy('nombre')
             ->get()
-            ->map(fn (Sucursal $sede): array => [
-                'id' => $sede->id,
-                'nombre' => $sede->nombre,
-                'direccion' => $sede->direccion,
-                'telefono' => $sede->telefono,
-                'telefono_enlace' => ContactLinks::phoneLink($sede->telefono),
-                'whatsapp' => ContactLinks::whatsapp($sede->telefono),
-                'mapa' => ContactLinks::mapEmbed($sede->direccion),
-                'como_llegar' => ContactLinks::directions($sede->direccion),
-            ]);
+            ->map(function (Sucursal $sede): array {
+                $coordenadas = ContactLinks::coordinates($sede->latitud, $sede->longitud);
+
+                return [
+                    'id' => $sede->id,
+                    'nombre' => $sede->nombre,
+                    'direccion' => $sede->direccion,
+                    'telefono' => $sede->telefono,
+                    'telefono_enlace' => ContactLinks::phoneLink($sede->telefono),
+                    'whatsapp' => ContactLinks::whatsapp($sede->telefono),
+                    'coordenadas' => $coordenadas,
+                    'mapa' => ContactLinks::mapEmbed($sede->direccion, $coordenadas),
+                    'como_llegar' => ContactLinks::directions($sede->direccion, $coordenadas),
+                ];
+            });
     }
 
     /**

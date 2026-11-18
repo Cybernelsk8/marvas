@@ -42,6 +42,31 @@
             <flux:error name="direccion" />
             <flux:input label="Teléfono" type="tel" mask="9999-9999" maxlength="9" placeholder="0000-0000" wire:model="telefono" />
             <flux:error name="telefono" />
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <flux:input
+                        label="Latitud"
+                        type="number"
+                        step="any"
+                        placeholder="14.6343"
+                        wire:model="latitud"
+                    />
+                    <flux:error name="latitud" />
+                </div>
+                <div>
+                    <flux:input
+                        label="Longitud"
+                        type="number"
+                        step="any"
+                        placeholder="-90.5123"
+                        wire:model="longitud"
+                    />
+                    <flux:error name="longitud" />
+                </div>
+            </div>
+            <flux:text size="sm">
+                Opcional. Si completas ambas, el mapa y «Cómo llegar» apuntan al pin exacto; si las dejas vacías se usa la dirección. En Guatemala la longitud es negativa.
+            </flux:text>
             <flux:checkbox label="Sede activa" wire:model="activa" />
             <div class="flex justify-end gap-2">
                 <flux:modal.close><flux:button type="button" variant="ghost">Cancelar</flux:button></flux:modal.close>

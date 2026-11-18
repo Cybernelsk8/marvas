@@ -6,9 +6,11 @@ use App\Models\Admin\Page;
 use App\Models\Admin\Permission;
 use App\Traits\DataTable;
 use Flux\Flux;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Component;
 use Livewire\Attributes\Title;
+use Livewire\Component;
 
 /** Componente Livewire para gestionar las páginas del menú administrativo. */
 #[Title('Páginas')]
@@ -17,7 +19,7 @@ class Pages extends Component
     use DataTable;
 
     public array $headers = [
-        ['index' => 'id', 'label' => '#', 'align' => 'center'],
+        ['index' => 'id', 'label' => '#', 'align' => 'center', 'type' => 'numeric'],
         ['index' => 'label', 'label' => 'Página'],
         ['index' => 'icon', 'label' => 'Icono'],
         ['index' => 'route', 'label' => 'Ruta'],
@@ -42,7 +44,7 @@ class Pages extends Component
     /**
      * Consulta páginas con su padre y aplica búsqueda, orden, filtros y paginación.
      *
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @return LengthAwarePaginator
      */
     // Consulta páginas con su padre y aplica búsqueda, orden, filtros y paginación.
     //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
@@ -66,8 +68,6 @@ class Pages extends Component
 
     /**
      * Hook de montaje sin inicialización adicional; Livewire lo ejecuta al crear el componente.
-     *
-     * @return void
      */
     // Hook de montaje sin inicialización adicional; Livewire lo ejecuta al crear el componente.
     //   Ejemplo: Livewire invoca este hook al montar el componente.
@@ -77,7 +77,7 @@ class Pages extends Component
     /**
      * Carga páginas y permisos para poblar los selectores de la vista.
      *
-     * @return \Illuminate\Contracts\View\View
+     * @return View
      */
     // Carga páginas y permisos para poblar los selectores de la vista.
     //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
@@ -97,8 +97,6 @@ class Pages extends Component
 
     /**
      * Valida y crea una página aplicando valores predeterminados a campos opcionales.
-     *
-     * @return void
      */
     // Valida y crea una página aplicando valores predeterminados a campos opcionales.
     //   Ejemplo: Desde la vista: wire:click="store"
@@ -135,9 +133,6 @@ class Pages extends Component
 
     /**
      * Carga la página seleccionada, incluso si está desactivada, y abre su formulario.
-     *
-     * @param  int $id
-     * @return void
      */
     // Carga la página seleccionada, incluso si está desactivada, y abre su formulario.
     //   Ejemplo: Desde la vista: wire:click="edit({{ $row->id }})"
@@ -150,8 +145,6 @@ class Pages extends Component
 
     /**
      * Valida y guarda la página editada y después limpia el formulario.
-     *
-     * @return void
      */
     // Valida y guarda la página editada y después limpia el formulario.
     //   Ejemplo: Desde la vista: wire:click="update"
@@ -189,16 +182,13 @@ class Pages extends Component
         } catch (\Throwable $th) {
             Flux::toast(
                 variant: 'danger',
-                text: 'Error al actualizar la página.' . $th->getMessage()
+                text: 'Error al actualizar la página.'.$th->getMessage()
             );
         }
     }
 
     /**
      * Carga una página y abre el diálogo de confirmación para desactivarla.
-     *
-     * @param  int $id
-     * @return void
      */
     // Carga una página y abre el diálogo de confirmación para desactivarla.
     //   Ejemplo: Desde la vista: wire:click="disableItem({{ $row->id }})"
@@ -211,8 +201,6 @@ class Pages extends Component
 
     /**
      * Desactiva lógicamente la página confirmada para conservar su registro.
-     *
-     * @return void
      */
     // Desactiva lógicamente la página confirmada para conservar su registro.
     //   Ejemplo: Desde la vista: wire:click="disabled"
@@ -232,9 +220,6 @@ class Pages extends Component
 
     /**
      * Carga una página y abre la confirmación de eliminación permanente.
-     *
-     * @param  int $id
-     * @return void
      */
     // Carga una página y abre la confirmación de eliminación permanente.
     //   Ejemplo: Desde la vista: wire:click="deleteItem({{ $row->id }})"
@@ -247,8 +232,6 @@ class Pages extends Component
 
     /**
      * Elimina permanentemente la página confirmada y notifica el resultado.
-     *
-     * @return void
      */
     // Elimina permanentemente la página confirmada y notifica el resultado.
     //   Ejemplo: Desde la vista: wire:click="destroy"
@@ -268,8 +251,6 @@ class Pages extends Component
 
     /**
      * Restablece los datos y errores del formulario y cierra los modales.
-     *
-     * @return void
      */
     // Restablece los datos y errores del formulario y cierra los modales.
     //   Ejemplo: Desde la vista: wire:click="resetData"
@@ -283,8 +264,6 @@ class Pages extends Component
 
     /**
      * Devuelve los tipos configurados en Page para llenar el selector del formulario.
-     *
-     * @return array
      */
     // Devuelve los tipos configurados en Page para llenar el selector del formulario.
     //   Ejemplo: Blade itera `@foreach ($this->typePages() as $type)`.

@@ -94,42 +94,84 @@ final class ContactLinks
     }
 
     /**
-     * Construye la URL del mapa embebido de Google Maps para una dirección.
+     * Devuelve "latitud,longitud" cuando ambas coordenadas son válidas.
      *
-     * @param  string|null  $address  Dirección escrita de la sede.
-     * @return string|null URL para un iframe, o null si no hay dirección.
+     * @param  string|float|int|null  $latitude  Latitud de la sede.
+     * @param  string|float|int|null  $longitude  Longitud de la sede.
+     * @return string|null Pareja lista para Google Maps, o null si está incompleta o fuera de rango.
      */
-    // Construye la URL del mapa embebido de Google Maps para una dirección.
-    //   Desde Blade: <iframe src="{{ ContactLinks::mapEmbed($sede->direccion) }}">
-    //   Resultado: https://www.google.com/maps?q=...&z=16&output=embed
-    public static function mapEmbed(?string $address): ?string
+    // Devuelve "latitud,longitud" solo si ambas coordenadas están completas.
+    //   Ejemplo: ContactLinks::coordinates('14.6343000', '-90.5123000') → '14.6343,-90.5123'
+    //   Resultado: null si falta alguna o si están fuera de rango; nunca devuelve una pareja a medias.
+    public static function coordinates(string|float|int|null $latitude, string|float|int|null $longitude): ?string
     {
-        $address = trim((string) $address);
-
-        if ($address === '') {
+        if (! is_numeric($latitude) || ! is_numeric($longitude)) {
             return null;
         }
 
-        return 'https://www.google.com/maps?q='.rawurlencode($address).'&z=16&output=embed';
+        $lat = (float) $latitude;
+        $lon = (float) $longitude;
+
+        if ($lat < -90 || $lat > 90 || $lon < -180 || $lon > 180) {
+            return null;
+        }
+
+        return self::decimalText($lat).','.self::decimalText($lon);
     }
 
     /**
-     * Construye la URL de indicaciones de Google Maps hacia una dirección.
+     * Formatea un número con punto decimal y sin ceros finales innecesarios.
+     *
+     * @param  float  $value  Coordenada ya validada.
+     * @return string Valor estable independiente del locale del servidor.
+     */
+    // Formatea una coordenada con punto decimal y sin ceros sobrantes.
+    //   Ejemplo: ContactLinks::decimalText(14.6343) → '14.6343'
+    //   Resultado: '0' para cero; evita que el locale convierta el punto en coma.
+    private static function decimalText(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 7, '.', ''), '0'), '.');
+    }
+
+    /**
+     * Construye la URL del mapa embebido de Google Maps para una dirección o coordenadas.
      *
      * @param  string|null  $address  Dirección escrita de la sede.
-     * @return string|null URL de indicaciones, o null si no hay dirección.
+     * @param  string|null  $coordinates  Pareja "latitud,longitud" calculada con coordinates().
+     * @return string|null URL para un iframe, o null si no hay ubicación.
      */
-    // Construye la URL de indicaciones de Google Maps hacia una dirección.
-    //   Desde Blade: <a href="{{ ContactLinks::directions($sede->direccion) }}">
-    //   Resultado: https://www.google.com/maps/dir/?api=1&destination=...
-    public static function directions(?string $address): ?string
+    // Construye la URL del mapa embebido; prefiere coordenadas y cae a la dirección.
+    //   Desde Blade: <iframe src="{{ ContactLinks::mapEmbed($sede->direccion, $coordenadas) }}">
+    //   Resultado: https://www.google.com/maps?q=14.6343%2C-90.5123&z=16&output=embed
+    public static function mapEmbed(?string $address, ?string $coordinates = null): ?string
     {
-        $address = trim((string) $address);
+        $destination = filled($coordinates) ? $coordinates : trim((string) $address);
 
-        if ($address === '') {
+        if ($destination === '') {
             return null;
         }
 
-        return 'https://www.google.com/maps/dir/?api=1&destination='.rawurlencode($address);
+        return 'https://www.google.com/maps?q='.rawurlencode($destination).'&z=16&output=embed';
+    }
+
+    /**
+     * Construye la URL de indicaciones de Google Maps hacia una dirección o coordenadas.
+     *
+     * @param  string|null  $address  Dirección escrita de la sede.
+     * @param  string|null  $coordinates  Pareja "latitud,longitud" calculada con coordinates().
+     * @return string|null URL de indicaciones, o null si no hay ubicación.
+     */
+    // Construye las indicaciones; prefiere coordenadas y cae a la dirección.
+    //   Desde Blade: <a href="{{ ContactLinks::directions($sede->direccion, $coordenadas) }}">
+    //   Resultado: https://www.google.com/maps/dir/?api=1&destination=14.6343%2C-90.5123
+    public static function directions(?string $address, ?string $coordinates = null): ?string
+    {
+        $destination = filled($coordinates) ? $coordinates : trim((string) $address);
+
+        if ($destination === '') {
+            return null;
+        }
+
+        return 'https://www.google.com/maps/dir/?api=1&destination='.rawurlencode($destination);
     }
 }

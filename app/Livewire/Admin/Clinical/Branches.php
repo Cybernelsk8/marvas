@@ -5,6 +5,8 @@ namespace App\Livewire\Admin\Clinical;
 use App\Models\Sucursal;
 use App\Traits\DataTable;
 use Flux\Flux;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -32,12 +34,14 @@ class Branches extends Component
 
     public string $telefono = '';
 
+    public ?string $latitud = null;
+
+    public ?string $longitud = null;
+
     public bool $activa = true;
 
     /**
      * Autoriza el acceso al catálogo y define el orden inicial del listado.
-     *
-     * @return void
      */
     // Autoriza el acceso al catálogo y define el orden inicial del listado.
     //   Ejemplo: Livewire invoca este hook al montar el componente.
@@ -52,7 +56,7 @@ class Branches extends Component
     /**
      * Consulta sedes aplicando búsqueda, orden, filtros y paginación.
      *
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @return LengthAwarePaginator
      */
     // Consulta sedes aplicando búsqueda, orden, filtros y paginación.
     //   Ejemplo: Desde Blade: {{ $this->rows->total() }}.
@@ -71,12 +75,11 @@ class Branches extends Component
 
     /**
      * Valida y crea o actualiza una sede, normaliza campos opcionales y cierra el formulario.
-     *
-     * @return void
      */
     // Valida y crea o actualiza una sede, normaliza campos opcionales y cierra el formulario.
     //   Ejemplo: Desde la vista: wire:click="save"
     //   Resultado: Los datos se guardan y la interfaz confirma creación o actualización.
+    //   Las coordenadas son opcionales pero van en pareja: si falta una, la validación falla.
     public function save(): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -84,6 +87,8 @@ class Branches extends Component
             'nombre' => ['required', 'string', 'max:150'],
             'direccion' => ['nullable', 'string', 'max:10000'],
             'telefono' => ['nullable', 'max:9', 'regex:/^\d{4}-?\d{4}$/'],
+            'latitud' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitud'],
+            'longitud' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitud'],
             'activa' => ['required', 'boolean'],
         ]);
 
@@ -95,6 +100,8 @@ class Branches extends Component
             'nombre' => trim($data['nombre']),
             'direccion' => filled($data['direccion']) ? trim($data['direccion']) : null,
             'telefono' => filled($data['telefono']) ? trim($data['telefono']) : null,
+            'latitud' => filled($data['latitud']) ? trim((string) $data['latitud']) : null,
+            'longitud' => filled($data['longitud']) ? trim((string) $data['longitud']) : null,
         ])->save();
 
         Flux::modal('branch-form')->close();
@@ -104,13 +111,11 @@ class Branches extends Component
 
     /**
      * Carga una sede y abre el formulario con sus datos actuales.
-     *
-     * @param  int $id
-     * @return void
      */
     // Carga una sede y abre el formulario con sus datos actuales.
     //   Ejemplo: Desde la vista: wire:click="edit({{ $row->id }})"
-    //   Resultado: El formulario se abre con los datos del registro seleccionado.
+    //   Resultado: El formulario se abre con los datos del registro seleccionado,
+    //   incluidas sus coordenadas cuando las tiene.
     public function edit(int $id): void
     {
         $this->authorize('clinical-catalogs.manage');
@@ -119,15 +124,14 @@ class Branches extends Component
         $this->nombre = $branch->nombre;
         $this->direccion = $branch->direccion ?? '';
         $this->telefono = $branch->telefono ?? '';
+        $this->latitud = $branch->latitud;
+        $this->longitud = $branch->longitud;
         $this->activa = $branch->activa;
         Flux::modal('branch-form')->show();
     }
 
     /**
      * Alterna el indicador activa; no hay borrado físico porque las citas dependen de la sede.
-     *
-     * @param  int $id
-     * @return void
      */
     // Alterna el indicador activa; no hay borrado físico porque las citas dependen de la sede.
     //   Ejemplo: Desde la vista: wire:click="toggleActive({{ $row->id }})"
@@ -142,22 +146,20 @@ class Branches extends Component
 
     /**
      * Restablece los campos del formulario y limpia errores de validación.
-     *
-     * @return void
      */
     // Restablece los campos del formulario y limpia errores de validación.
     //   Ejemplo: Desde la vista: wire:click="resetForm"
     //   Resultado: Los campos regresan a sus valores iniciales y se limpian los errores.
     public function resetForm(): void
     {
-        $this->reset(['editingId', 'nombre', 'direccion', 'telefono', 'activa']);
+        $this->reset(['editingId', 'nombre', 'direccion', 'telefono', 'latitud', 'longitud', 'activa']);
         $this->resetValidation();
     }
 
     /**
      * Devuelve la vista de administración del catálogo de sedes.
      *
-     * @return \Illuminate\Contracts\View\View
+     * @return View
      */
     // Devuelve la vista de administración del catálogo de sedes.
     //   Ejemplo: Livewire lo invoca al mostrar o actualizar el componente.
